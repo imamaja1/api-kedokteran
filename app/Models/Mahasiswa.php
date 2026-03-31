@@ -54,4 +54,6 @@ class Mahasiswa extends Authenticatable
     {
         return $this->belongsTo(ProgramStudi::class, 'program_studi_kode', 'kode_program_studi');
     }
+
+    
 }

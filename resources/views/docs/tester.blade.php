@@ -62,7 +62,7 @@
 
                 <div class="req-pane" id="pane-body">
                     <textarea class="t-textarea" id="bodyInput" rows="5" placeholder='{"key": "value"}'></textarea>
-                    <p class="textarea-hint">JSON body — hanya untuk POST/PUT/PATCH.</p>
+                    <p class="textarea-hint" id="bodyHint">JSON body — hanya untuk POST/PUT/PATCH.</p>
                 </div>
             </div>
         </div>
@@ -92,10 +92,6 @@
                 <div class="debug-row">
                     <span class="debug-key">XSRF Token</span>
                     <span class="debug-val" id="dbgXsrf">—</span>
-                </div>
-                <div class="debug-row">
-                    <span class="debug-key">Session</span>
-                    <span class="debug-val" id="dbgSession">—</span>
                 </div>
                 <div class="debug-row">
                     <span class="debug-key">Base URL</span>

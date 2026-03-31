@@ -64,7 +64,7 @@
                                 placeholder='"Authorization": "Bearer {token}"'>{{ old('headers') }}</textarea>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Body Request <span
+                            <label class="form-label fw-semibold">Param / Body Request <span
                                     class="text-muted small">(opsional)</span></label>
                             <textarea name="body" class="form-control" rows="3"
                                 style="font-family:monospace;font-size:.83rem"

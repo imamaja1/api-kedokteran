@@ -14,7 +14,7 @@ class MahasiswaController extends Controller
         $mahasiswa = Mahasiswa::select([
             'nim', 'nama_mahasiswa', 'email', 'program_studi_kode',
             'status', 'status_pendaftaran', 'created_at',
-        ])->paginate(20);
+        ])->get();
 
         return response()->json(['status' => true, 'data' => $mahasiswa]);
     }

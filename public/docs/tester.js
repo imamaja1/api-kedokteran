@@ -38,7 +38,17 @@ function onMethodChange() {
     const m   = sel.value;
     sel.className = `method-select mc-${m}`;
     const bodyTab = document.getElementById('bodyTab');
-    bodyTab.style.opacity = ['POST','PUT','PATCH'].includes(m) ? '1' : '.4';
+    const isGet   = m === 'GET';
+    bodyTab.style.opacity = '1';
+    bodyTab.innerHTML = isGet
+        ? '<i class="bi bi-question-square"></i> Params'
+        : '<i class="bi bi-braces"></i> Body';
+    document.getElementById('bodyInput').placeholder = isGet
+        ? '{"nim": "12345", "page": 1}'
+        : '{"key": "value"}';
+    document.getElementById('bodyHint').innerHTML = isGet
+        ? '<i class="bi bi-info-circle me-1"></i>JSON akan dikonversi menjadi <code>?key=value</code> di URL.'
+        : 'JSON body — hanya untuk POST/PUT/PATCH.';
 }
 
 /* ─────────────────────────────────────────
@@ -81,14 +91,10 @@ function allCookies() {
 ───────────────────────────────────────── */
 function refreshDebug() {
     const xsrf    = getCookie('XSRF-TOKEN');
-    const session = getCookie(SESSION_COOKIE);
     const xsrfEl  = document.getElementById('dbgXsrf');
-    const sessEl  = document.getElementById('dbgSession');
 
     xsrfEl.textContent  = xsrf    ? xsrf.substring(0,24)+'…'    : '(nggak ada — jalankan CSRF Cookie preset dulu)';
     xsrfEl.className    = `debug-val ${xsrf ? 'ok' : 'warn'}`;
-    sessEl.textContent  = session ? session.substring(0,24)+'…' : '(belum login)';
-    sessEl.className    = `debug-val ${session ? 'ok' : ''}`;
 
     const chips = document.getElementById('dbgCookies');
     const all   = allCookies();
@@ -148,15 +154,22 @@ async function sendRequest() {
     } catch { alert('Header JSON tidak valid.'); return; }
 
     // Inject Sanctum / Content-Type
-    headers['Accept']         = headers['Accept'] || 'application/json';
-    headers['Content-Type']   = 'application/json';
+    headers['Accept'] = headers['Accept'] || 'application/json';
+    if (['POST','PUT','PATCH'].includes(method)) headers['Content-Type'] = 'application/json';
     if (xsrf) headers['X-XSRF-TOKEN'] = xsrf;
 
-    // Parse body
+    // Build URL with query params (GET) or body (POST/PUT/PATCH)
+    let finalUrl = url;
     let body = undefined;
-    if (['POST','PUT','PATCH'].includes(method)) {
-        const raw = document.getElementById('bodyInput').value.trim();
-        body = raw || undefined;
+    const rawBody = document.getElementById('bodyInput').value.trim();
+    if (method === 'GET' && rawBody) {
+        try {
+            const params = JSON.parse(rawBody);
+            const qs = new URLSearchParams(params).toString();
+            if (qs) finalUrl = url + (url.includes('?') ? '&' : '?') + qs;
+        } catch { alert('Query params JSON tidak valid.'); return; }
+    } else if (['POST','PUT','PATCH'].includes(method) && rawBody) {
+        body = rawBody;
     }
 
     // UI: loading
@@ -180,7 +193,7 @@ async function sendRequest() {
     let res, responseText;
 
     try {
-        res = await fetch(url, {
+        res = await fetch(finalUrl, {
             method,
             headers,
             body,
@@ -227,7 +240,7 @@ async function sendRequest() {
     document.getElementById('res-body').classList.add('show');
 
     // History
-    saveHistory(method, url, s);
+    saveHistory(method, finalUrl, s);
 
     resetBtn();
     refreshDebug();

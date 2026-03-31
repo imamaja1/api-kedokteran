@@ -59,7 +59,7 @@
                                 style="font-family:monospace;font-size:.83rem">{{ old('headers', $endpoint->headers) }}</textarea>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Body Request</label>
+                            <label class="form-label fw-semibold">Param / Body Request</label>
                             <textarea name="body" class="form-control" rows="3"
                                 style="font-family:monospace;font-size:.83rem">{{ old('body', $endpoint->body) }}</textarea>
                         </div>

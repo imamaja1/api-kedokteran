@@ -321,6 +321,14 @@
                 class="{{ request()->routeIs('admin.mahasiswa.*') ? 'active' : '' }}">
                 <i class="bi bi-mortarboard-fill"></i> <span class="nav-link-text">Mahasiswa</span>
             </a>
+            <a href="{{ route('admin.matakuliah.index') }}"
+                class="{{ request()->routeIs('admin.matakuliah.*') ? 'active' : '' }}">
+                <i class="bi bi-journal-bookmark-fill"></i> <span class="nav-link-text">Matakuliah</span>
+            </a>
+            <a href="{{ route('admin.krs-khs.index') }}"
+                class="{{ request()->routeIs('admin.krs-khs.*') ? 'active' : '' }}">
+                <i class="bi bi-journal-check"></i> <span class="nav-link-text">KRS KHS Mahasiswa</span>
+            </a>
             <a href="{{ route('admin.dosen.index') }}"
                 class="{{ request()->routeIs('admin.dosen.*') ? 'active' : '' }}">
                 <i class="bi bi-person-workspace"></i> <span class="nav-link-text">Dosen</span>

@@ -11,9 +11,9 @@ class Matakuliah extends Model
 
     protected $fillable = [
         'kode_matakuliah', 'nama_matakuliah', 'jenis',
-        'sks_teori', 'sks_praktek', 'sks_praktikum',
-        'kode_pengguna', 'kode_kompetensi', 'kode_program_studi',
-        'param1', 'block',
+        'sks_teori', 'sks_praktik',
+        'kode_kompetensi', 'kode_program_studi',
+        'block',
     ];
 
     public function kurikulum()
