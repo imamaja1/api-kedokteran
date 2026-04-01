@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\ApiEndpointController;
 use App\Http\Controllers\Admin\ApiSectionController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DosenController;
+use App\Http\Controllers\Admin\KelasController;
 use App\Http\Controllers\Admin\KrsKhsController;
 use App\Http\Controllers\Admin\MatakuliahController;
 use App\Http\Controllers\Admin\MahasiswaController;
@@ -63,6 +64,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin,staff'])
     Route::post('krs-khs/{kode_krs}/detail', [KrsKhsController::class, 'storeDetail'])->name('krs-khs.store-detail');
     Route::delete('krs-khs/{kode_krs}/detail/{kode_krs_detail}', [KrsKhsController::class, 'destroyDetail'])->name('krs-khs.destroy-detail');
     Route::put('krs-khs/detail/{kode_krs_detail}/nilai', [KrsKhsController::class, 'updateNilai'])->name('krs-khs.update-nilai');
+
+    // Kelas
+    Route::get('kelas', [KelasController::class, 'index'])->name('kelas.index');
+    Route::get('kelas/{id}', [KelasController::class, 'show'])->name('kelas.show');
+    Route::post('kelas/{id}/mahasiswa', [KelasController::class, 'storeMahasiswa'])->name('kelas.store-mahasiswa');
+    Route::delete('kelas/{id}/mahasiswa/{kmId}', [KelasController::class, 'destroyMahasiswa'])->name('kelas.destroy-mahasiswa');
+    Route::post('kelas/{id}/dosen', [KelasController::class, 'storeDosen'])->name('kelas.store-dosen');
+    Route::delete('kelas/{id}/dosen/{mengajarId}', [KelasController::class, 'destroyDosen'])->name('kelas.destroy-dosen');
 
     Route::get('/docs', [DocsController::class, 'index'])->name('docs');
     Route::get('/tester', [DocsController::class, 'tester'])->name('tester');

@@ -53,7 +53,6 @@
                     <th class="text-center">SKS Praktik</th>
                     <th class="text-center">Status KRS</th>
                     <th class="text-center">Nilai Akhir</th>
-                    <th class="text-center">Tidak Berhak</th>
                 </tr>
             </thead>
             <tbody>
@@ -73,7 +72,6 @@
                         <span class="badge bg-{{ $statusColor }}">{{ $detail->status ?? '—' }}</span>
                     </td>
                     <td class="text-center">{{ $detail->nilai_akhir ?? '—' }}</td>
-                    <td class="text-center">{{ $detail->tidak_berhak ?? '—' }}</td>
                 </tr>
                 @empty
                 <tr>
