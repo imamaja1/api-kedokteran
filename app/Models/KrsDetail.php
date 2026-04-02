@@ -8,9 +8,11 @@ class KrsDetail extends Model
 {
     protected $table = 'krs_detail';
     protected $primaryKey = 'kode_krs_detail';
+    public $incrementing = false;
+    protected $keyType = 'int';
 
     protected $fillable = [
-        'kode_krs', 'kode_matakuliah', 'status', 'id_matakuliah',
+        'kode_krs_detail', 'kode_krs', 'kode_matakuliah', 'status', 'id_matakuliah',
     ];
 
     public function krs()

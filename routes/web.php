@@ -66,6 +66,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin,staff'])
     Route::put('krs-khs/detail/{kode_krs_detail}/nilai', [KrsKhsController::class, 'updateNilai'])->name('krs-khs.update-nilai');
 
     // Kelas
+    Route::post('kelas/sync-siska', [KelasController::class, 'syncWithSiska'])->name('kelas.sync-siska');
     Route::get('kelas', [KelasController::class, 'index'])->name('kelas.index');
     Route::get('kelas/{id}', [KelasController::class, 'show'])->name('kelas.show');
     Route::post('kelas/{id}/mahasiswa', [KelasController::class, 'storeMahasiswa'])->name('kelas.store-mahasiswa');

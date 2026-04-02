@@ -12,9 +12,10 @@ class Dosen extends Authenticatable
 
     protected $table = 'dosen';
     protected $primaryKey = 'kode_dosen';
+    public $incrementing = false;
 
     protected $fillable = [
-        'nama_dosen', 'field_studi', 'alumni', 'nik', 'no_telp',
+        'kode_dosen', 'nama_dosen', 'field_studi', 'alumni', 'nik', 'no_telp',
         'status_dosen', 'homebase', 'alamat_email', 'sandi_pengguna',
         'status_login', 'aktif', 'signature', 'chatid',
     ];

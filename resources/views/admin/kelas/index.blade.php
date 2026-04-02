@@ -6,8 +6,8 @@
 <div class="card">
     <div class="card-header-custom d-flex justify-content-between align-items-center flex-wrap gap-2">
         <span><i class="bi bi-diagram-3-fill me-2"></i>Daftar Kelas</span>
-        <form action="{{ route('admin.mahasiswa.sync-siska') }}" method="POST" class="d-inline"
-            onsubmit="return confirm('Mulai sinkronisasi data mahasiswa dari SISKA?')">
+        <form action="{{ route('admin.kelas.sync-siska') }}" method="POST" class="d-inline"
+            onsubmit="return confirm('Mulai sinkronisasi data kelas dari SISKA?')">
             @csrf
             <button type="submit" class="btn btn-sm btn-outline-light">
                 <i class="bi bi-arrow-repeat me-1"></i>Sinkronisasi SISKA
@@ -123,8 +123,15 @@
     </div>
 
     @if($kelasList->hasPages())
-    <div class="px-3 py-2 border-top">
-        {{ $kelasList->links() }}
+    <div class="px-3 py-3 border-top bg-light">
+        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3">
+            <small class="text-muted">
+                <i class="bi bi-info-circle me-1"></i>Menampilkan <strong>{{ $kelasList->firstItem()
+                    }}</strong>–<strong>{{ $kelasList->lastItem() }}</strong> dari <strong>{{ $kelasList->total()
+                    }}</strong> kelas
+            </small>
+            {{ $kelasList->links('pagination::bootstrap-5') }}
+        </div>
     </div>
     @endif
 </div>

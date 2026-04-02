@@ -8,9 +8,10 @@ class KelasMahasiswa extends Model
 {
     protected $table = 'kelas_mahasiswa';
     protected $primaryKey = 'kelas_mahasiswa_id';
+    public $incrementing = false;
     public $timestamps = false;
 
-    protected $fillable = ['kode_krs_detail', 'kelas_id'];
+    protected $fillable = ['kelas_mahasiswa_id', 'kode_krs_detail', 'kelas_id'];
 
     public function kelas()
     {

@@ -18,7 +18,7 @@ class ApiConnectionController extends Controller
     public function index()
     {
         $this->requireAdmin();
-        $connections = ApiConnection::orderBy('name')->get();
+        $connections = ApiConnection::all();
 
         return view('admin.connections.index', compact('connections'));
     }

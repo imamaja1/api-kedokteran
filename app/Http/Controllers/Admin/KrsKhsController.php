@@ -242,7 +242,7 @@ class KrsKhsController extends Controller
                 $ph->save();
             }
         }
-
+        // dd($items); // --- IGNORE ---
         foreach ($items as $item) {
             $nim = $item['nim'] ?? null;
             if (! $nim) {
@@ -280,12 +280,14 @@ class KrsKhsController extends Controller
             foreach ($item['krs_detail'] ?? [] as $detail) {
                 $kodeKrs      = $detail['kode_krs'] ?? null;
                 $idMatakuliah = $detail['id_matakuliah'] ?? null;
+                $kode_krs_detail = $detail['k_krs_detail'] ?? null;
                 if (! $kodeKrs || ! $idMatakuliah) {
                     $detailSkipped++;
                     continue;
                 }
 
                 $detailFields = [
+                    'kode_krs_detail'   => $kode_krs_detail, // dari SISKA, bukan auto-increment lokal
                     'kode_krs'        => $kodeKrs,
                     'id_matakuliah'   => $idMatakuliah,
                     'status'          => in_array($detail['status'] ?? '', ['B', 'U', 'K'])

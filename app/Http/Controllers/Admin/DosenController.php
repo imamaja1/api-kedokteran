@@ -233,16 +233,17 @@ class DosenController extends Controller
         // 4. Update atau create dosen di database lokal (upsert per NIK)
         $created = 0;
         $updated = 0;
-
+        // dd($dosens);
         foreach ($dosens as $d) {
-            $nik = $d['nik'] ?? null;
-            if (! $nik) {
+            $kode_dosen = $d['kode_dosen'] ?? null;
+            if (! $kode_dosen) {
                 continue;
             }
 
             $fields = [
+                'kode_dosen' => $d['kode_dosen'] ?? null,
                 'nama_dosen' => $d['nama_dosen'] ?? null,
-                'nik' => $nik,
+                'nik' => $d['nik'] ?? null,
                 'no_telp' => $d['no_telp'] ?? null,
                 'alamat_email' => $d['alamat_email'] ?? null,
                 'field_studi' => $d['field_studi'] ?? null,
@@ -253,8 +254,7 @@ class DosenController extends Controller
                 'chatid' => $d['chatid'] ?? '',
                 'sandi_pengguna' => Hash::make('password'), // Set default password, bisa diubah manual setelahnya
             ];
-
-            $existing = Dosen::where('nik', $nik)->first();
+            $existing = Dosen::where('kode_dosen', $kode_dosen)->first();
 
             if ($existing) {
                 $existing->update($fields);
