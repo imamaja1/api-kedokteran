@@ -14,15 +14,6 @@ use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
-    /**
-     * Login mahasiswa atau dosen.
-     * Sanctum Cookie: setelah login, sesi disimpan di cookie laravel_session.
-     */
-    protected function requestHasSessionStore(Request $request): bool
-    {
-        return $request->hasSession() && $request->getSession() !== null;
-    }
-
     public function mhs_login(MhsLoginRequest $request): JsonResponse
     {
         $nim = $request->nim;
@@ -41,27 +32,7 @@ class AuthController extends Controller
 
         // Authenticate dengan guard mahasiswa_web
         Auth::guard('mahasiswa_web')->login($user);
-
-        if (! $this->requestHasSessionStore($request)) {
-            Auth::guard('mahasiswa_web')->logout();
-
-            $payload = [
-                'status' => false,
-                'message' => 'Session not available. Use Sanctum SPA cookie auth (call /sanctum/csrf-cookie, send credentials, and ensure your domain is in SANCTUM_STATEFUL_DOMAINS).',
-            ];
-
-            if (config('app.debug')) {
-                $payload['debug'] = [
-                    'origin' => $request->headers->get('origin'),
-                    'referer' => $request->headers->get('referer'),
-                    'host' => $request->getHost(),
-                    'has_session' => $this->requestHasSessionStore($request),
-                    'cookie_names' => array_keys($request->cookies->all()),
-                ];
-            }
-
-            return response()->json($payload, 403);
-        }
+        $request->session()->regenerate();
 
         return response()->json([
             'status' => true,
@@ -92,27 +63,7 @@ class AuthController extends Controller
 
         // Authenticate dengan guard dosen_web
         Auth::guard('dosen_web')->login($user);
-
-        if (! $this->requestHasSessionStore($request)) {
-            Auth::guard('dosen_web')->logout();
-
-            $payload = [
-                'status' => false,
-                'message' => 'Session not available. Use Sanctum SPA cookie auth (call /sanctum/csrf-cookie, send credentials, and ensure your domain is in SANCTUM_STATEFUL_DOMAINS).',
-            ];
-
-            if (config('app.debug')) {
-                $payload['debug'] = [
-                    'origin' => $request->headers->get('origin'),
-                    'referer' => $request->headers->get('referer'),
-                    'host' => $request->getHost(),
-                    'has_session' => $this->requestHasSessionStore($request),
-                    'cookie_names' => array_keys($request->cookies->all()),
-                ];
-            }
-
-            return response()->json($payload, 403);
-        }
+        $request->session()->regenerate();
 
         return response()->json([
             'status' => true,

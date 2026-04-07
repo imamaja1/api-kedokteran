@@ -30,8 +30,8 @@ class EnsureValidSanctumCookie
         }
 
         // Pastikan guard menentukan tipe Mahasiswa atau Dosen
-        $isMahasiswa = isset($user->nim) && ! empty($user->nim);
-        $isDosen = isset($user->nik) && ! empty($user->nik) && isset($user->nama_dosen);
+        $isMahasiswa = $user instanceof \App\Models\Mahasiswa;
+        $isDosen     = $user instanceof \App\Models\Dosen;
 
         if (! ($isMahasiswa || $isDosen)) {
             return response()->json([

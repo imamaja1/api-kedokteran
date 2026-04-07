@@ -10,6 +10,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Session\TokenMismatchException;
 use Illuminate\Support\Facades\Route;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 
@@ -45,5 +46,14 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // 419 — CSRF / XSRF token tidak sesuai saat login
+        $exceptions->render(function (TokenMismatchException $e, \Illuminate\Http\Request $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Token tidak sesuai. Silakan ambil ulang CSRF token melalui GET /sanctum/csrf-cookie lalu ulangi permintaan.',
+                    'error'   => 'TOKEN_MISMATCH',
+                ], 419);
+            }
+        });
     })->create();

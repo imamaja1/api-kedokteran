@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Route;
 
 // ─── Auth (public) ───────────────────────────────────────────────────────────
 Route::prefix('auth')
-    ->middleware(['throttle:6,1'])
+    ->middleware(['sanctum.spa', 'throttle:6,1'])
     ->group(function () {
         // CSRF token endpoint untuk Sanctum
         Route::get('/csrf-cookie', function () {
