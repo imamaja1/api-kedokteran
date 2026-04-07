@@ -9,13 +9,10 @@ use Illuminate\Support\Facades\Route;
 
 
 // ─── Protected Mahasiswa (auth:mahasiswa_web) ─────────────────────────────────
-Route::prefix('api')
+Route::prefix('api/mahasiswa')
     ->middleware(['sanctum.spa', 'auth:mahasiswa_web', 'sanctum.cookie'])
     ->group(function () {
         // Auth
-        Route::post('/mhs/logout', [AuthController::class, 'logout']);
-        Route::get('/mhs/me', [MahasiswaController::class, 'index']);
-
-        // Mahasiswa — update data diri sendiri
-        Route::put('/mhs/update', [MahasiswaController::class, 'mhs_update']);
+        Route::post('/logout', [AuthController::class, 'logout']);
+        Route::get('/profile', [MahasiswaController::class, 'index']);
     });

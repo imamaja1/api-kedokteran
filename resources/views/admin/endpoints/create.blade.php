@@ -48,7 +48,7 @@
                         <div class="col-md-7">
                             <label class="form-label fw-semibold">URL <span class="text-danger">*</span></label>
                             <input type="text" name="url" class="form-control @error('url') is-invalid @enderror"
-                                value="{{ old('url') }}" required placeholder="http://127.0.0.1:8000/api/v1/...">
+                                value="{{ old('url') }}" required placeholder="/api/v1/...">
                             @error('url') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                         <div class="col-md-2">
