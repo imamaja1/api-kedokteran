@@ -21,13 +21,19 @@ class MahasiswaController extends Controller
         'Gorontalo', 'Sulawesi Barat', 'Maluku', 'Maluku Utara', 'Papua Barat', 'Papua',
     ];
 
-    public function index(): JsonResponse
+    public function profil(): JsonResponse
     {
         $user = Auth::guard('mahasiswa_web')->user();
-        return response()->json(['status' => true, 'data' => $user]);
+        return response()->json(
+            [
+                'status' => true, 
+                'data' => $user,
+                'provinces' => self::PROVINCES
+            ]
+        );
     }
 
-    public function mhs_update(Request $request): JsonResponse
+    public function profil_update(Request $request): JsonResponse
     {
         $user = Auth::guard('mahasiswa_web')->user();
 
@@ -70,7 +76,8 @@ class MahasiswaController extends Controller
         return response()->json([
             'status'  => true,
             'message' => 'Data mahasiswa berhasil diupdate.',
-            'data'    => $user->fresh(),
         ]);
     }
+
+    
 }
