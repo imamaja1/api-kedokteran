@@ -21,6 +21,15 @@ class MahasiswaController extends Controller
         'Gorontalo', 'Sulawesi Barat', 'Maluku', 'Maluku Utara', 'Papua Barat', 'Papua',
     ];
 
+    public function me(): JsonResponse
+    {
+        $user = Auth::guard('mahasiswa_web')->user();
+        return response()->json([
+            'status' => true,
+            'data' => $user,
+        ]);
+    }
+
     public function profil(): JsonResponse
     {
         $user = Auth::guard('mahasiswa_web')->user();

@@ -13,9 +13,12 @@ Route::prefix('api/mhs')
     ->middleware(['sanctum.spa', 'auth:mahasiswa_web', 'sanctum.cookie'])
     ->group(function () {
         // Auth
+        Route::get('me', [MahasiswaController::class, 'me']);
+
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/profile', [MahasiswaController::class, 'profil']);
         Route::put('/profile/update', [MahasiswaController::class, 'profil_update']);
+        Route::get('menu', [MahasiswaController::class, 'menu']);
         // kurikulum
         // krs
         // khs
