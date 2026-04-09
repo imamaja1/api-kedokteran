@@ -6,6 +6,8 @@ use App\Http\Controllers\KrsController;
 use App\Http\Controllers\ProgramStudiController;
 use App\Http\Controllers\Api_Mahasiswa\MahasiswaController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api_Mahasiswa\KrsController as ApiMhsKrsController;
+use App\Http\Controllers\Api_Mahasiswa\KhsController as ApiMhsKhsController;
 
 
 // ─── Protected Mahasiswa (auth:mahasiswa_web) ─────────────────────────────────
@@ -21,6 +23,8 @@ Route::prefix('api/mhs')
         Route::get('menu', [MahasiswaController::class, 'menu']);
         // kurikulum
         // krs
+        Route::get('krs', [ApiMhsKrsController::class, 'krs']);
         // khs
+        Route::get('khs', [ApiMhsKhsController::class, 'khs']);
         // petikan
     });
