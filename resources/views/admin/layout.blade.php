@@ -337,6 +337,10 @@
                 class="{{ request()->routeIs('admin.kelas.*') ? 'active' : '' }}">
                 <i class="bi bi-diagram-3-fill"></i> <span class="nav-link-text">Kelas</span>
             </a>
+            <a href="{{ route('admin.kurikulum.index') }}"
+                class="{{ request()->routeIs('admin.kurikulum.*') ? 'active' : '' }}">
+                <i class="bi bi-journal-richtext"></i> <span class="nav-link-text">Kurikulum</span>
+            </a>
             @endif
 
             <div class="nav-section-label">Lainnya</div>

@@ -23,4 +23,9 @@ class NamaKurikulum extends Model
     {
         return $this->hasMany(Kurikulum::class, 'kode_nama_kurikulum', 'kode_nama_kurikulum');
     }
+
+    public function kurikulumAngkatan()
+    {
+        return $this->hasMany(KurikulumAngkatan::class, 'kode_nama_kurikulum', 'kode_nama_kurikulum');
+    }
 }

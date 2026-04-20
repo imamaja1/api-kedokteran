@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DosenController;
 use App\Http\Controllers\Admin\KelasController;
 use App\Http\Controllers\Admin\KrsKhsController;
+use App\Http\Controllers\Admin\KurikulumController;
 use App\Http\Controllers\Admin\MatakuliahController;
 use App\Http\Controllers\Admin\MahasiswaController;
 use App\Http\Controllers\Admin\TahunAkademikController;
@@ -73,6 +74,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin,staff'])
     Route::delete('kelas/{id}/mahasiswa/{kmId}', [KelasController::class, 'destroyMahasiswa'])->name('kelas.destroy-mahasiswa');
     Route::post('kelas/{id}/dosen', [KelasController::class, 'storeDosen'])->name('kelas.store-dosen');
     Route::delete('kelas/{id}/dosen/{mengajarId}', [KelasController::class, 'destroyDosen'])->name('kelas.destroy-dosen');
+
+    // Kurikulum
+    Route::post('kurikulum/sync-siska', [KurikulumController::class, 'syncWithSiska'])->name('kurikulum.sync-siska');
+    Route::get('kurikulum', [KurikulumController::class, 'index'])->name('kurikulum.index');
+    Route::get('kurikulum/{kode}', [KurikulumController::class, 'show'])->name('kurikulum.show');
 
     Route::get('/docs', [DocsController::class, 'index'])->name('docs');
     Route::get('/tester', [DocsController::class, 'tester'])->name('tester');
