@@ -5,7 +5,7 @@ use App\Models\KRS;
 use App\Models\Mahasiswa;
 use Illuminate\Support\Facades\Crypt;
 
-class ServiceKHSMahasiswa
+class ServiceKRS
 {
     /**
      * Create a new class instance.
@@ -14,7 +14,8 @@ class ServiceKHSMahasiswa
     {
         //
     }
-    public function getKHSMhs($nim, $ta, $semester)
+
+    public function getKRSMhs($nim, $ta, $semester)
     {
         $data['mahasiswa'] = Mahasiswa::join('program_studi', 'program_studi.kode_program_studi', '=', 'mahasiswa.program_studi_kode')
                                 ->join('krs', 'krs.nim', '=', 'mahasiswa.nim')
@@ -34,18 +35,17 @@ class ServiceKHSMahasiswa
         $data['krs'] = KRS::join('tahun_akademik', 'krs.kode_tahun_akademik', '=', 'tahun_akademik.kode_tahun_akademik')
                     ->join('krs_detail','krs.kode_krs','=','krs_detail.kode_krs')
                     ->join('matakuliah', 'krs_detail.id_matakuliah', '=', 'matakuliah.id_matakuliah')
-                    ->join('khs_detail', 'khs_detail.kode_krs_detail', '=', 'krs_detail.kode_krs_detail')
                     ->where('krs.nim', $nim)
                     ->where('tahun_akademik.tahun_akademik', $ta)
                     ->where('tahun_akademik.semester', $semester)
                     ->select(
-                        'khs_detail.kode_khs_detail as id',
-                        'khs_detail.kode_khs_detail as kode',
+                        'kode_krs_detail as id',
+                        'kode_krs_detail as kode',
                         'kode_matakuliah',
                         'nama_matakuliah',
                         'sks_teori',
                         'sks_praktik',
-                        'khs_detail.nilai_akhir',
+                        'block'
                     )
                     ->get()
                     ->map(function ($item) {

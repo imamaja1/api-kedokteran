@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api_Mahasiswa;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Service\ServiceKRSMahasiswa;
+use App\Service\ServiceKRS;
 use App\Models\TahunAkademik;
 
 class KrsController extends Controller
@@ -36,6 +36,6 @@ class KrsController extends Controller
 
         $nim = Auth::guard('mahasiswa_web')->user()->nim;
 
-        return (new ServiceKRSMahasiswa())->getKRSMhs($nim, $ta, $semester);
+        return (new ServiceKRS())->getKRSMhs($nim, $ta, $semester);
     }
 }
