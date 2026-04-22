@@ -93,6 +93,48 @@
 </div>
 @endif
 
+{{-- Ringkasan Total SKS per Semester --}}
+@if($sksBySemester->isNotEmpty())
+<div class="card mb-3">
+    <div class="card-header-custom">
+        <i class="bi bi-calculator-fill me-2"></i>Ringkasan SKS per Semester
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0 align-middle text-center">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-3 text-start">Semester</th>
+                    <th>Jumlah MK</th>
+                    <th>SKS Teori</th>
+                    <th>SKS Praktikum</th>
+                    <th class="fw-bold">Total SKS</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($sksBySemester as $sem => $info)
+                <tr>
+                    <td class="ps-3 text-start fw-semibold">Semester {{ $sem }}</td>
+                    <td><span class="badge bg-secondary">{{ $info['jumlah_mk'] }} MK</span></td>
+                    <td>{{ $info['sks_teori'] }}</td>
+                    <td>{{ $info['sks_praktik'] }}</td>
+                    <td><span class="badge bg-primary fs-6">{{ $info['total_sks'] }}</span></td>
+                </tr>
+                @endforeach
+            </tbody>
+            <tfoot class="table-light fw-bold">
+                <tr>
+                    <td class="ps-3 text-start">Total Keseluruhan</td>
+                    <td>{{ $sksBySemester->sum('jumlah_mk') }} MK</td>
+                    <td>{{ $sksBySemester->sum('sks_teori') }}</td>
+                    <td>{{ $sksBySemester->sum('sks_praktik') }}</td>
+                    <td><span class="badge bg-success fs-6">{{ $sksBySemester->sum('total_sks') }}</span></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+@endif
+
 {{-- Kurikulum (daftar MK) --}}
 <div class="card">
     <div class="card-header-custom d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -125,29 +167,26 @@
         <table class="table table-hover mb-0 align-middle">
             <thead class="table-light">
                 <tr>
-                    <th class="ps-3" style="width:50px">#</th>
-                    <th style="width:100px">Kode Kurikulum</th>
-                    <th>Matakuliah</th>
-                    <th class="d-none d-md-table-cell">Kode MK</th>
                     <th class="text-center" style="width:100px">Semester</th>
+                    <th class="d-none d-md-table-cell">Kode MK</th>
+                    <th>Matakuliah</th>
+                    <th class="text-center">SKS teori</th>
+                    <th class="text-center">SKS praktikum</th>
+                    <th class="text-center">Total SKS</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse($kurikulumList as $i => $k)
                 <tr>
-                    <td class="ps-3 text-muted small">{{ $kurikulumList->firstItem() + $i }}</td>
-                    <td class="text-muted small">{{ $k->kode_kurikulum }}</td>
-                    <td>
-                        <div class="fw-medium">{{ $k->matakuliah->nama_matakuliah ?? '-' }}</div>
-                        @if($k->matakuliah)
-                        <div class="text-muted small">SKS: {{ $k->matakuliah->sks ?? '-' }}</div>
-                        @endif
-                    </td>
-                    <td class="d-none d-md-table-cell text-muted small font-monospace">
-                        {{ $k->kode_matakuliah ?: ($k->matakuliah->kode_matakuliah ?? '-') }}
-                    </td>
                     <td class="text-center">
-                        <span class="badge bg-primary">{{ $k->semester ?? '-' }}</span>
+                        <span class="badge bg-info">Semester {{ $k->semester }}</span>
+                    </td>
+                    <td class="d-none d-md-table-cell text-muted small">{{ $k->matakuliah->kode_matakuliah ?? '-' }}
+                    </td>
+                    <td>{{ $k->matakuliah->nama_matakuliah ?? '-' }}</td>
+                    <td class="text-center">{{ $k->matakuliah->sks_teori ?? '-' }}</td>
+                    <td class="text-center">{{ $k->matakuliah->sks_praktik ?? '-' }}</td>
+                    <td class="text-center">{{ ($k->matakuliah->sks_teori ?? 0) + ($k->matakuliah->sks_praktik ?? 0) }}
                     </td>
                 </tr>
                 @empty

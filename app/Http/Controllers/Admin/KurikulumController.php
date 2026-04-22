@@ -40,7 +40,22 @@ class KurikulumController extends Controller
         $kurikulumList = $kurikulumQuery->orderBy('semester')->paginate(25)->withQueryString();
         $angkatanList  = KurikulumAngkatan::where('kode_nama_kurikulum', $kode)->get();
 
-        return view('admin.kurikulum.show', compact('namaKurikulum', 'kurikulumList', 'angkatanList'));
+        // Hitung total SKS per semester (semua semester, tanpa filter/paginate)
+        $sksBySemester = Kurikulum::with('matakuliah')
+            ->where('kode_nama_kurikulum', $kode)
+            ->get()
+            ->groupBy('semester')
+            ->map(function ($items) {
+                return [
+                    'jumlah_mk'    => $items->count(),
+                    'sks_teori'    => $items->sum(fn ($k) => $k->matakuliah->sks_teori ?? 0),
+                    'sks_praktik'  => $items->sum(fn ($k) => $k->matakuliah->sks_praktik ?? 0),
+                    'total_sks'    => $items->sum(fn ($k) => ($k->matakuliah->sks_teori ?? 0) + ($k->matakuliah->sks_praktik ?? 0)),
+                ];
+            })
+            ->sortKeys();
+
+        return view('admin.kurikulum.show', compact('namaKurikulum', 'kurikulumList', 'angkatanList', 'sksBySemester'));
     }
 
     public function syncWithSiska()

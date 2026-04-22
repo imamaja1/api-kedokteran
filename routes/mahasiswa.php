@@ -8,6 +8,7 @@ use App\Http\Controllers\Api_Mahasiswa\MahasiswaController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api_Mahasiswa\KrsController as ApiMhsKrsController;
 use App\Http\Controllers\Api_Mahasiswa\KhsController as ApiMhsKhsController;
+use App\Http\Controllers\Api_Mahasiswa\KurikulumController as ApiMhsKurikulumController;
 
 
 // ─── Protected Mahasiswa (auth:mahasiswa_web) ─────────────────────────────────
@@ -22,6 +23,7 @@ Route::prefix('api/mhs')
         Route::put('/profile/update', [MahasiswaController::class, 'profil_update']);
         Route::get('menu', [MahasiswaController::class, 'menu']);
         // kurikulum
+        Route::get('kurikulum', [ApiMhsKurikulumController::class, 'kurikulum']);
         // krs
         Route::get('krs', [ApiMhsKrsController::class, 'krs']);
         // khs
