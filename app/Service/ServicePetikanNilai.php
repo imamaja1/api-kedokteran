@@ -23,8 +23,7 @@ class ServicePetikanNilai
                         ->where('nama_kurikulum.kode_program_studi', $kode_prodi)
                         ->first();
                         
-        // 1 query untuk semua nilai milik nim ini, dikelompokkan per id_matakuliah
-        $nilaiMap = Krs::select('krs.kode_krs as id','krs_detail.id_matakuliah', 'krs.semester', 'khs_detail.nilai_akhir')
+        $nilaiMap = Krs::select('krs_detail.kode_krs_detail as id','krs_detail.id_matakuliah', 'krs.semester', 'khs_detail.nilai_akhir')
                         ->join('krs_detail', 'krs.kode_krs', '=', 'krs_detail.kode_krs')
                         ->join('khs_detail', 'khs_detail.kode_krs_detail', '=', 'krs_detail.kode_krs_detail')
                         ->where('krs.nim', $nim)

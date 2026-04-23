@@ -68,6 +68,11 @@ return [
             'driver' => 'session',
             'provider' => 'dosen',
         ],
+
+        'staff_web' => [
+            'driver' => 'session',
+            'provider' => 'staff',
+        ],
     ],
 
     /*
@@ -101,6 +106,11 @@ return [
         'dosen' => [
             'driver' => 'eloquent',
             'model' => Dosen::class,
+        ],
+
+        'staff' => [
+            'driver' => 'eloquent',
+            'model' => User::class,
         ],
 
         // 'users' => [

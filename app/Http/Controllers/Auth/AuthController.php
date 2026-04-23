@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use App\Models\User;
 
 class AuthController extends Controller
 {
@@ -51,9 +52,9 @@ class AuthController extends Controller
         $email = $request->email;
         $password = $request->password;
 
-        $user = Dosen::where('email', $email)
+        $user = Dosen::where('alamat_email', $email)
             ->first();
-
+        
         if (! $user || ! Hash::check($password, $user->sandi_pengguna)) {
             return response()->json([
                 'status' => false,
@@ -78,9 +79,36 @@ class AuthController extends Controller
         ]);
     }
 
-    /**
-     * Logout — hapus sesi.
-     */
+    public function login_staff(Request $request){
+        $email = $request->email;
+        $password = $request->password;
+
+        $user = User::where('email', $email)->where('role', 'staff')
+            ->first();
+
+        if (! $user || ! Hash::check($password, $user->password)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Email atau password salah.',
+            ], 401);
+        }
+
+        // Authenticate dengan guard staff_web
+        Auth::guard('staff_web')->login($user);
+        $request->session()->regenerate();
+        return response()->json([
+            'status' => true,
+            'message' => 'Login Staff berhasil.',
+             'data' => [
+                'id' => $user->id,
+                'email' => $user->email,
+                'nama' => $user->name,
+                'type' => 'staff',
+            ],
+        ]);
+
+    }
+
     public function logout(Request $request): JsonResponse
     {
         $request->session()->invalidate();
@@ -92,14 +120,6 @@ class AuthController extends Controller
         ]);
     }
 
-    /**
-     * Check if this request has a valid session store.
-     */
-
-    /**
-     * Data user yang sedang login (dari session via Sanctum Cookie).
-     * Middleware: auth:sanctum + sanctum.cookie
-     */
     public function me_mahasiswa(Request $request): JsonResponse
     {
         // Check authenticated user dari session (mahasiswa_web)
@@ -144,6 +164,29 @@ class AuthController extends Controller
                 'nama' => $user->nama_dosen ?? null,
                 'email' => $user->alamat_email ?? null,
                 'type' => 'dosen',
+            ],
+        ]);
+    }
+
+    public function me_staff(Request $request): JsonResponse
+    {
+        // Check authenticated user dari session (staff_web)
+        $user = Auth::guard('staff_web')->user() ?? $request->user();
+
+        if (! $user) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthenticated. User not found.',
+            ], 401);
+        }
+
+        return response()->json([
+            'status' => true,
+            'data' => [
+                'id' => $user->id ?? null,
+                'email' => $user->email ?? null,
+                'nama' => $user->name ?? null,
+                'type' => 'staff',
             ],
         ]);
     }

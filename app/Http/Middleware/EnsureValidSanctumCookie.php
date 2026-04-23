@@ -17,6 +17,7 @@ class EnsureValidSanctumCookie
         // Cek apakah user sudah authenticated via salah satu guard session/Sanctum
         $user = Auth::guard('mahasiswa_web')->user()
             ?? Auth::guard('dosen_web')->user()
+            ?? Auth::guard('staff_web')->user()
             ?? Auth::guard('mahasiswa')->user()
             ?? Auth::guard('dosen')->user()
             ?? Auth::guard('sanctum')->user()
@@ -29,14 +30,15 @@ class EnsureValidSanctumCookie
             ], 401);
         }
 
-        // Pastikan guard menentukan tipe Mahasiswa atau Dosen
+        // Pastikan guard menentukan tipe Mahasiswa, Dosen, atau Staff
         $isMahasiswa = $user instanceof \App\Models\Mahasiswa;
         $isDosen     = $user instanceof \App\Models\Dosen;
+        $isStaff     = $user instanceof \App\Models\User;
 
-        if (! ($isMahasiswa || $isDosen)) {
+        if (! ($isMahasiswa || $isDosen || $isStaff)) {
             return response()->json([
                 'status' => false,
-                'message' => 'Invalid user type. User harus Mahasiswa atau Dosen.',
+                'message' => 'Invalid user type. User harus Mahasiswa, Dosen, atau Staff.',
             ], 403);
         }
 

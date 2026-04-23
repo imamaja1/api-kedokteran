@@ -24,7 +24,7 @@ return [
     |--------------------------------------------------------------------------
     | Guards yang support Sanctum cookie-based authentication
     */
-    'guard' => ['web', 'mahasiswa', 'dosen', 'mahasiswa_web', 'dosen_web'],
+    'guard' => ['web', 'mahasiswa', 'dosen', 'mahasiswa_web', 'dosen_web', 'staff_web'],
 
     /*
     |--------------------------------------------------------------------------

@@ -23,7 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
         then: function (): void {
             Route::middleware('api')->group(base_path('routes/mahasiswa.php'));
             Route::middleware('api')->group(base_path('routes/dosen.php'));
-            Route::middleware('api')->group(base_path('routes/devisi.php'));
+            Route::middleware('api')->group(base_path('routes/staff.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
@@ -46,6 +46,28 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // 404 — Route tidak ditemukan
+        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e, \Illuminate\Http\Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Endpoint tidak ditemukan.',
+                    'error'   => 'NOT_FOUND',
+                ], 404);
+            }
+        });
+
+        // 405 — HTTP method tidak diizinkan
+        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException $e, \Illuminate\Http\Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Method tidak diizinkan untuk endpoint ini.',
+                    'error'   => 'METHOD_NOT_ALLOWED',
+                ], 405);
+            }
+        });
+
         // 419 — CSRF / XSRF token tidak sesuai saat login
         $exceptions->render(function (TokenMismatchException $e, \Illuminate\Http\Request $request) {
             if ($request->expectsJson() || $request->is('api/*')) {

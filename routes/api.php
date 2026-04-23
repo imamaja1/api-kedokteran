@@ -20,6 +20,17 @@ Route::prefix('auth')
         Route::post('/mhs/login', [AuthController::class, 'mhs_login']);
         // dosen login
         Route::post('/dosen/login', [AuthController::class, 'dosen_login']);
+        // staff login
+        Route::post('/staff/login', [AuthController::class, 'login_staff']);
     });
+
+// ─── Fallback — semua route API yang tidak terdaftar ─────────────────────────
+Route::fallback(function () {
+    return response()->json([
+        'status'  => false,
+        'message' => 'Endpoint tidak ditemukan.',
+        'error'   => 'NOT_FOUND',
+    ], 404);
+});
 
 
