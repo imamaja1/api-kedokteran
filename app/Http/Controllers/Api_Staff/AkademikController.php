@@ -1,10 +1,12 @@
 <?php
 
-namespace App\Http\Controllers\Api_Devisi;
+namespace App\Http\Controllers\Api_Staff;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Service\ServiceMahasiswa;
+use App\Service\ServiceKurikulum;
+use App\Service\ServicePetikanNilai;
 
 class AkademikController extends Controller
 {
@@ -20,5 +22,9 @@ class AkademikController extends Controller
             $validated['kode_prodi'] ?? null,
             isset($validated['angkatan']) ? substr($validated['angkatan'], 2, 2) : null,
         );
+    }
+
+    public function NamaKurikulum(){
+        return (new ServiceKurikulum())->nama_kurikulum();
     }
 }

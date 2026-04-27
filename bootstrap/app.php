@@ -1,18 +1,20 @@
 <?php
 
-use App\Http\Middleware\EnsureIsAdmin;
-use App\Http\Middleware\EnsureIsStaff;
 use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\EnsureValidSanctumCookie;
+use App\Http\Middleware\LogActivity;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Session\TokenMismatchException;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Route;
-use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
+
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -27,25 +29,58 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->statefulApi();
+        // Exclude semua route login dari CSRF verification
+        // sehingga login bisa langsung tanpa fetch /sanctum/csrf-cookie terlebih dahulu
+        $middleware->validateCsrfTokens(except: [
+            'api/auth/mhs/login',
+            'api/auth/dosen/login',
+            'api/auth/staff/login',
+        ]);
 
         // Named middleware aliases
+        // Catatan: 'admin' dan 'staff' alias dihapus — gunakan 'role:admin' / 'role:admin,staff'
         $middleware->alias([
-            'staff'          => EnsureIsStaff::class,
-            'admin'          => EnsureIsAdmin::class,
             'role'           => EnsureRole::class,
             'sanctum.cookie' => EnsureValidSanctumCookie::class,
+            'log.activity'   => LogActivity::class,
         ]);
 
         // Middleware group untuk Sanctum SPA Cookie (digunakan di api.php)
+        // Catatan: EnsureFrontendRequestsAreStateful TIDAK dipakai karena secara internal
+        // ia menambahkan AuthenticateSession yang membandingkan password_hash lintas guard
+        // (web vs mahasiswa_web/dosen_web) sehingga session admin bisa di-flush saat
+        // ada API call dari browser yang sama.
         $middleware->appendToGroup('sanctum.spa', [
             EncryptCookies::class,
             AddQueuedCookiesToResponse::class,
             StartSession::class,
-            EnsureFrontendRequestsAreStateful::class,
+            // ValidateCsrfToken::class,
+            // EnsureFrontendRequestsAreStateful::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // 401 — Belum login / session expired, kembalikan JSON bukan redirect ke halaman web
+        $exceptions->render(function (AuthenticationException $e, \Illuminate\Http\Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Unauthorized. Silakan login terlebih dahulu.',
+                    'error'   => 'UNAUTHENTICATED',
+                ], 401);
+            }
+        });
+
+        // 422 — Validasi gagal
+        $exceptions->render(function (ValidationException $e, \Illuminate\Http\Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Data tidak valid.',
+                    'errors'  => $e->errors(),
+                ], 422);
+            }
+        });
+
         // 404 — Route tidak ditemukan
         $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e, \Illuminate\Http\Request $request) {
             if ($request->is('api/*')) {

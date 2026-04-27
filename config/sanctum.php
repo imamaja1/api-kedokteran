@@ -12,6 +12,15 @@ return [
     | Stateful Domains
     |--------------------------------------------------------------------------
     | Domain yang diizinkan menggunakan cookie-based authentication (SPA).
+    |
+    | KONFIGURASI PRODUCTION:
+    | Tambahkan domain production di .env:
+    |   SANCTUM_STATEFUL_DOMAINS=siska.ubg.ac.id,api-kedokteran.ubg.ac.id
+    |
+    | Wajib juga set di .env:
+    |   SESSION_DOMAIN=.ubg.ac.id       ← prefix titik agar berlaku untuk semua subdomain
+    |   APP_URL=https://api-kedokteran.ubg.ac.id
+    |   SESSION_SECURE_COOKIE=true      ← wajib HTTPS
     */
     'stateful' => explode(',', env(
         'SANCTUM_STATEFUL_DOMAINS',
@@ -24,7 +33,7 @@ return [
     |--------------------------------------------------------------------------
     | Guards yang support Sanctum cookie-based authentication
     */
-    'guard' => ['web', 'mahasiswa', 'dosen', 'mahasiswa_web', 'dosen_web', 'staff_web'],
+    'guard' => ['web', 'mahasiswa_web', 'dosen_web', 'staff_web'],
 
     /*
     |--------------------------------------------------------------------------

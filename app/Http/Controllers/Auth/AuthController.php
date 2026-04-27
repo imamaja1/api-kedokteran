@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\DosenLoginRequest;
 use App\Http\Requests\Auth\MhsLoginRequest;
+use App\Models\ActivityLog;
 use App\Models\Dosen;
 use App\Models\Mahasiswa;
 use Illuminate\Http\JsonResponse;
@@ -25,6 +26,7 @@ class AuthController extends Controller
             ->first();
 
         if (! $user || ! Hash::check($password, $user->sandi)) {
+            $this->writeLog($request, 'mahasiswa', $nim, 401);
             return response()->json([
                 'status' => false,
                 'message' => 'NIM atau password salah.',
@@ -34,6 +36,8 @@ class AuthController extends Controller
         // Authenticate dengan guard mahasiswa_web
         Auth::guard('mahasiswa_web')->login($user);
         $request->session()->regenerate();
+
+        $this->writeLog($request, 'mahasiswa', $user->nim, 200);
 
         return response()->json([
             'status' => true,
@@ -56,6 +60,7 @@ class AuthController extends Controller
             ->first();
         
         if (! $user || ! Hash::check($password, $user->sandi_pengguna)) {
+            $this->writeLog($request, 'dosen', $email, 401);
             return response()->json([
                 'status' => false,
                 'message' => 'Kode Dosen atau password salah.',
@@ -65,6 +70,8 @@ class AuthController extends Controller
         // Authenticate dengan guard dosen_web
         Auth::guard('dosen_web')->login($user);
         $request->session()->regenerate();
+
+        $this->writeLog($request, 'dosen', $user->kode_dosen ?? (string) $user->id, 200);
 
         return response()->json([
             'status' => true,
@@ -79,14 +86,15 @@ class AuthController extends Controller
         ]);
     }
 
-    public function login_staff(Request $request){
+    public function login_staff(Request $request): JsonResponse
+    {
         $email = $request->email;
         $password = $request->password;
 
-        $user = User::where('email', $email)->where('role', 'staff')
-            ->first();
+        $user = User::where('email', $email)->where('role', 'staff')->first();
 
         if (! $user || ! Hash::check($password, $user->password)) {
+            $this->writeLog($request, 'staff', $email, 401);
             return response()->json([
                 'status' => false,
                 'message' => 'Email atau password salah.',
@@ -96,21 +104,39 @@ class AuthController extends Controller
         // Authenticate dengan guard staff_web
         Auth::guard('staff_web')->login($user);
         $request->session()->regenerate();
+
+        $this->writeLog($request, 'staff', (string) $user->id, 200);
+
         return response()->json([
             'status' => true,
             'message' => 'Login Staff berhasil.',
-             'data' => [
+            'data' => [
                 'id' => $user->id,
                 'email' => $user->email,
                 'nama' => $user->name,
                 'type' => 'staff',
             ],
         ]);
-
     }
 
     public function logout(Request $request): JsonResponse
     {
+        // Catat logout sebelum session di-invalidate
+        foreach (['mahasiswa_web', 'dosen_web', 'staff_web'] as $guard) {
+            if (! Auth::guard($guard)->check()) {
+                continue;
+            }
+            $user = Auth::guard($guard)->user();
+            [$userType, $userId] = match ($guard) {
+                'mahasiswa_web' => ['mahasiswa', $user->nim ?? null],
+                'dosen_web'     => ['dosen',     $user->kode_dosen ?? null],
+                'staff_web'     => ['staff',     (string) ($user->id ?? null)],
+                default         => [null, null],
+            };
+            $this->writeLog($request, $userType, $userId, 200);
+            Auth::guard($guard)->logout();
+        }
+
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
@@ -189,5 +215,23 @@ class AuthController extends Controller
                 'type' => 'staff',
             ],
         ]);
+    }
+
+    private function writeLog(Request $request, ?string $userType, ?string $userId, int $statusCode): void
+    {
+        try {
+            ActivityLog::create([
+                'guard'       => $userType ? $userType . '_web' : null,
+                'user_id'     => $userId,
+                'user_type'   => $userType,
+                'method'      => $request->method(),
+                'path'        => $request->path(),
+                'ip_address'  => $request->ip(),
+                'user_agent'  => $request->userAgent(),
+                'status_code' => $statusCode,
+            ]);
+        } catch (\Throwable) {
+            // Kegagalan logging tidak boleh menghentikan response
+        }
     }
 }

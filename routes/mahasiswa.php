@@ -14,7 +14,7 @@ use App\Http\Controllers\Api_Mahasiswa\PetikanNIlaiController as ApiMhsPetikanNi
 
 // ─── Protected Mahasiswa (auth:mahasiswa_web) ─────────────────────────────────
 Route::prefix('api/mhs')
-    ->middleware(['sanctum.spa', 'auth:mahasiswa_web', 'sanctum.cookie'])
+    ->middleware(['sanctum.spa', 'auth:mahasiswa_web', 'sanctum.cookie', 'log.activity'])
     ->group(function () {
         // Auth
         Route::get('me', [MahasiswaController::class, 'me']);
@@ -30,5 +30,12 @@ Route::prefix('api/mhs')
         // khs
         Route::get('khs', [ApiMhsKhsController::class, 'khs']);
         // petikan
-        Route::get('petikannilai', [ApiMhsPetikanNilaiController::class, 'petikan_nilai']);
+        Route::get('petikan-nilai', [ApiMhsPetikanNilaiController::class, 'petikan_nilai']);
+
+        // fallback dalam group — return 404 bukan 401
+        Route::fallback(fn() => response()->json([
+            'status'  => false,
+            'message' => 'Endpoint tidak ditemukan.',
+            'error'   => 'NOT_FOUND',
+        ], 404));
     });

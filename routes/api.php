@@ -31,6 +31,6 @@ Route::fallback(function () {
         'message' => 'Endpoint tidak ditemukan.',
         'error'   => 'NOT_FOUND',
     ], 404);
-});
+})->middleware('sanctum.spa');
 
 

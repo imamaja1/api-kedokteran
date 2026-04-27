@@ -49,16 +49,6 @@ return [
             'driver' => 'sanctum',
         ],
 
-        'mahasiswa' => [
-            'driver' => 'session',
-            'provider' => 'mahasiswa',
-        ],
-
-        'dosen' => [
-            'driver' => 'session',
-            'provider' => 'dosen',
-        ],
-
         'mahasiswa_web' => [
             'driver' => 'session',
             'provider' => 'mahasiswa',

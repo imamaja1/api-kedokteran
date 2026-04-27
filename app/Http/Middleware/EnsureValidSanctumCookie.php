@@ -18,8 +18,6 @@ class EnsureValidSanctumCookie
         $user = Auth::guard('mahasiswa_web')->user()
             ?? Auth::guard('dosen_web')->user()
             ?? Auth::guard('staff_web')->user()
-            ?? Auth::guard('mahasiswa')->user()
-            ?? Auth::guard('dosen')->user()
             ?? Auth::guard('sanctum')->user()
             ?? $request->user();
 
@@ -41,10 +39,6 @@ class EnsureValidSanctumCookie
                 'message' => 'Invalid user type. User harus Mahasiswa, Dosen, atau Staff.',
             ], 403);
         }
-
-        // Set user ke request supaya controller bisa mengakses user yang valid
-        auth()->setUser($user);
-        $request->setUserResolver(fn () => $user);
 
         return $next($request);
     }

@@ -22,7 +22,7 @@ class ServiceKurikulum
                         ->whereRaw('substr(angkatan, 3, 2) = ?', $angkatan)
                         ->where('nama_kurikulum.kode_program_studi', $kode_prodi)
                         ->first();
-                        
+
         $data['data_kurikulum'] = Kurikulum::join('matakuliah', 'kurikulum.id_matakuliah', '=', 'matakuliah.id_matakuliah')
                                 ->where('kode_nama_kurikulum', $data['kurikulum']->kode_nama_kurikulum)
                                 ->select('kurikulum.semester', 'matakuliah.*')
@@ -46,6 +46,15 @@ class ServiceKurikulum
         return response()->json([
             'status' => true,
             'message' => 'Kurikulum Mahasiswa retrieved successfully.',
+            'data' => $data
+        ]);
+    }
+
+    public function nama_kurikulum(){
+        $data = NamaKurikulum::all();
+        return response()->json([
+            'status' => true,
+            'message' => 'Nama Kurikulum retrieved successfully.',
             'data' => $data
         ]);
     }
