@@ -48,7 +48,7 @@ function onMethodChange() {
         : '{"key": "value"}';
     document.getElementById('bodyHint').innerHTML = isGet
         ? '<i class="bi bi-info-circle me-1"></i>JSON akan dikonversi menjadi <code>?key=value</code> di URL.'
-        : 'JSON body — hanya untuk POST/PUT/PATCH.';
+        : 'JSON body — hanya untuk POST/PUT/PATCH/DELETE.';
 }
 
 /* ─────────────────────────────────────────
@@ -158,7 +158,7 @@ async function sendRequest() {
     if (['POST','PUT','PATCH'].includes(method)) headers['Content-Type'] = 'application/json';
     if (xsrf) headers['X-XSRF-TOKEN'] = xsrf;
 
-    // Build URL with query params (GET) or body (POST/PUT/PATCH)
+    // Build URL with query params (GET) or body (POST/PUT/PATCH/DELETE)
     let finalUrl = url;
     let body = undefined;
     const rawBody = document.getElementById('bodyInput').value.trim();
@@ -168,7 +168,7 @@ async function sendRequest() {
             const qs = new URLSearchParams(params).toString();
             if (qs) finalUrl = url + (url.includes('?') ? '&' : '?') + qs;
         } catch { alert('Query params JSON tidak valid.'); return; }
-    } else if (['POST','PUT','PATCH'].includes(method) && rawBody) {
+    } else if (['POST','PUT','PATCH','DELETE'].includes(method) && rawBody) {
         body = rawBody;
     }
 
