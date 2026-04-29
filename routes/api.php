@@ -22,6 +22,8 @@ Route::prefix('auth')
         Route::post('/dosen/login', [AuthController::class, 'dosen_login']);
         // staff login
         Route::post('/staff/login', [AuthController::class, 'login_staff']);
+        // logout (semua user)
+        Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
     });
 
 // ─── Fallback — semua route API yang tidak terdaftar ─────────────────────────

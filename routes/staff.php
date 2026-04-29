@@ -11,7 +11,14 @@ Route::prefix('api/staff')
         // Auth
         Route::get('me', [AuthController::class, 'me_staff']);
         Route::get('mahasiswa', [AkademikController::class, 'Mahasiswa']);
+
+        // Akademik
+        Route::get('program-studi', [AkademikController::class, 'program_studi']);
+        Route::get('tahun-angkatan', [AkademikController::class, 'tahun_angkatan']);
         Route::get('kurikulum/nama', [AkademikController::class, 'NamaKurikulum']);
+        Route::get('krs', [AkademikController::class, 'KRS']);
+        Route::get('khs', [AkademikController::class, 'KHS']);
+        Route::get('petikan-nilai', [AkademikController::class, 'PetikanNilai']);
 
         // fallback dalam group — return 404 bukan 401
         Route::fallback(fn() => response()->json([
