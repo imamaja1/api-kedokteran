@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Service\ServiceKRS;
 use App\Models\TahunAkademik;
-use App\Models\KRS;
+use App\Models\Krs;
 
 class MahasiswaController extends Controller
 {
@@ -48,7 +48,7 @@ class MahasiswaController extends Controller
     public function semester(): JsonResponse
     {
         $nim = Auth::guard('mahasiswa_web')->user()->nim;
-        $semester = KRS::select("semester")->where('nim', $nim)->get();
+        $semester = Krs::select("semester")->where('nim', $nim)->get();
         return response()->json([
             'status' => true,
             'data' => [
