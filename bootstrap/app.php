@@ -59,6 +59,17 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // 404 — Route tidak ditemukan
+        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e, \Illuminate\Http\Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Endpoint tidak ditemukan.',
+                    'error'   => 'NOT_FOUND',
+                ], 404);
+            }
+        });
+
         // 401 — Belum login / session expired, kembalikan JSON bukan redirect ke halaman web
         $exceptions->render(function (AuthenticationException $e, \Illuminate\Http\Request $request) {
             if ($request->is('api/*')) {
@@ -81,16 +92,6 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        // 404 — Route tidak ditemukan
-        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e, \Illuminate\Http\Request $request) {
-            if ($request->is('api/*')) {
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'Endpoint tidak ditemukan.',
-                    'error'   => 'NOT_FOUND',
-                ], 404);
-            }
-        });
 
         // 405 — HTTP method tidak diizinkan
         $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException $e, \Illuminate\Http\Request $request) {

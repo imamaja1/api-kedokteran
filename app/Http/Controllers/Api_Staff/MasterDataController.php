@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Service\ServiceMatakuliah;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
+use App\Service\ServiceDosen;
+use App\Service\ServiceProgramStudi;
 
 class MasterDataController extends Controller
 {
@@ -15,9 +17,18 @@ class MasterDataController extends Controller
         //
     }
 
-    public function GetMatakuliah()
+    public function GetProgramStudi()
     {
-        return (new ServiceMatakuliah())->getAllMatakuliah();
+        return (new ServiceProgramStudi())->getAllProgramStudi();
+    }
+
+    public function GetMatakuliah(Request $request)
+    {
+        validate([
+            'kode_program_studi' => ['nullable', 'string', 'max:20'],
+        ]);
+        $kode_program_studi =  $request->query('kode_program_studi') ? Crypt::decryptString($request->query('kode_program_studi')): null;
+        return (new ServiceMatakuliah())->getAllMatakuliah($kode_program_studi);
     }
     Public function GetOneMatakuliah(Request $request)
     {
@@ -62,14 +73,20 @@ class MasterDataController extends Controller
 
 
 
-    public function GetDosen()
+    public function GetDosen(Request $request)
     {
-        
+        $validasi = $request->validate([
+            'kode_program_studi' => ['nullable', 'string'],
+            'nama_dosen' => ['nullable', 'string', 'max:255'],
+            'alamat_email' => ['nullable', 'string', 'max:255', 'email'],
+        ]);
+        $kode_program_studi =  $request->query('kode_program_studi') ? Crypt::decryptString($request->query('kode_program_studi')): null;
+        $nama_dosen = Crypt::decryptString($request->query('nama_dosen')) ?? $request->query('nama_dosen');
+        $alamat_email = Crypt::decryptString($request->query('alamat_email')) ?? $request->query('alamat_email');
+
+        return (new ServiceDosen())->getAllDosen($kode_program_studi, $nama_dosen, $alamat_email);
     }
-    public function GetProgramStudi()
-    {
-        
-    }
+    
     public function GetTahunAngkatan()
     {
         

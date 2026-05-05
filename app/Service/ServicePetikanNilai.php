@@ -4,6 +4,8 @@ namespace App\Service;
 use App\Models\Kurikulum;
 use App\Models\KurikulumAngkatan;
 use App\Models\Krs;
+use App\Models\Mahasiswa;
+use Illuminate\Support\Facades\Crypt;
 
 class ServicePetikanNilai
 {
@@ -17,6 +19,17 @@ class ServicePetikanNilai
     public function petikan_nilai_by_nim($nim, $kode_prodi)
     {
         $angkatan = substr((string) $nim, 0, 2);
+        $data['mahasiswa'] = Mahasiswa::join('program_studi', 'program_studi.kode_program_studi', '=', 'mahasiswa.program_studi_kode')
+                                ->where('mahasiswa.nim', $nim)->select(
+                                    'mahasiswa.nim',
+                                    'nama_mahasiswa',
+                                    'nama_program_studi',
+                                    'alamat',
+                                    'tempat_lahir',
+                                    'tanggal_lahir',
+                                    'telepon',
+                                    'telepon_orangtua'
+                                )->get();
         $data['kurikulum'] = KurikulumAngkatan::select('kode_kurikulum_angkatan as id','kurikulum_angkatan.angkatan','nama_kurikulum.nama_kurikulum','nama_kurikulum.kode_nama_kurikulum')
                         ->join('nama_kurikulum', 'kurikulum_angkatan.kode_nama_kurikulum', '=', 'nama_kurikulum.kode_nama_kurikulum')
                         ->whereRaw('substr(angkatan, 3, 2) = ?', $angkatan)

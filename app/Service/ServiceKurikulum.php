@@ -3,7 +3,8 @@
 namespace App\Service;
 use App\Models\Kurikulum;
 use App\Models\KurikulumAngkatan;
-
+use App\Models\NamaKurikulum;
+use Illuminate\Support\Facades\Crypt;
 class ServiceKurikulum
 {
     /**
@@ -51,7 +52,15 @@ class ServiceKurikulum
     }
 
     public function nama_kurikulum(){
-        $data = NamaKurikulum::all();
+        $data = NamaKurikulum::all()
+                    ->map(function ($item) {
+                        return [
+                            'id' => $item->kode_nama_kurikulum,
+                            'code' => Crypt::encryptString($item->kode_nama_kurikulum),
+                            'nama_kurikulum' => $item->nama_kurikulum,
+                            'nama_program_studi' => $item->programStudi->nama_program_studi,
+                        ];
+                    });
         return response()->json([
             'status' => true,
             'message' => 'Nama Kurikulum retrieved successfully.',

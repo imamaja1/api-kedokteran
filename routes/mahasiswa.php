@@ -22,7 +22,7 @@ Route::prefix('api/mhs')
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/profile', [MahasiswaController::class, 'profil']);
         Route::put('/profile/update', [MahasiswaController::class, 'profil_update']);
-        Route::get('menu', [MahasiswaController::class, 'menu']);
+        Route::get('semester', [MahasiswaController::class, 'semester']);
         // kurikulum
         Route::get('kurikulum', [ApiMhsKurikulumController::class, 'kurikulum']);
         // krs

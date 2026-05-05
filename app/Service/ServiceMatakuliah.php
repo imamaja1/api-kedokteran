@@ -61,8 +61,16 @@ class ServiceMatakuliah
 
     public function storeMatakuliah($object)
     {
-        $matakuliah = Matakuliah::create($object);
-
+        try {
+              $matakuliah = Matakuliah::create($object);
+        } catch (\Throwable $th) {
+           return response()->json([
+                'status' => false,
+                'message' => 'Gagal membuat Matakuliah',
+                'data' => $matakuliah
+            ], 500);
+        }
+      
         return response()->json([
             'status' => true,
             'message' => 'Matakuliah berhasil dibuat',
@@ -82,7 +90,15 @@ class ServiceMatakuliah
             ], 404);
         }
 
-        $matakuliah->update($object);
+        try {
+            $matakuliah->update($object);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Gagal memperbarui Matakuliah',
+                'data' => $matakuliah
+            ], 500);
+        }
 
         return response()->json([
             'status' => true,

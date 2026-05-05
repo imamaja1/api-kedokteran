@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Service\ServiceKRS;
 use App\Models\TahunAkademik;
+use App\Models\KRS;
 
 class MahasiswaController extends Controller
 {
@@ -42,6 +43,18 @@ class MahasiswaController extends Controller
                 'provinces' => self::PROVINCES
             ]
         );
+    }
+
+    public function semester(): JsonResponse
+    {
+        $nim = Auth::guard('mahasiswa_web')->user()->nim;
+        $semester = KRS::select("semester")->where('nim', $nim)->get();
+        return response()->json([
+            'status' => true,
+            'data' => [
+                'semester' => $semester,
+            ],
+        ]);
     }
 
     public function profil_update(Request $request): JsonResponse

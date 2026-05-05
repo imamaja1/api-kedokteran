@@ -14,8 +14,11 @@ class ServiceKHS
     {
         //
     }
-    public function getKHSMhs($nim, $ta, $semester)
+    public function getKHSMhs($nim, $semester = null)
     {
+        if ($semester === null) {
+            $semester = KRS::where('nim', $nim)->orderBy('semester', 'desc')->first()->semester;
+        }
         $data['mahasiswa'] = Mahasiswa::join('program_studi', 'program_studi.kode_program_studi', '=', 'mahasiswa.program_studi_kode')
                                 ->join('krs', 'krs.nim', '=', 'mahasiswa.nim')
                                 ->where('krs.semester', $semester)
@@ -36,7 +39,6 @@ class ServiceKHS
                     ->join('matakuliah', 'krs_detail.id_matakuliah', '=', 'matakuliah.id_matakuliah')
                     ->join('khs_detail', 'khs_detail.kode_krs_detail', '=', 'krs_detail.kode_krs_detail')
                     ->where('krs.nim', $nim)
-                    ->where('tahun_akademik.tahun_akademik', $ta)
                     ->where('tahun_akademik.semester', $semester)
                     ->select(
                         'khs_detail.kode_khs_detail as id',
