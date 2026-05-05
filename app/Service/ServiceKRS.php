@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Service;
-use App\Models\KRS;
+use App\Models\Krs;
 use App\Models\Mahasiswa;
 use Illuminate\Support\Facades\Crypt;
 
@@ -18,7 +18,7 @@ class ServiceKRS
     public function getKRSMhs($nim, $semester = null)
     {
         if ($semester === null) {
-            $semester = KRS::where('nim', $nim)->orderBy('semester', 'desc')->first()->semester;
+            $semester = Krs::where('nim', $nim)->orderBy('semester', 'desc')->first()->semester;
         }
         $data['mahasiswa'] = Mahasiswa::join('program_studi', 'program_studi.kode_program_studi', '=', 'mahasiswa.program_studi_kode')
                                 ->join('krs', 'krs.nim', '=', 'mahasiswa.nim')
@@ -35,7 +35,7 @@ class ServiceKRS
                                     'krs.semester',
                                 )->get();
 
-        $data['krs'] = KRS::join('tahun_akademik', 'krs.kode_tahun_akademik', '=', 'tahun_akademik.kode_tahun_akademik')
+        $data['krs'] = Krs::join('tahun_akademik', 'krs.kode_tahun_akademik', '=', 'tahun_akademik.kode_tahun_akademik')
                             ->join('krs_detail', 'krs.kode_krs', '=', 'krs_detail.kode_krs')
                             ->join('matakuliah', 'krs_detail.id_matakuliah', '=', 'matakuliah.id_matakuliah')
                             ->where('krs.nim', $nim)
