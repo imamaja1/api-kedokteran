@@ -42,7 +42,7 @@ class ServiceKHS
                     ->where('tahun_akademik.semester', $semester)
                     ->select(
                         'khs_detail.kode_khs_detail as id',
-                        'khs_detail.kode_khs_detail as kode',
+                        'khs_detail.kode_khs_detail as code',
                         'kode_matakuliah',
                         'nama_matakuliah',
                         'sks_teori',
@@ -50,14 +50,15 @@ class ServiceKHS
                         'khs_detail.nilai_akhir',
                     )
                     ->get()
-                    ->map(function ($item) {
-                        $item->kode = Crypt::encryptString($item->kode);
+                    ->map(function ($item,$nomor) {
+                        $item->id = $nomor + 1;
+                        $item->code = Crypt::encryptString($item->code);
                         return $item;
                     });
 
         return response()->json([
             'status' => true,
-            'message' => 'KRS Mahasiswa',
+            'message' => 'KHS Mahasiswa',
             'data' => $data
         ]);
     }

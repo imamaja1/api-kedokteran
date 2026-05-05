@@ -21,9 +21,9 @@ class ServiceMatakuliah
             'sks_praktik',
             'block'
             )->get()
-            ->map(function ($item) {
+            ->map(function ($item,$nomor) {
                 return [
-                    'id' => $item->id_matakuliah,
+                    'id' => $nomor+1,
                     'code' => Crypt::encryptString($item->id_matakuliah),
                     'kode_matakuliah' => $item->kode_matakuliah,
                     'nama_matakuliah' => $item->nama_matakuliah,

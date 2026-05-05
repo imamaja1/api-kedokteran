@@ -53,9 +53,9 @@ class ServiceKurikulum
 
     public function nama_kurikulum(){
         $data = NamaKurikulum::all()
-                    ->map(function ($item) {
+                    ->map(function ($item,$nomor) {
                         return [
-                            'id' => $item->kode_nama_kurikulum,
+                            'id' => $nomor + 1,
                             'code' => Crypt::encryptString($item->kode_nama_kurikulum),
                             'nama_kurikulum' => $item->nama_kurikulum,
                             'nama_program_studi' => $item->programStudi->nama_program_studi,

@@ -50,7 +50,8 @@ class ServiceKRS
                                 'block'
                             )
                             ->get()
-                            ->map(function ($item) {
+                            ->map(function ($item, $nomor) {
+                                $item->id = $nomor + 1;
                                 $item->kode = Crypt::encryptString($item->kode);
                                 return $item;
                             });
