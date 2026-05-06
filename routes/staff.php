@@ -19,8 +19,11 @@ Route::prefix('api/staff')
         Route::prefix('akademik')->group(function () {
             Route::get('program-studi', [AkademikController::class, 'program_studi']);
             Route::get('nama-kurikulum', [AkademikController::class, 'NamaKurikulum']);
+            Route::get('kurikulum', [AkademikController::class, 'Kurikulum']);
             Route::get('krs', [AkademikController::class, 'KRS']);
+            Route::get('krs-detail', [AkademikController::class, 'KRSDetail']);
             Route::get('khs', [AkademikController::class, 'KHS']);
+            Route::get('khs-detail', [AkademikController::class, 'KHSDetail']);
             Route::get('petikan-nilai', [AkademikController::class, 'PetikanNilai']);
         });
 

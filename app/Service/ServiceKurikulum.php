@@ -56,7 +56,7 @@ class ServiceKurikulum
                     ->map(function ($item,$nomor) {
                         return [
                             'id' => $nomor + 1,
-                            'code' => Crypt::encryptString($item->kode_nama_kurikulum),
+                            'code_nama_kurikulum' => Crypt::encryptString($item->kode_nama_kurikulum),
                             'nama_kurikulum' => $item->nama_kurikulum,
                             'nama_program_studi' => $item->programStudi->nama_program_studi,
                         ];
@@ -64,6 +64,34 @@ class ServiceKurikulum
         return response()->json([
             'status' => true,
             'message' => 'Nama Kurikulum retrieved successfully.',
+            'data' => $data
+        ]);
+    }
+
+    public function kurikulum_by_nama_kurikulum($kode_nama_kurikulum){
+        $data = Kurikulum::join('matakuliah', 'kurikulum.id_matakuliah', '=', 'matakuliah.id_matakuliah')
+                                ->where('kode_nama_kurikulum', $kode_nama_kurikulum)
+                                ->select('kurikulum.semester', 'matakuliah.*')
+                                ->selectRaw('(COALESCE(matakuliah.sks_teori, 0) + COALESCE(matakuliah.sks_praktik, 0)) as sks')
+                                ->orderBy('kurikulum.semester')
+                                ->get()
+                                ->groupBy('semester')
+                                ->map(fn($items, $sem) => [
+                                    'semester'   => $sem,
+                                    'total_sks'  => $items->sum('sks'),
+                                    'matakuliah' => $items->map(fn($item) => [
+                                        'kode_matakuliah' => $item->kode_matakuliah,
+                                        'nama_matakuliah' => $item->nama_matakuliah,
+                                        'sks_teori' => $item->sks_teori,
+                                        'sks_praktik' => $item->sks_praktik,
+                                        'block' => $item->block == 1 ? true : false,
+                                    ]),
+                                ])
+                                ->values();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Kurikulum retrieved successfully.',
             'data' => $data
         ]);
     }
