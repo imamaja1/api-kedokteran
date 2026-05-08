@@ -67,7 +67,7 @@ class ServiceKHS
         $data = Krs::all()
             ->map(fn($items, $nomor) => [
                 'id' => $nomor + 1,
-                'code_khs' => Crypt::encryptString($items->kode_krs),
+                'code_krs' => Crypt::encryptString($items->kode_krs),
                 'semester'   => $items->semester,
             ])
             ->values();

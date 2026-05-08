@@ -51,7 +51,7 @@ class AkademikController extends Controller
         ]);
 
         $kode_krs = Crypt::decryptString($validated['code_krs']);
-        return (new ServiceKRS())->getKRS($kode_krs);
+        return (new ServiceKRS())->getKRSDetail($kode_krs);
     }
 
     public function KHS(Request $request){
