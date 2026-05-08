@@ -111,7 +111,7 @@ class ServiceKHS
                                     'sks_teori' => $item->sks_teori,
                                     'sks_praktik' => $item->sks_praktik,
                                     'block' => $item->block == 1 ? true : false,
-                                    'nilai' => $item->nilai
+                                    'nilai' => $item->nilai_akhir
                                 ]),
                             ])
                             ->values();
