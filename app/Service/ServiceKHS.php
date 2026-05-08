@@ -70,7 +70,7 @@ class ServiceKHS
                 'code_krs' => Crypt::encryptString($items->kode_krs),
                 'semester'   => $items->semester,
             ])
-            ->values();
+            ->values(); 
 
         return response()->json([
             'status' => true,
