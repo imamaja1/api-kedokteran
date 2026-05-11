@@ -25,9 +25,9 @@ class MasterDataController extends Controller
     public function GetMatakuliah(Request $request)
     {
         $request->validate([
-            'kode_program_studi' => ['nullable', 'string', 'max:20'],
+            'code_program_studi' => ['nullable', 'string'],
         ]);
-        $kode_program_studi = $request->query('kode_program_studi') ? Crypt::decryptString($request->query('kode_program_studi')) : null;
+        $kode_program_studi = $request->query('code_program_studi') ? Crypt::decryptString($request->query('code_program_studi')) : null;
 
         return (new ServiceMatakuliah)->getAllMatakuliah($kode_program_studi);
     }

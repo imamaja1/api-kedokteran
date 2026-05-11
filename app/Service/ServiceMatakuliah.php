@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Service;
+
 use App\Models\Matakuliah;
 use Illuminate\Support\Facades\Crypt;
 
@@ -11,32 +12,36 @@ class ServiceMatakuliah
         //
     }
 
-    public function getAllMatakuliah()
+    public function getAllMatakuliah($code_program_studi = null)
     {
-        $data = Matakuliah::select(
+        $query = Matakuliah::select(
             'id_matakuliah',
             'kode_matakuliah',
             'nama_matakuliah',
             'sks_teori',
             'sks_praktik',
             'block'
-            )->get()
-            ->map(function ($item,$nomor) {
+        );
+        if ($code_program_studi) {
+            $query->where('kode_program_studi', $code_program_studi);
+        }
+        $data = $query->get()
+            ->map(function ($item, $nomor) {
                 return [
-                    'id' => $nomor+1,
+                    'id' => $nomor + 1,
                     'code' => Crypt::encryptString($item->id_matakuliah),
                     'kode_matakuliah' => $item->kode_matakuliah,
                     'nama_matakuliah' => $item->nama_matakuliah,
                     'sks_teori' => $item->sks_teori,
                     'sks_praktik' => $item->sks_praktik,
-                    'block' => $item->block
+                    'block' => $item->block,
                 ];
             });
 
         return response()->json([
             'status' => true,
             'message' => 'API Matakuliah',
-            'data' => $data
+            'data' => $data,
         ]);
     }
 
@@ -44,37 +49,37 @@ class ServiceMatakuliah
     {
         $data = Matakuliah::find($id);
 
-        if (!$data) {
+        if (! $data) {
             return response()->json([
                 'status' => false,
                 'message' => 'Matakuliah tidak ditemukan',
-                'data' => null
+                'data' => null,
             ], 404);
         }
 
         return response()->json([
             'status' => true,
             'message' => 'API Matakuliah',
-            'data' => $data
+            'data' => $data,
         ]);
     }
 
     public function storeMatakuliah($object)
     {
         try {
-              $matakuliah = Matakuliah::create($object);
+            $matakuliah = Matakuliah::create($object);
         } catch (\Throwable $th) {
-           return response()->json([
+            return response()->json([
                 'status' => false,
                 'message' => 'Gagal membuat Matakuliah',
-                'data' => $matakuliah
+                'data' => $matakuliah,
             ], 500);
         }
-      
+
         return response()->json([
             'status' => true,
             'message' => 'Matakuliah berhasil dibuat',
-            'data' => $matakuliah
+            'data' => $matakuliah,
         ], 201);
     }
 
@@ -82,11 +87,11 @@ class ServiceMatakuliah
     {
         $matakuliah = Matakuliah::find($id);
 
-        if (!$matakuliah) {
+        if (! $matakuliah) {
             return response()->json([
                 'status' => false,
                 'message' => 'Matakuliah tidak ditemukan',
-                'data' => null
+                'data' => null,
             ], 404);
         }
 
@@ -96,14 +101,14 @@ class ServiceMatakuliah
             return response()->json([
                 'status' => false,
                 'message' => 'Gagal memperbarui Matakuliah',
-                'data' => $matakuliah
+                'data' => $matakuliah,
             ], 500);
         }
 
         return response()->json([
             'status' => true,
             'message' => 'Matakuliah berhasil diperbarui',
-            'data' => $matakuliah
+            'data' => $matakuliah,
         ]);
     }
 
@@ -111,11 +116,11 @@ class ServiceMatakuliah
     {
         $matakuliah = Matakuliah::find($id);
 
-        if (!$matakuliah) {
+        if (! $matakuliah) {
             return response()->json([
                 'status' => false,
                 'message' => 'Matakuliah tidak ditemukan',
-                'data' => null
+                'data' => null,
             ], 404);
         }
         try {
@@ -124,13 +129,14 @@ class ServiceMatakuliah
             return response()->json([
                 'status' => false,
                 'message' => 'Gagal menghapus Matakuliah',
-                'data' => $matakuliah
+                'data' => $matakuliah,
             ], 500);
         }
+
         return response()->json([
             'status' => true,
             'message' => 'Matakuliah berhasil dihapus',
-            'data' => $matakuliah
+            'data' => $matakuliah,
         ]);
     }
 }
