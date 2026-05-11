@@ -30,6 +30,11 @@ Route::prefix('api/staff')
         // Master Data
         Route::prefix('master-data')->group(function () {
             Route::get('program-studi', [MasterDataController::class, 'GetProgramStudi']);
+            Route::get('program-studi-show', [MasterDataController::class, 'GetOneProgramStudi']);
+            Route::post('program-studi', [MasterDataController::class, 'StoreProgramStudi']);
+            Route::put('program-studi', [MasterDataController::class, 'UpdateProgramStudi']);
+            Route::delete('program-studi/{code}', [MasterDataController::class, 'DeleteProgramStudi']);
+
             Route::get('matakuliah', [MasterDataController::class, 'GetMatakuliah']);
             Route::get('matakuliah-show', [MasterDataController::class, 'GetOneMatakuliah']);
             Route::post('matakuliah', [MasterDataController::class, 'StoreMatakuliah']);

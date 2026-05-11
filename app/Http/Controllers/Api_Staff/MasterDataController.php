@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Api_Staff;
 
 use App\Http\Controllers\Controller;
+use App\Service\ServiceDosen;
 use App\Service\ServiceMatakuliah;
+use App\Service\ServiceProgramStudi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
-use App\Service\ServiceDosen;
-use App\Service\ServiceProgramStudi;
 
 class MasterDataController extends Controller
 {
@@ -19,23 +19,27 @@ class MasterDataController extends Controller
 
     public function GetProgramStudi()
     {
-        return (new ServiceProgramStudi())->getAllProgramStudi();
+        return (new ServiceProgramStudi)->getAllProgramStudi();
     }
 
     public function GetMatakuliah(Request $request)
     {
-        validate([
+        $request->validate([
             'kode_program_studi' => ['nullable', 'string', 'max:20'],
         ]);
-        $kode_program_studi =  $request->query('kode_program_studi') ? Crypt::decryptString($request->query('kode_program_studi')): null;
-        return (new ServiceMatakuliah())->getAllMatakuliah($kode_program_studi);
+        $kode_program_studi = $request->query('kode_program_studi') ? Crypt::decryptString($request->query('kode_program_studi')) : null;
+
+        return (new ServiceMatakuliah)->getAllMatakuliah($kode_program_studi);
     }
-    Public function GetOneMatakuliah(Request $request)
+
+    public function GetOneMatakuliah(Request $request)
     {
         $code = $request->query('code');
-        $id =  Crypt::decryptString($code);
-        return (new ServiceMatakuliah())->getOneMatakuliah($id);
+        $id = Crypt::decryptString($code);
+
+        return (new ServiceMatakuliah)->getOneMatakuliah($id);
     }
+
     public function StoreMatakuliah(Request $request)
     {
         $validasi = $request->validate([
@@ -47,8 +51,10 @@ class MasterDataController extends Controller
             'block' => ['required', 'boolean'],
             'kode_program_studi' => ['required', 'string', 'max:20', 'alpha_num', 'exists:program_studi,kode_program_studi'],
         ]);
-        return (new ServiceMatakuliah())->storeMatakuliah($validasi);
+
+        return (new ServiceMatakuliah)->storeMatakuliah($validasi);
     }
+
     public function UpdateMatakuliah(Request $request)
     {
         $validasi = $request->validate([
@@ -62,16 +68,16 @@ class MasterDataController extends Controller
             'kode_program_studi' => ['required', 'string', 'max:20', 'alpha_num', 'exists:program_studi,kode_program_studi'],
         ]);
         $id = Crypt::decryptString($validasi['code']);
-        return (new ServiceMatakuliah())->updateMatakuliah($id, $validasi);
+
+        return (new ServiceMatakuliah)->updateMatakuliah($id, $validasi);
     }
-    Public function DeleteMatakuliah($code)
+
+    public function DeleteMatakuliah($code)
     {
         $id = Crypt::decryptString($code);
-        return (new ServiceMatakuliah())->deleteMatakuliah($id);
+
+        return (new ServiceMatakuliah)->deleteMatakuliah($id);
     }
-
-
-
 
     public function GetDosen(Request $request)
     {
@@ -80,15 +86,12 @@ class MasterDataController extends Controller
             'nama_dosen' => ['nullable', 'string', 'max:255'],
             'alamat_email' => ['nullable', 'string', 'max:255', 'email'],
         ]);
-        $kode_program_studi =  $request->query('kode_program_studi') ? Crypt::decryptString($request->query('kode_program_studi')): null;
+        $kode_program_studi = $request->query('kode_program_studi') ? Crypt::decryptString($request->query('kode_program_studi')) : null;
         $nama_dosen = Crypt::decryptString($request->query('nama_dosen')) ?? $request->query('nama_dosen');
         $alamat_email = Crypt::decryptString($request->query('alamat_email')) ?? $request->query('alamat_email');
 
-        return (new ServiceDosen())->getAllDosen($kode_program_studi, $nama_dosen, $alamat_email);
+        return (new ServiceDosen)->getAllDosen($kode_program_studi, $nama_dosen, $alamat_email);
     }
-    
-    public function GetTahunAngkatan()
-    {
-        
-    }
+
+    public function GetTahunAngkatan() {}
 }
