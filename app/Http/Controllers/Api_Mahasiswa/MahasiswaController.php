@@ -103,4 +103,12 @@ class MahasiswaController extends Controller
             'message' => 'Data mahasiswa berhasil diupdate.',
         ]);
     }
+    public function foto_profil_update(Request $request){
+        $user = Auth::guard('mahasiswa_web')->user();
+        $user->update($request->all());
+        return response()->json([
+            'status' => true,
+            'message' => 'Foto Profil berhasil diupdate.',
+        ]);
+    }
 }
