@@ -47,7 +47,26 @@ class ServiceMatakuliah
 
     public function getOneMatakuliah($id)
     {
-        $data = Matakuliah::find($id);
+        $query = Matakuliah::where('id_matakuliah', $id)->get([
+            'id_matakuliah',
+            'kode_matakuliah',
+            'nama_matakuliah',
+            'sks_teori',
+            'sks_praktik',
+            'block',
+        ]);
+        if ($query) {
+            $data = $query->map(function ($item, $nomor) {
+                return [
+                    'id' => $nomor + 1,
+                    'kode_matakuliah' => $item->kode_matakuliah,
+                    'nama_matakuliah' => $item->nama_matakuliah,
+                    'sks_teori' => $item->sks_teori,
+                    'sks_praktik' => $item->sks_praktik,
+                    'block' => $item->block,
+                ];
+            });
+        }
 
         if (! $data) {
             return response()->json([
@@ -79,7 +98,7 @@ class ServiceMatakuliah
         return response()->json([
             'status' => true,
             'message' => 'Matakuliah berhasil dibuat',
-            'data' => $matakuliah,
+            'data' => $matakuliah->only('kode_matakuliah', 'nama_matakuliah', 'sks_teori', 'sks_praktik', 'block'),
         ], 201);
     }
 
@@ -108,7 +127,7 @@ class ServiceMatakuliah
         return response()->json([
             'status' => true,
             'message' => 'Matakuliah berhasil diperbarui',
-            'data' => $matakuliah,
+            'data' => $matakuliah->only('kode_matakuliah', 'nama_matakuliah', 'sks_teori', 'sks_praktik', 'block'),
         ]);
     }
 
@@ -136,7 +155,7 @@ class ServiceMatakuliah
         return response()->json([
             'status' => true,
             'message' => 'Matakuliah berhasil dihapus',
-            'data' => $matakuliah,
+            'data' => $matakuliah->only('kode_matakuliah', 'nama_matakuliah', 'sks_teori', 'sks_praktik', 'block'),
         ]);
     }
 }

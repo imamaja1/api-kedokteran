@@ -199,6 +199,21 @@ class MasterDataController extends Controller
 
     public function StoreMatakuliah(Request $request)
     {
+        try {
+
+            $request->merge([
+                'kode_program_studi' => Crypt::decryptString(
+                    $request->kode_program_studi
+                ),
+            ]);
+
+        } catch (DecryptException $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Format kode_program_studi tidak valid',
+            ], 422);
+        }
         $validasi = $request->validate([
             'kode_matakuliah' => ['required', 'string', 'max:20', 'alpha_num', 'unique:matakuliah,kode_matakuliah'],
             'nama_matakuliah' => ['required', 'string', 'max:255'],
@@ -206,7 +221,7 @@ class MasterDataController extends Controller
             'sks_teori' => ['required', 'integer', 'min:0'],
             'sks_praktik' => ['required', 'integer', 'min:0'],
             'block' => ['required', 'boolean'],
-            'kode_program_studi' => ['required', 'string', 'max:20', 'alpha_num', 'exists:program_studi,kode_program_studi'],
+            'kode_program_studi' => ['required', 'integer', 'alpha_num', 'exists:program_studi,kode_program_studi'],
         ]);
 
         return (new ServiceMatakuliah)->storeMatakuliah($validasi);
@@ -214,6 +229,18 @@ class MasterDataController extends Controller
 
     public function UpdateMatakuliah(Request $request)
     {
+        try {
+            $request->merge([
+                'kode_program_studi' => Crypt::decryptString(
+                    $request->kode_program_studi
+                ),
+            ]);
+        } catch (DecryptException $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Format kode_program_studi tidak valid',
+            ], 422);
+        }
         $validasi = $request->validate([
             'code' => ['required', 'string'],
             'kode_matakuliah' => ['required', 'string', 'max:20', 'alpha_num'],
@@ -222,7 +249,7 @@ class MasterDataController extends Controller
             'sks_teori' => ['required', 'integer', 'min:0'],
             'sks_praktik' => ['required', 'integer', 'min:0'],
             'block' => ['required', 'boolean'],
-            'kode_program_studi' => ['required', 'string', 'max:20', 'alpha_num', 'exists:program_studi,kode_program_studi'],
+            'kode_program_studi' => ['required', 'integer', 'alpha_num', 'exists:program_studi,kode_program_studi'],
         ]);
         $id = Crypt::decryptString($validasi['code']);
 
@@ -309,7 +336,5 @@ class MasterDataController extends Controller
         return (new ServiceDosen)->deleteDosen($id);
     }
 
-    public function GetTahunAngkatan()
-    {
-    }
+    public function GetTahunAngkatan() {}
 }
