@@ -8,6 +8,7 @@ use App\Service\ServiceKurikulum;
 use App\Service\ServiceMatakuliah;
 use App\Service\ServiceProgramStudi;
 use App\Service\ServiceTahunAkademik;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 
@@ -290,18 +291,30 @@ class MasterDataController extends Controller
 
     public function StoreDosen(Request $request)
     {
+        try {
+            $request->merge([
+                'homebase' => Crypt::decryptString(
+                    $request->homebase
+                ),
+            ]);
+        } catch (DecryptException $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Format kode_program_studi tidak valid',
+            ], 422);
+        }
         $validasi = $request->validate([
             'nama_dosen' => ['required', 'string', 'max:255'],
-            'nik' => ['nullable', 'string', 'max:255'],
-            'no_telp' => ['nullable', 'string', 'max:20'],
-            'alamat_email' => ['nullable', 'string', 'max:100', 'email'],
-            'field_studi' => ['nullable', 'string', 'max:255'],
-            'alumni' => ['nullable', 'string', 'max:255'],
-            'homebase' => ['nullable', 'integer', 'exists:program_studi,kode_program_studi'],
+            'nik' => ['required', 'string', 'max:255'],
+            'no_telp' => ['required', 'string', 'max:20'],
+            'alamat_email' => ['required', 'string', 'max:100', 'email'],
+            'field_studi' => ['required', 'string', 'max:255'],
+            'alumni' => ['required', 'string', 'max:255'],
+            'homebase' => ['required', 'string', 'exists:program_studi,kode_program_studi'],
             'status_dosen' => ['required', 'in:T,L'],
             'aktif' => ['required', 'in:A,N'],
             'chatid' => ['nullable', 'string', 'max:20'],
-            'sandi_pengguna' => ['nullable', 'string', 'min:6'],
+            'sandi_pengguna' => ['required', 'string', 'min:6'],
         ]);
 
         return (new ServiceDosen)->storeDosen($validasi);
@@ -309,15 +322,27 @@ class MasterDataController extends Controller
 
     public function UpdateDosen(Request $request)
     {
+        try {
+            $request->merge([
+                'homebase' => Crypt::decryptString(
+                    $request->homebase
+                ),
+            ]);
+        } catch (DecryptException $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Format kode_program_studi tidak valid',
+            ], 422);
+        }
         $validasi = $request->validate([
             'code' => ['required', 'string'],
             'nama_dosen' => ['required', 'string', 'max:255'],
-            'nik' => ['nullable', 'string', 'max:255'],
-            'no_telp' => ['nullable', 'string', 'max:20'],
-            'alamat_email' => ['nullable', 'string', 'max:100', 'email'],
-            'field_studi' => ['nullable', 'string', 'max:255'],
-            'alumni' => ['nullable', 'string', 'max:255'],
-            'homebase' => ['nullable', 'integer', 'exists:program_studi,kode_program_studi'],
+            'nik' => ['required', 'string', 'max:255'],
+            'no_telp' => ['required', 'string', 'max:20'],
+            'alamat_email' => ['required', 'string', 'max:100', 'email'],
+            'field_studi' => ['required', 'string', 'max:255'],
+            'alumni' => ['required', 'string', 'max:255'],
+            'homebase' => ['required', 'string', 'exists:program_studi,kode_program_studi'],
             'status_dosen' => ['required', 'in:T,L'],
             'aktif' => ['required', 'in:A,N'],
             'chatid' => ['nullable', 'string', 'max:20'],
