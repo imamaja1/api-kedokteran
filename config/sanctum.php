@@ -2,7 +2,6 @@
 
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
-use Laravel\Sanctum\Http\Middleware\AuthenticateSession;
 use Laravel\Sanctum\Sanctum;
 
 return [
@@ -56,7 +55,12 @@ return [
     |--------------------------------------------------------------------------
     */
     'middleware' => [
-        'authenticate_session' => AuthenticateSession::class,
+        // authenticate_session sengaja DI-NULL-kan.
+        // Sanctum\Http\Middleware\AuthenticateSession membandingkan password_hash
+        // antar guard (web vs mahasiswa_web/dosen_web/staff_web). Karena project ini
+        // multi-guard dengan model berbeda, mengaktifkannya menyebabkan session
+        // admin di-flush saat ada request API dari browser yang sama.
+        'authenticate_session' => null,
         'encrypt_cookies' => EncryptCookies::class,
         'validate_csrf_token' => ValidateCsrfToken::class,
     ],

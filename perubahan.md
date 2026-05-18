@@ -145,6 +145,53 @@ Padahal seluruh route di `web.php` sudah menggunakan `role:admin,staff` (EnsureR
 
 ---
 
+---
+
+## 2026-05-13 — Perbaikan Bug EnsureFrontendRequestsAreStateful (X-XSRF-TOKEN Tidak Diperlukan)
+
+**Masalah yang ditemukan:**
+Sistem bisa diakses menggunakan `X-XSRF-TOKEN` (token CSRF dari browser) padahal arsitektur sistem ini hanya menggunakan `laravel-session` — tidak seharusnya meminta token CSRF.
+
+**Akar masalah:**
+Di `bootstrap/app.php`, terdapat komentar yang menyatakan `EnsureFrontendRequestsAreStateful` **tidak dipakai**, tetapi class-nya tetap aktif di dalam grup middleware `sanctum.spa`:
+
+```php
+// Catatan: EnsureFrontendRequestsAreStateful TIDAK dipakai...
+$middleware->appendToGroup('sanctum.spa', [
+    EncryptCookies::class,
+    AddQueuedCookiesToResponse::class,
+    StartSession::class,
+    // ValidateCsrfToken::class,              ← dimatikan (benar)
+    EnsureFrontendRequestsAreStateful::class,  ← masih aktif (BUG)
+]);
+```
+
+`EnsureFrontendRequestsAreStateful` dari Laravel Sanctum secara internal menambahkan kembali:
+- `ValidateCsrfToken` → menyebabkan browser wajib kirim `X-XSRF-TOKEN`
+- `AuthenticateSession` → bisa memflush session mahasiswa/dosen saat ada request dari guard `web` (admin panel) di browser yang sama
+
+**Kenapa `SameSite=Lax` sudah cukup tanpa `X-XSRF-TOKEN`?**
+Cookie session sudah dikonfigurasi `SameSite=Lax` (`config/session.php` baris 202). Dengan ini, browser **tidak akan mengirimkan** cookie session pada request cross-origin (misalnya dari domain lain). Serangan CSRF sudah dicegah di level cookie, bukan di level token.
+
+**File yang diubah:**
+
+#### `bootstrap/app.php`
+- Dihapus `use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;`
+- Dihapus `EnsureFrontendRequestsAreStateful::class` dari grup `sanctum.spa`
+- Ditambahkan komentar penjelasan lengkap kenapa class ini tidak dipakai
+- Grup `sanctum.spa` sekarang hanya berisi: `EncryptCookies`, `AddQueuedCookiesToResponse`, `StartSession`
+
+**Setelah perbaikan:**
+
+| Kondisi | Sebelum | Sesudah |
+|---|---|---|
+| Request dari browser (SPA) | Wajib kirim `X-XSRF-TOKEN` | Cukup `laravel-session` saja |
+| Request dari Postman/API | Cukup `laravel-session` | Cukup `laravel-session` saja |
+| Proteksi CSRF | Via `ValidateCsrfToken` (token-based) | Via `SameSite=Lax` (cookie-based, lebih tepat) |
+| Risiko `AuthenticateSession` | Ada (bisa flush session lintas guard) | Tidak ada |
+
+---
+
 ## Ringkasan File yang Berubah
 
 | Tanggal | Aksi | File |
@@ -152,6 +199,7 @@ Padahal seluruh route di `web.php` sudah menggunakan `role:admin,staff` (EnsureR
 | 2026-04-27 | BARU | `database/migrations/2026_04_27_000000_create_activity_logs_table.php` |
 | 2026-04-27 | BARU | `app/Models/ActivityLog.php` |
 | 2026-04-27 | BARU | `app/Http/Middleware/LogActivity.php` |
+| 2026-05-13 | DIUBAH | `bootstrap/app.php` — hapus `EnsureFrontendRequestsAreStateful`, perbaiki bug X-XSRF-TOKEN |
 | 2026-04-27 | DIUBAH | `bootstrap/app.php` — hapus alias admin/staff, tambah log.activity |
 | 2026-04-27 | DIUBAH | `config/sanctum.php` — tambah panduan production |
 | 2026-04-27 | DIUBAH | `.env` — tambah SESSION_SECURE_COOKIE, komentar production |

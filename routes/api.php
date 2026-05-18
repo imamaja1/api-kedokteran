@@ -1,11 +1,6 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
-use App\Http\Controllers\KhsController;
-use App\Http\Controllers\KrsController;
-use App\Http\Controllers\MahasiswaController;
-use App\Http\Controllers\MatakuliahController;
-use App\Http\Controllers\ProgramStudiController;
 use Illuminate\Support\Facades\Route;
 
 // ─── Auth (public) ───────────────────────────────────────────────────────────
@@ -22,6 +17,7 @@ Route::prefix('auth')
         Route::post('/dosen/login', [AuthController::class, 'dosen_login']);
         // staff login
         Route::post('/staff/login', [AuthController::class, 'login_staff']);
+
         // logout (semua user)
         Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
     });
@@ -29,10 +25,8 @@ Route::prefix('auth')
 // ─── Fallback — semua route API yang tidak terdaftar ─────────────────────────
 Route::fallback(function () {
     return response()->json([
-        'status'  => false,
+        'status' => false,
         'message' => 'Endpoint tidak ditemukan.',
-        'error'   => 'NOT_FOUND',
+        'error' => 'NOT_FOUND',
     ], 404);
 })->middleware('sanctum.spa');
-
-
