@@ -22,7 +22,7 @@ class DosenLoginRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'nim.required' => 'NIM wajib diisi.',
+            'email.required' => 'Email wajib diisi.',
             'password.required' => 'Password wajib diisi.',
         ];
     }

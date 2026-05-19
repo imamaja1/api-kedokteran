@@ -105,7 +105,13 @@ class MahasiswaController extends Controller
     }
     public function foto_profil_update(Request $request){
         $user = Auth::guard('mahasiswa_web')->user();
-        $user->update($request->all());
+
+        $validated = $request->validate([
+            'foto' => ['nullable', 'image', 'max:2048'],
+        ]);
+
+        $user->update($validated);
+
         return response()->json([
             'status' => true,
             'message' => 'Foto Profil berhasil diupdate.',

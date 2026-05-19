@@ -30,8 +30,7 @@ class AkademikController extends Controller
 
     public function Kurikulum(Request $request){
         $validated = $request->validate([
-            'code_nama_kurikulum
-            ' => ['required', 'string'],
+            'code_nama_kurikulum' => ['required', 'string'],
         ]);
         $kode_nama_kurikulum = Crypt::decryptString($validated['code_nama_kurikulum']);
         return (new ServiceKurikulum())->kurikulum_by_nama_kurikulum($kode_nama_kurikulum);

@@ -1,45 +1,54 @@
 <?php
 
 namespace App\Service;
+
 use App\Models\Kurikulum;
 use App\Models\KurikulumAngkatan;
 use App\Models\NamaKurikulum;
 use Illuminate\Support\Facades\Crypt;
+
 class ServiceKurikulum
 {
-    /**
-     * Create a new class instance.
-     */
-    public function __construct()
-    {
-        //
-    }
-
-    public function kurikulum_by_nim($nim, $kode_prodi)
+    public function kurikulum_by_nim(string $nim, string $kode_prodi)
     {
         $angkatan = substr((string) $nim, 0, 2);
-        $data['kurikulum'] = KurikulumAngkatan::select('kurikulum_angkatan.angkatan', 'nama_kurikulum.nama_kurikulum', 'nama_kurikulum.kode_nama_kurikulum')
+
+        $kurikulumAngkatan = KurikulumAngkatan::select(
+            'kurikulum_angkatan.angkatan',
+            'nama_kurikulum.nama_kurikulum',
+            'nama_kurikulum.kode_nama_kurikulum',
+        )
             ->join('nama_kurikulum', 'kurikulum_angkatan.kode_nama_kurikulum', '=', 'nama_kurikulum.kode_nama_kurikulum')
-            ->whereRaw('substr(angkatan, 3, 2) = ?', $angkatan)
+            ->whereRaw('substr(angkatan, 3, 2) = ?', [$angkatan])
             ->where('nama_kurikulum.kode_program_studi', $kode_prodi)
             ->first();
 
+        if (! $kurikulumAngkatan) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Kurikulum untuk angkatan mahasiswa tidak ditemukan.',
+                'data' => ['kurikulum' => null, 'data_kurikulum' => []],
+            ]);
+        }
+
+        $data['kurikulum'] = $kurikulumAngkatan;
+
         $data['data_kurikulum'] = Kurikulum::join('matakuliah', 'kurikulum.id_matakuliah', '=', 'matakuliah.id_matakuliah')
-            ->where('kode_nama_kurikulum', $data['kurikulum']->kode_nama_kurikulum)
+            ->where('kode_nama_kurikulum', $kurikulumAngkatan->kode_nama_kurikulum)
             ->select('kurikulum.semester', 'matakuliah.*')
             ->selectRaw('(COALESCE(matakuliah.sks_teori, 0) + COALESCE(matakuliah.sks_praktik, 0)) as sks')
             ->orderBy('kurikulum.semester')
             ->get()
             ->groupBy('semester')
-            ->map(fn($items, $sem) => [
+            ->map(fn ($items, $sem) => [
                 'semester' => $sem,
                 'total_sks' => $items->sum('sks'),
-                'matakuliah' => $items->map(fn($item) => [
+                'matakuliah' => $items->map(fn ($item) => [
                     'kode_matakuliah' => $item->kode_matakuliah,
                     'nama_matakuliah' => $item->nama_matakuliah,
                     'sks_teori' => $item->sks_teori,
                     'sks_praktik' => $item->sks_praktik,
-                    'block' => $item->block == 1 ? true : false,
+                    'block' => (bool) $item->block,
                 ]),
             ])
             ->values();
@@ -47,36 +56,38 @@ class ServiceKurikulum
         return response()->json([
             'status' => true,
             'message' => 'Kurikulum Mahasiswa retrieved successfully.',
-            'data' => $data
+            'data' => $data,
         ]);
     }
 
     public function nama_kurikulum()
     {
-        $data = NamaKurikulum::all()
+        $data = NamaKurikulum::with('programStudi')
+            ->get()
             ->map(function ($item, $nomor) {
                 return [
                     'id' => $nomor + 1,
                     'code_nama_kurikulum' => Crypt::encryptString($item->kode_nama_kurikulum),
                     'nama_kurikulum' => $item->nama_kurikulum,
-                    'nama_program_studi' => $item->programStudi->nama_program_studi,
+                    'nama_program_studi' => $item->programStudi?->nama_program_studi,
                     'angkatan1' => $item->angkatan1,
                     'ekstensi1' => $item->ekstensi1,
                     'paket1' => $item->paket1,
                 ];
             });
+
         return response()->json([
             'status' => true,
             'message' => 'Nama Kurikulum retrieved successfully.',
-            'data' => $data
+            'data' => $data,
         ]);
     }
 
-    public function getOneNamaKurikulum($id)
+    public function getOneNamaKurikulum(string $id)
     {
         $item = NamaKurikulum::find($id);
 
-        if (!$item) {
+        if (! $item) {
             return response()->json([
                 'status' => false,
                 'message' => 'Nama Kurikulum tidak ditemukan',
@@ -102,7 +113,7 @@ class ServiceKurikulum
     {
         try {
             $namaKurikulum = NamaKurikulum::create($object);
-        } catch (\Throwable $th) {
+        } catch (\Throwable) {
             return response()->json([
                 'status' => false,
                 'message' => 'Gagal membuat Nama Kurikulum',
@@ -124,11 +135,11 @@ class ServiceKurikulum
         ], 201);
     }
 
-    public function updateNamaKurikulum($id, array $object)
+    public function updateNamaKurikulum(string $id, array $object)
     {
         $namaKurikulum = NamaKurikulum::find($id);
 
-        if (!$namaKurikulum) {
+        if (! $namaKurikulum) {
             return response()->json([
                 'status' => false,
                 'message' => 'Nama Kurikulum tidak ditemukan',
@@ -138,7 +149,7 @@ class ServiceKurikulum
 
         try {
             $namaKurikulum->update($object);
-        } catch (\Throwable $th) {
+        } catch (\Throwable) {
             return response()->json([
                 'status' => false,
                 'message' => 'Gagal memperbarui Nama Kurikulum',
@@ -160,11 +171,11 @@ class ServiceKurikulum
         ]);
     }
 
-    public function deleteNamaKurikulum($id)
+    public function deleteNamaKurikulum(string $id)
     {
         $namaKurikulum = NamaKurikulum::find($id);
 
-        if (!$namaKurikulum) {
+        if (! $namaKurikulum) {
             return response()->json([
                 'status' => false,
                 'message' => 'Nama Kurikulum tidak ditemukan',
@@ -174,7 +185,7 @@ class ServiceKurikulum
 
         try {
             $namaKurikulum->delete();
-        } catch (\Throwable $th) {
+        } catch (\Throwable) {
             return response()->json([
                 'status' => false,
                 'message' => 'Gagal menghapus Nama Kurikulum',
@@ -196,7 +207,7 @@ class ServiceKurikulum
         ]);
     }
 
-    public function kurikulum_by_nama_kurikulum($kode_nama_kurikulum)
+    public function kurikulum_by_nama_kurikulum(string $kode_nama_kurikulum)
     {
         $data = Kurikulum::join('matakuliah', 'kurikulum.id_matakuliah', '=', 'matakuliah.id_matakuliah')
             ->where('kode_nama_kurikulum', $kode_nama_kurikulum)
@@ -205,15 +216,15 @@ class ServiceKurikulum
             ->orderBy('kurikulum.semester')
             ->get()
             ->groupBy('semester')
-            ->map(fn($items, $sem) => [
+            ->map(fn ($items, $sem) => [
                 'semester' => $sem,
                 'total_sks' => $items->sum('sks'),
-                'matakuliah' => $items->map(fn($item) => [
+                'matakuliah' => $items->map(fn ($item) => [
                     'kode_matakuliah' => $item->kode_matakuliah,
                     'nama_matakuliah' => $item->nama_matakuliah,
                     'sks_teori' => $item->sks_teori,
                     'sks_praktik' => $item->sks_praktik,
-                    'block' => $item->block == 1 ? true : false,
+                    'block' => (bool) $item->block,
                 ]),
             ])
             ->values();
@@ -221,7 +232,7 @@ class ServiceKurikulum
         return response()->json([
             'status' => true,
             'message' => 'Kurikulum retrieved successfully.',
-            'data' => $data
+            'data' => $data,
         ]);
     }
 }

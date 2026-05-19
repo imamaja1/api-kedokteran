@@ -8,27 +8,21 @@ use Illuminate\Support\Facades\Hash;
 
 class ServiceDosen
 {
-    /**
-     * Create a new class instance.
-     */
-    public function __construct()
-    {
-        //
-    }
-
-    public function getAllDosen($kode_program_studi = null, $nama_dosen = null, $alamat_email = null)
+    public function getAllDosen(?string $kode_program_studi = null, ?string $nama_dosen = null, ?string $alamat_email = null)
     {
         $data = Dosen::select('*')
-            ->when($kode_program_studi, function ($query, $kode_program_studi) {
-                return $query->where('kode_program_studi', $kode_program_studi);
+            ->with('programStudi')
+            ->when($kode_program_studi, function ($query, $kode) {
+                return $query->where('kode_program_studi', $kode);
             })
-            ->when($nama_dosen, function ($query, $nama_dosen) {
-                return $query->where('nama_dosen', 'like', "%{$nama_dosen}%");
+            ->when($nama_dosen, function ($query, $nama) {
+                return $query->where('nama_dosen', 'like', "%{$nama}%");
             })
-            ->when($alamat_email, function ($query, $alamat_email) {
-                return $query->where('alamat_email', 'like', "%{$alamat_email}%");
+            ->when($alamat_email, function ($query, $email) {
+                return $query->where('alamat_email', 'like', "%{$email}%");
             })
-            ->get()->map(function ($item, $nomor) {
+            ->get()
+            ->map(function ($item, $nomor) {
                 return [
                     'id' => $nomor + 1,
                     'code' => Crypt::encryptString($item->kode_dosen),
@@ -38,7 +32,7 @@ class ServiceDosen
                     'alamat_email' => $item->alamat_email,
                     'field_studi' => $item->field_studi,
                     'alumni' => $item->alumni,
-                    'homebase' => $item->programStudi->nama_program_studi,
+                    'homebase' => $item->programStudi?->nama_program_studi,
                     'status_dosen' => $item->status_dosen,
                     'aktif' => $item->aktif,
                     'status_login' => $item->status_login,
@@ -55,35 +49,34 @@ class ServiceDosen
         ]);
     }
 
-    public function getOneDosen($id)
+    public function getOneDosen(string $id)
     {
-        $data = Dosen::find($id)->get()
-            ->map(function ($item) {
-                return [
-                    'code' => Crypt::encryptString($item->kode_dosen),
-                    'nama_dosen' => $item->nama_dosen,
-                    'nik' => $item->nik,
-                    'no_telp' => $item->no_telp,
-                    'alamat_email' => $item->alamat_email,
-                    'field_studi' => $item->field_studi,
-                    'alumni' => $item->alumni,
-                    'homebase' => $item->programStudi->nama_program_studi,
-                    'status_dosen' => $item->status_dosen,
-                    'aktif' => $item->aktif,
-                    'status_login' => $item->status_login,
-                    'signature' => $item->signature,
-                    'created_at' => $item->created_at,
-                    'updated_at' => $item->updated_at,
-                ];
-            })->first();
+        $dosen = Dosen::with('programStudi')->where('kode_dosen', $id)->first();
 
-        if (! $data) {
+        if (! $dosen) {
             return response()->json([
                 'status' => false,
                 'message' => 'Dosen tidak ditemukan',
                 'data' => null,
             ], 404);
         }
+
+        $data = [
+            'code' => Crypt::encryptString($dosen->kode_dosen),
+            'nama_dosen' => $dosen->nama_dosen,
+            'nik' => $dosen->nik,
+            'no_telp' => $dosen->no_telp,
+            'alamat_email' => $dosen->alamat_email,
+            'field_studi' => $dosen->field_studi,
+            'alumni' => $dosen->alumni,
+            'homebase' => $dosen->programStudi?->nama_program_studi,
+            'status_dosen' => $dosen->status_dosen,
+            'aktif' => $dosen->aktif,
+            'status_login' => $dosen->status_login,
+            'signature' => $dosen->signature,
+            'created_at' => $dosen->created_at,
+            'updated_at' => $dosen->updated_at,
+        ];
 
         return response()->json([
             'status' => true,
@@ -92,7 +85,7 @@ class ServiceDosen
         ]);
     }
 
-    public function storeDosen($object)
+    public function storeDosen(array $object)
     {
         if (! empty($object['sandi_pengguna'])) {
             $object['sandi_pengguna'] = Hash::make($object['sandi_pengguna']);
@@ -105,7 +98,7 @@ class ServiceDosen
 
         try {
             $dosen = Dosen::create($object);
-        } catch (\Throwable $th) {
+        } catch (\Throwable) {
             return response()->json([
                 'status' => false,
                 'message' => 'Gagal membuat Dosen',
@@ -120,7 +113,7 @@ class ServiceDosen
         ], 201);
     }
 
-    public function updateDosen($id, $object)
+    public function updateDosen(string $id, array $object)
     {
         $dosen = Dosen::find($id);
 
@@ -140,7 +133,7 @@ class ServiceDosen
 
         try {
             $dosen->update($object);
-        } catch (\Throwable $th) {
+        } catch (\Throwable) {
             return response()->json([
                 'status' => false,
                 'message' => 'Gagal memperbarui Dosen',
@@ -155,7 +148,7 @@ class ServiceDosen
         ]);
     }
 
-    public function deleteDosen($id)
+    public function deleteDosen(string $id)
     {
         $dosen = Dosen::find($id);
 
@@ -169,7 +162,7 @@ class ServiceDosen
 
         try {
             $dosen->delete();
-        } catch (\Throwable $th) {
+        } catch (\Throwable) {
             return response()->json([
                 'status' => false,
                 'message' => 'Gagal menghapus Dosen',

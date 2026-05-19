@@ -223,7 +223,7 @@ class MasterDataController extends Controller
             'sks_teori' => ['required', 'integer', 'min:0'],
             'sks_praktik' => ['required', 'integer', 'min:0'],
             'block' => ['required', 'boolean'],
-            'kode_program_studi' => ['required', 'integer', 'alpha_num', 'exists:program_studi,kode_program_studi'],
+            'kode_program_studi' => ['required', 'integer', 'exists:program_studi,kode_program_studi'],
         ]);
 
         return (new ServiceMatakuliah)->storeMatakuliah($validasi);
@@ -251,7 +251,7 @@ class MasterDataController extends Controller
             'sks_teori' => ['required', 'integer', 'min:0'],
             'sks_praktik' => ['required', 'integer', 'min:0'],
             'block' => ['required', 'boolean'],
-            'kode_program_studi' => ['required', 'integer', 'alpha_num', 'exists:program_studi,kode_program_studi'],
+            'kode_program_studi' => ['required', 'integer', 'exists:program_studi,kode_program_studi'],
         ]);
         $id = Crypt::decryptString($validasi['code']);
 
