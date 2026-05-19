@@ -1,12 +1,12 @@
 <?php
 
+use App\Http\Controllers\Api_Staff\AkademikController;
+use App\Http\Controllers\Api_Staff\DefaultController;
+use App\Http\Controllers\Api_Staff\MasterDataController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Models\Dosen;
 use App\Models\Matakuliah;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api_Staff\AkademikController;
-use App\Http\Controllers\Api_Staff\MasterDataController;
-use App\Http\Controllers\Api_Staff\DefaultController;
 
 // ─── Protected Staff (auth:staff_web) ─────────────────────────────────
 Route::prefix('api/staff')
@@ -14,7 +14,6 @@ Route::prefix('api/staff')
     ->group(function () {
         // Auth
         Route::get('me', [AuthController::class, 'me_staff']);
-        Route::get('mahasiswa', [DefaultController::class, 'Mahasiswa']);
         Route::get('tahun-angkatan', [DefaultController::class, 'tahun_angkatan']);
 
         // Akademik
@@ -38,7 +37,7 @@ Route::prefix('api/staff')
             Route::put('matakuliah', [MasterDataController::class, 'UpdateMatakuliah']);
             Route::delete('matakuliah/{code}', [MasterDataController::class, 'DeleteMatakuliah']);
 
-            //program studi
+            // program studi
             Route::get('program-studi', [MasterDataController::class, 'GetProgramStudi']);
             Route::get('program-studi-show', [MasterDataController::class, 'GetOneProgramStudi']);
             Route::post('program-studi', [MasterDataController::class, 'StoreProgramStudi']);
@@ -52,24 +51,30 @@ Route::prefix('api/staff')
             Route::put('dosen', [MasterDataController::class, 'UpdateDosen']);
             Route::delete('dosen/{code}', [MasterDataController::class, 'DeleteDosen']);
 
-            //nama kurikulum
+            // nama kurikulum
             Route::get('nama-kurikulum', [MasterDataController::class, 'GetNamaKurikulum']);
             Route::get('nama-kurikulum-show', [MasterDataController::class, 'GetOneNamaKurikulum']);
             Route::post('nama-kurikulum', [MasterDataController::class, 'StoreNamaKurikulum']);
             Route::put('nama-kurikulum', [MasterDataController::class, 'UpdateNamaKurikulum']);
             Route::delete('nama-kurikulum/{code}', [MasterDataController::class, 'DeleteNamaKurikulum']);
 
-            //tahun ajaran
+            // tahun ajaran
             Route::get('tahun-akademik', [MasterDataController::class, 'GetTahunAkademik']);
             Route::get('tahun-akademik-show', [MasterDataController::class, 'GetOneTahunAkademik']);
             Route::post('tahun-akademik', [MasterDataController::class, 'StoreTahunAkademik']);
             Route::put('tahun-akademik', [MasterDataController::class, 'UpdateTahunAkademik']);
             Route::delete('tahun-akademik/{code}', [MasterDataController::class, 'DeleteTahunAkademik']);
 
+            // mahasiswa
+            Route::get('mahasiswa', [MasterDataController::class, 'GetMahasiswa']);
+            Route::get('mahasiswa-show', [MasterDataController::class, 'GetOneMahasiswa']);
+            Route::post('mahasiswa', [MasterDataController::class, 'StoreMahasiswa']);
+            Route::put('mahasiswa', [MasterDataController::class, 'UpdateMahasiswa']);
+            Route::delete('mahasiswa/{code}', [MasterDataController::class, 'DeleteMahasiswa']);
 
         });
         // fallback dalam group — return 404 bukan 401
-        Route::fallback(fn() => response()->json([
+        Route::fallback(fn () => response()->json([
             'status' => false,
             'message' => 'Endpoint tidak ditemukan.',
             'error' => 'NOT_FOUND',

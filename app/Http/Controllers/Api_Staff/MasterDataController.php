@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api_Staff;
 use App\Http\Controllers\Controller;
 use App\Service\ServiceDosen;
 use App\Service\ServiceKurikulum;
+use App\Service\ServiceMahasiswa;
 use App\Service\ServiceMatakuliah;
 use App\Service\ServiceProgramStudi;
 use App\Service\ServiceTahunAkademik;
@@ -361,5 +362,137 @@ class MasterDataController extends Controller
         return (new ServiceDosen)->deleteDosen($id);
     }
 
-    public function GetTahunAngkatan() {}
+    public function GetMahasiswa(Request $request)
+    {
+        $validated = $request->validate([
+            'nim' => ['nullable', 'string', 'max:20', 'regex:/^\d+$/'],
+            'code' => ['nullable', 'string', 'max:20', 'alpha_num'],
+            'angkatan' => ['nullable', 'digits:4'],
+        ]);
+
+        return (new ServiceMahasiswa)->getAllMahasiswa(
+            isset($validated['nim']) ? $validated['nim'] : null,
+            isset($validated['code']) ? Crypt::decryptString($validated['code']) : null,
+            isset($validated['angkatan']) ? substr($validated['angkatan'], 2, 2) : null,
+        );
+    }
+
+    public function GetOneMahasiswa(Request $request)
+    {
+        $request->validate([
+            'code' => ['required', 'string'],
+        ]);
+
+        $nim = Crypt::decryptString($request->query('code'));
+
+        return (new ServiceMahasiswa)->getOneMahasiswa($nim);
+    }
+
+    public function StoreMahasiswa(Request $request)
+    {
+        try {
+            $request->merge([
+                'program_studi_kode' => Crypt::decryptString(
+                    $request->program_studi_kode
+                ),
+            ]);
+        } catch (DecryptException $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Format program_studi_kode tidak valid',
+            ], 422);
+        }
+
+        $validasi = $request->validate([
+            'nim' => ['required', 'string', 'max:20', 'unique:mahasiswa,nim'],
+            'nik' => ['required', 'string', 'max:20'],
+            'program_studi_kode' => ['required', 'exists:program_studi,kode_program_studi'],
+            'nama_mahasiswa' => ['required', 'string', 'max:100'],
+            'tempat_lahir' => ['nullable', 'string', 'max:50'],
+            'tanggal_lahir' => ['nullable', 'date'],
+            'alamat' => ['nullable', 'string', 'max:255'],
+            'kota' => ['nullable', 'string', 'max:50'],
+            'propinsi' => ['nullable', 'string', 'max:50'],
+            'telepon' => ['nullable', 'string', 'max:20'],
+            'jenis_kelamin' => ['nullable', 'in:L,P'],
+            'agama' => ['nullable', 'string', 'max:20'],
+            'golongan_darah' => ['nullable', 'in:A,B,AB,O'],
+            'kewarganegaraan' => ['nullable', 'string', 'max:50'],
+            'email' => ['nullable', 'email', 'max:100'],
+            'nama_ayah' => ['nullable', 'string', 'max:100'],
+            'agama_ayah' => ['nullable', 'string', 'max:20'],
+            'pekerjaan_ayah' => ['nullable', 'string', 'max:100'],
+            'nama_ibu' => ['nullable', 'string', 'max:100'],
+            'agama_ibu' => ['nullable', 'string', 'max:20'],
+            'pekerjaan_ibu' => ['nullable', 'string', 'max:100'],
+            'alamat_orangtua' => ['nullable', 'string', 'max:255'],
+            'kota_orangtua' => ['nullable', 'string', 'max:50'],
+            'propinsi_orangtua' => ['nullable', 'string', 'max:50'],
+            'telepon_orangtua' => ['nullable', 'string', 'max:20'],
+            'foto' => ['nullable', 'image', 'max:2048'],
+            'status' => ['nullable', 'in:A,N'],
+            'status_pendaftaran' => ['nullable', 'in:P,L,T'],
+        ]);
+
+        return (new ServiceMahasiswa)->storeMahasiswa($validasi);
+    }
+
+    public function UpdateMahasiswa(Request $request)
+    {
+        try {
+            $request->merge([
+                'program_studi_kode' => Crypt::decryptString(
+                    $request->program_studi_kode
+                ),
+            ]);
+        } catch (DecryptException $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Format program_studi_kode tidak valid',
+            ], 422);
+        }
+
+        $validasi = $request->validate([
+            'code' => ['required', 'string'],
+            'nim' => ['required', 'string', 'max:20'],
+            'nik' => ['required', 'string', 'max:20'],
+            'program_studi_kode' => ['required', 'exists:program_studi,kode_program_studi'],
+            'nama_mahasiswa' => ['required', 'string', 'max:100'],
+            'tempat_lahir' => ['nullable', 'string', 'max:50'],
+            'tanggal_lahir' => ['nullable', 'date'],
+            'alamat' => ['nullable', 'string', 'max:255'],
+            'kota' => ['nullable', 'string', 'max:50'],
+            'propinsi' => ['nullable', 'string', 'max:50'],
+            'telepon' => ['nullable', 'string', 'max:20'],
+            'jenis_kelamin' => ['nullable', 'in:L,P'],
+            'agama' => ['nullable', 'string', 'max:20'],
+            'golongan_darah' => ['nullable', 'in:A,B,AB,O'],
+            'kewarganegaraan' => ['nullable', 'string', 'max:50'],
+            'email' => ['nullable', 'email', 'max:100'],
+            'nama_ayah' => ['nullable', 'string', 'max:100'],
+            'agama_ayah' => ['nullable', 'string', 'max:20'],
+            'pekerjaan_ayah' => ['nullable', 'string', 'max:100'],
+            'nama_ibu' => ['nullable', 'string', 'max:100'],
+            'agama_ibu' => ['nullable', 'string', 'max:20'],
+            'pekerjaan_ibu' => ['nullable', 'string', 'max:100'],
+            'alamat_orangtua' => ['nullable', 'string', 'max:255'],
+            'kota_orangtua' => ['nullable', 'string', 'max:50'],
+            'propinsi_orangtua' => ['nullable', 'string', 'max:50'],
+            'telepon_orangtua' => ['nullable', 'string', 'max:20'],
+            'foto' => ['nullable', 'image', 'max:2048'],
+            'status' => ['nullable', 'in:A,N'],
+            'status_pendaftaran' => ['nullable', 'in:P,L,T'],
+        ]);
+
+        $nim = Crypt::decryptString($validasi['code']);
+
+        return (new ServiceMahasiswa)->updateMahasiswa($nim, $validasi);
+    }
+
+    public function DeleteMahasiswa($code)
+    {
+        $nim = Crypt::decryptString($code);
+
+        return (new ServiceMahasiswa)->deleteMahasiswa($nim);
+    }
 }
