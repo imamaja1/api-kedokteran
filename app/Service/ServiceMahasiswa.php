@@ -146,7 +146,10 @@ class ServiceMahasiswa
         return response()->json([
             'status' => true,
             'message' => 'Mahasiswa berhasil dibuat',
-            'data' => $mahasiswa,
+            'data' => [
+                'nim' => $mahasiswa->nim,
+                'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
+            ],
         ], 201);
     }
 
@@ -175,7 +178,10 @@ class ServiceMahasiswa
         return response()->json([
             'status' => true,
             'message' => 'Mahasiswa berhasil diperbarui',
-            'data' => $mahasiswa,
+            'data' => [
+                'nim' => $mahasiswa->nim,
+                'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
+            ],
         ]);
     }
 
@@ -197,14 +203,159 @@ class ServiceMahasiswa
             return response()->json([
                 'status' => false,
                 'message' => 'Gagal menghapus Mahasiswa: '.$th->getMessage(),
-                'data' => $mahasiswa,
+                'data' => [
+                    'nim' => $mahasiswa->nim,
+                    'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
+                ],
             ], 500);
         }
 
         return response()->json([
             'status' => true,
             'message' => 'Mahasiswa berhasil dihapus',
-            'data' => $mahasiswa,
+            'data' => [
+                'nim' => $mahasiswa->nim,
+                'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
+            ],
+        ]);
+    }
+
+    public function getMahasiswaTrash($nim = null, $kode_prodi = null, $angkatan = null)
+    {
+        $query = Mahasiswa::onlyTrashed();
+
+        if ($nim) {
+            $query->where('nim', $nim);
+        }
+
+        if ($kode_prodi) {
+            $query->where('program_studi_kode', $kode_prodi);
+        }
+
+        if ($angkatan) {
+            $query->whereRaw('substr(nim, 1, 2) = ?', [$angkatan]);
+        }
+
+        $data = $query->get()->map(function ($item, $nomor) {
+            return [
+                'id' => $nomor + 1,
+                'code' => Crypt::encryptString($item->nim),
+                'nim' => $item->nim,
+                'nik' => $item->nik,
+                'program_studi_kode' => $item->program_studi_kode,
+                'nama_mahasiswa' => $item->nama_mahasiswa,
+                'tempat_lahir' => $item->tempat_lahir,
+                'tanggal_lahir' => $item->tanggal_lahir,
+                'alamat' => $item->alamat,
+                'kota' => $item->kota,
+                'propinsi' => $item->propinsi,
+                'telepon' => $item->telepon,
+                'jenis_kelamin' => $item->jenis_kelamin,
+                'agama' => $item->agama,
+                'golongan_darah' => $item->golongan_darah,
+                'kewarganegaraan' => $item->kewarganegaraan,
+                'email' => $item->email,
+                'nama_ayah' => $item->nama_ayah,
+                'agama_ayah' => $item->agama_ayah,
+                'pekerjaan_ayah' => $item->pekerjaan_ayah,
+                'nama_ibu' => $item->nama_ibu,
+                'agama_ibu' => $item->agama_ibu,
+                'pekerjaan_ibu' => $item->pekerjaan_ibu,
+                'alamat_orangtua' => $item->alamat_orangtua,
+                'kota_orangtua' => $item->kota_orangtua,
+                'propinsi_orangtua' => $item->propinsi_orangtua,
+                'telepon_orangtua' => $item->telepon_orangtua,
+                'foto' => $item->foto,
+                'status' => $item->status,
+                'status_pendaftaran' => $item->status_pendaftaran,
+                'deleted_at' => $item->deleted_at,
+            ];
+        });
+
+        if ($data->isEmpty()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Tidak ada Mahasiswa yang dihapus',
+                'jumlah' => 0,
+                'data' => null,
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Data Mahasiswa (Trash)',
+            'jumlah' => $data->count(),
+            'data' => $data,
+        ]);
+    }
+
+    public function restoreMahasiswa($nim)
+    {
+        $mahasiswa = Mahasiswa::onlyTrashed()->where('nim', $nim)->first();
+
+        if (! $mahasiswa) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Mahasiswa tidak ditemukan di trash',
+                'data' => null,
+            ], 404);
+        }
+
+        try {
+            $mahasiswa->restore();
+        } catch (\Throwable $th) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Gagal memulihkan Mahasiswa: '.$th->getMessage(),
+                'data' => [
+                    'nim' => $mahasiswa->nim,
+                    'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
+                ],
+            ], 500);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Mahasiswa berhasil dipulihkan',
+            'data' => [
+                'nim' => $mahasiswa->nim,
+                'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
+            ],
+        ]);
+    }
+
+    public function forceDeleteMahasiswa($nim)
+    {
+        $mahasiswa = Mahasiswa::onlyTrashed()->where('nim', $nim)->first();
+
+        if (! $mahasiswa) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Mahasiswa tidak ditemukan di trash',
+                'data' => null,
+            ], 404);
+        }
+
+        try {
+            $mahasiswa->forceDelete();
+        } catch (\Throwable $th) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Gagal menghapus permanen Mahasiswa: '.$th->getMessage(),
+                'data' => [
+                    'nim' => $mahasiswa->nim,
+                    'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
+                ],
+            ], 500);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Mahasiswa berhasil dihapus permanen',
+            'data' => [
+                'nim' => $mahasiswa->nim,
+                'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
+            ],
         ]);
     }
 }

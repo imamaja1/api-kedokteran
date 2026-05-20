@@ -362,6 +362,35 @@ class MasterDataController extends Controller
         return (new ServiceDosen)->deleteDosen($id);
     }
 
+    public function GetDosenTrash(Request $request)
+    {
+        $validated = $request->validate([
+            'kode_program_studi' => ['nullable', 'string'],
+            'nama_dosen' => ['nullable', 'string'],
+            'alamat_email' => ['nullable', 'email'],
+        ]);
+
+        return (new ServiceDosen)->getDosenTrash(
+            $validated['kode_program_studi'] ?? null,
+            $validated['nama_dosen'] ?? null,
+            $validated['alamat_email'] ?? null,
+        );
+    }
+
+    public function RestoreDosen($code)
+    {
+        $id = Crypt::decryptString($code);
+
+        return (new ServiceDosen)->restoreDosen($id);
+    }
+
+    public function ForceDeleteDosen($code)
+    {
+        $id = Crypt::decryptString($code);
+
+        return (new ServiceDosen)->forceDeleteDosen($id);
+    }
+
     public function GetMahasiswa(Request $request)
     {
         $validated = $request->validate([
@@ -406,32 +435,35 @@ class MasterDataController extends Controller
         $validasi = $request->validate([
             'nim' => ['required', 'string', 'max:20', 'unique:mahasiswa,nim'],
             'nik' => ['required', 'string', 'max:20'],
+            'npm' => ['required', 'string', 'max:20'],
+            'nomor_pendaftaran' => ['required', 'string', 'max:20'],
+            'nomor_pendaftaran_ulang' => ['required', 'string', 'max:20'],
             'program_studi_kode' => ['required', 'exists:program_studi,kode_program_studi'],
             'nama_mahasiswa' => ['required', 'string', 'max:100'],
-            'tempat_lahir' => ['nullable', 'string', 'max:50'],
-            'tanggal_lahir' => ['nullable', 'date'],
-            'alamat' => ['nullable', 'string', 'max:255'],
-            'kota' => ['nullable', 'string', 'max:50'],
-            'propinsi' => ['nullable', 'string', 'max:50'],
+            'tempat_lahir' => ['required', 'string', 'max:50'],
+            'tanggal_lahir' => ['required', 'date'],
+            'alamat' => ['required', 'string', 'max:255'],
+            'kota' => ['required', 'string', 'max:50'],
+            'propinsi' => ['required', 'string', 'max:50'],
             'telepon' => ['nullable', 'string', 'max:20'],
-            'jenis_kelamin' => ['nullable', 'in:L,P'],
-            'agama' => ['nullable', 'string', 'max:20'],
-            'golongan_darah' => ['nullable', 'in:A,B,AB,O'],
-            'kewarganegaraan' => ['nullable', 'string', 'max:50'],
-            'email' => ['nullable', 'email', 'max:100'],
-            'nama_ayah' => ['nullable', 'string', 'max:100'],
-            'agama_ayah' => ['nullable', 'string', 'max:20'],
-            'pekerjaan_ayah' => ['nullable', 'string', 'max:100'],
-            'nama_ibu' => ['nullable', 'string', 'max:100'],
-            'agama_ibu' => ['nullable', 'string', 'max:20'],
-            'pekerjaan_ibu' => ['nullable', 'string', 'max:100'],
-            'alamat_orangtua' => ['nullable', 'string', 'max:255'],
-            'kota_orangtua' => ['nullable', 'string', 'max:50'],
-            'propinsi_orangtua' => ['nullable', 'string', 'max:50'],
-            'telepon_orangtua' => ['nullable', 'string', 'max:20'],
+            'jenis_kelamin' => ['required', 'in:L,P'],
+            'agama' => ['required', 'string', 'max:20'],
+            'golongan_darah' => ['required', 'in:A,B,AB,O'],
+            'kewarganegaraan' => ['required', 'string', 'max:50'],
+            'email' => ['required', 'email', 'max:100'],
+            'nama_ayah' => ['required', 'string', 'max:100'],
+            'agama_ayah' => ['required', 'string', 'max:20'],
+            'pekerjaan_ayah' => ['required', 'string', 'max:100'],
+            'nama_ibu' => ['required', 'string', 'max:100'],
+            'agama_ibu' => ['required', 'string', 'max:20'],
+            'pekerjaan_ibu' => ['required', 'string', 'max:100'],
+            'alamat_orangtua' => ['required', 'string', 'max:255'],
+            'kota_orangtua' => ['required', 'string', 'max:50'],
+            'propinsi_orangtua' => ['required', 'string', 'max:50'],
+            'telepon_orangtua' => ['required', 'string', 'max:20'],
             'foto' => ['nullable', 'image', 'max:2048'],
-            'status' => ['nullable', 'in:A,N'],
-            'status_pendaftaran' => ['nullable', 'in:P,L,T'],
+            'status' => ['required', 'in:A,N'],
+            'status_pendaftaran' => ['required', 'in:B,L,T'],
         ]);
 
         return (new ServiceMahasiswa)->storeMahasiswa($validasi);
@@ -454,10 +486,13 @@ class MasterDataController extends Controller
 
         $validasi = $request->validate([
             'code' => ['required', 'string'],
-            'nim' => ['required', 'string', 'max:20'],
-            'nik' => ['required', 'string', 'max:20'],
-            'program_studi_kode' => ['required', 'exists:program_studi,kode_program_studi'],
-            'nama_mahasiswa' => ['required', 'string', 'max:100'],
+            'nim' => ['nullable', 'string', 'max:20'],
+            'nik' => ['nullable', 'string', 'max:20'],
+            'npm' => ['nullable', 'string', 'max:20'],
+            'nomor_pendaftaran' => ['nullable', 'string', 'max:20'],
+            'nomor_pendaftaran_ulang' => ['nullable', 'string', 'max:20'],
+            'program_studi_kode' => ['nullable', 'exists:program_studi,kode_program_studi'],
+            'nama_mahasiswa' => ['nullable', 'string', 'max:100'],
             'tempat_lahir' => ['nullable', 'string', 'max:50'],
             'tanggal_lahir' => ['nullable', 'date'],
             'alamat' => ['nullable', 'string', 'max:255'],
@@ -481,7 +516,7 @@ class MasterDataController extends Controller
             'telepon_orangtua' => ['nullable', 'string', 'max:20'],
             'foto' => ['nullable', 'image', 'max:2048'],
             'status' => ['nullable', 'in:A,N'],
-            'status_pendaftaran' => ['nullable', 'in:P,L,T'],
+            'status_pendaftaran' => ['nullable', 'in:B,L,T'],
         ]);
 
         $nim = Crypt::decryptString($validasi['code']);
@@ -494,5 +529,34 @@ class MasterDataController extends Controller
         $nim = Crypt::decryptString($code);
 
         return (new ServiceMahasiswa)->deleteMahasiswa($nim);
+    }
+
+    public function GetMahasiswaTrash(Request $request)
+    {
+        $validated = $request->validate([
+            'nim' => ['nullable', 'string', 'max:20', 'regex:/^\d+$/'],
+            'code' => ['nullable', 'string', 'max:20', 'alpha_num'],
+            'angkatan' => ['nullable', 'digits:4'],
+        ]);
+
+        return (new ServiceMahasiswa)->getMahasiswaTrash(
+            isset($validated['nim']) ? $validated['nim'] : null,
+            isset($validated['code']) ? Crypt::decryptString($validated['code']) : null,
+            isset($validated['angkatan']) ? substr($validated['angkatan'], 2, 2) : null,
+        );
+    }
+
+    public function RestoreMahasiswa($code)
+    {
+        $nim = Crypt::decryptString($code);
+
+        return (new ServiceMahasiswa)->restoreMahasiswa($nim);
+    }
+
+    public function ForceDeleteMahasiswa($code)
+    {
+        $nim = Crypt::decryptString($code);
+
+        return (new ServiceMahasiswa)->forceDeleteMahasiswa($nim);
     }
 }

@@ -176,4 +176,112 @@ class ServiceDosen
             'data' => $dosen,
         ]);
     }
+
+    public function getDosenTrash(?string $kode_program_studi = null, ?string $nama_dosen = null, ?string $alamat_email = null)
+    {
+        $data = Dosen::onlyTrashed()
+            ->with('programStudi')
+            ->when($kode_program_studi, function ($query, $kode) {
+                return $query->where('kode_program_studi', $kode);
+            })
+            ->when($nama_dosen, function ($query, $nama) {
+                return $query->where('nama_dosen', 'like', "%{$nama}%");
+            })
+            ->when($alamat_email, function ($query, $email) {
+                return $query->where('alamat_email', 'like', "%{$email}%");
+            })
+            ->get()
+            ->map(function ($item, $nomor) {
+                return [
+                    'id' => $nomor + 1,
+                    'code' => Crypt::encryptString($item->kode_dosen),
+                    'nama_dosen' => $item->nama_dosen,
+                    'nik' => $item->nik,
+                    'no_telp' => $item->no_telp,
+                    'alamat_email' => $item->alamat_email,
+                    'field_studi' => $item->field_studi,
+                    'alumni' => $item->alumni,
+                    'homebase' => $item->programStudi?->nama_program_studi,
+                    'status_dosen' => $item->status_dosen,
+                    'aktif' => $item->aktif,
+                    'status_login' => $item->status_login,
+                    'signature' => $item->signature,
+                    'deleted_at' => $item->deleted_at,
+                ];
+            });
+
+        if ($data->isEmpty()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Tidak ada Dosen yang dihapus',
+                'jumlah' => 0,
+                'data' => null,
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'API Dosen (Trash)',
+            'jumlah' => $data->count(),
+            'data' => $data,
+        ]);
+    }
+
+    public function restoreDosen(string $id)
+    {
+        $dosen = Dosen::onlyTrashed()->where('kode_dosen', $id)->first();
+
+        if (! $dosen) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Dosen tidak ditemukan di trash',
+                'data' => null,
+            ], 404);
+        }
+
+        try {
+            $dosen->restore();
+        } catch (\Throwable) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Gagal memulihkan Dosen',
+                'data' => $dosen,
+            ], 500);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Dosen berhasil dipulihkan',
+            'data' => $dosen,
+        ]);
+    }
+
+    public function forceDeleteDosen(string $id)
+    {
+        $dosen = Dosen::onlyTrashed()->where('kode_dosen', $id)->first();
+
+        if (! $dosen) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Dosen tidak ditemukan di trash',
+                'data' => null,
+            ], 404);
+        }
+
+        try {
+            $dosen->forceDelete();
+        } catch (\Throwable) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Gagal menghapus permanen Dosen',
+                'data' => $dosen,
+            ], 500);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Dosen berhasil dihapus permanen',
+            'data' => $dosen,
+        ]);
+    }
 }

@@ -44,12 +44,15 @@ Route::prefix('api/staff')
             Route::put('program-studi', [MasterDataController::class, 'UpdateProgramStudi']);
             Route::delete('program-studi/{code}', [MasterDataController::class, 'DeleteProgramStudi']);
 
-            // Dosen
+            // Dosen (dengan soft delete)
             Route::get('dosen', [MasterDataController::class, 'GetDosen']);
             Route::get('dosen-show', [MasterDataController::class, 'GetOneDosen']);
+            Route::get('dosen-trash', [MasterDataController::class, 'GetDosenTrash']);
             Route::post('dosen', [MasterDataController::class, 'StoreDosen']);
             Route::put('dosen', [MasterDataController::class, 'UpdateDosen']);
             Route::delete('dosen/{code}', [MasterDataController::class, 'DeleteDosen']);
+            Route::post('dosen/{code}/restore', [MasterDataController::class, 'RestoreDosen']);
+            Route::delete('dosen/{code}/force', [MasterDataController::class, 'ForceDeleteDosen']);
 
             // nama kurikulum
             Route::get('nama-kurikulum', [MasterDataController::class, 'GetNamaKurikulum']);
@@ -65,12 +68,15 @@ Route::prefix('api/staff')
             Route::put('tahun-akademik', [MasterDataController::class, 'UpdateTahunAkademik']);
             Route::delete('tahun-akademik/{code}', [MasterDataController::class, 'DeleteTahunAkademik']);
 
-            // mahasiswa
+            // mahasiswa (dengan soft delete)
             Route::get('mahasiswa', [MasterDataController::class, 'GetMahasiswa']);
             Route::get('mahasiswa-show', [MasterDataController::class, 'GetOneMahasiswa']);
+            Route::get('mahasiswa-trash', [MasterDataController::class, 'GetMahasiswaTrash']);
             Route::post('mahasiswa', [MasterDataController::class, 'StoreMahasiswa']);
             Route::put('mahasiswa', [MasterDataController::class, 'UpdateMahasiswa']);
             Route::delete('mahasiswa/{code}', [MasterDataController::class, 'DeleteMahasiswa']);
+            Route::post('mahasiswa/{code}/restore', [MasterDataController::class, 'RestoreMahasiswa']);
+            Route::delete('mahasiswa/{code}/force', [MasterDataController::class, 'ForceDeleteMahasiswa']);
 
         });
         // fallback dalam group — return 404 bukan 401

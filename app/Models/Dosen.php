@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Laravel\Sanctum\HasApiTokens;
 
 class Dosen extends Authenticatable
 {
-    use HasApiTokens;
+    use HasApiTokens, SoftDeletes;
 
     protected $table = 'dosen';
     protected $primaryKey = 'kode_dosen';
