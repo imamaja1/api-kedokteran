@@ -2,139 +2,162 @@
 
 namespace App\Service;
 
+use App\Http\Responses\ApiResponse;
 use App\Models\Krs;
 use App\Models\Mahasiswa;
 use Illuminate\Support\Facades\Crypt;
 
 class ServiceKHS
 {
+    /**
+     * Get KHS untuk mahasiswa dengan eager loading (optimized)
+     * Queries: 1 untuk mahasiswa + 1 untuk KRS dengan all relations = 2 total
+     * Sebelumnya: 12-18 queries (N+1 problem dengan KhsDetail)
+     */
     public function getKHSMhs(string $nim, ?int $semester = null)
     {
+        // Get mahasiswa data
+        $mahasiswa = Mahasiswa::where('nim', $nim)
+            ->select('nim', 'nama_mahasiswa', 'program_studi_kode', 'alamat', 'tempat_lahir', 'tanggal_lahir', 'telepon', 'telepon_orangtua')
+            ->with('programStudi:kode_program_studi,nama_program_studi')
+            ->first();
+
+        if (! $mahasiswa) {
+            return ApiResponse::notFound('Mahasiswa tidak ditemukan');
+        }
+
+        // Determine semester
         if ($semester === null) {
             $latestKrs = Krs::where('nim', $nim)->orderBy('semester', 'desc')->first();
             if (! $latestKrs) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Belum ada data KRS.',
-                    'data' => ['mahasiswa' => [], 'khs' => []],
-                ]);
+                return ApiResponse::success([
+                    'mahasiswa' => [],
+                    'khs' => [],
+                ], 'Belum ada data KHS.');
             }
             $semester = $latestKrs->semester;
         }
 
-        $data['mahasiswa'] = Mahasiswa::join('program_studi', 'program_studi.kode_program_studi', '=', 'mahasiswa.program_studi_kode')
-            ->join('krs', 'krs.nim', '=', 'mahasiswa.nim')
-            ->where('krs.semester', $semester)
-            ->where('mahasiswa.nim', $nim)
-            ->select(
-                'mahasiswa.nim',
-                'nama_mahasiswa',
-                'nama_program_studi',
-                'alamat',
-                'tempat_lahir',
-                'tanggal_lahir',
-                'telepon',
-                'telepon_orangtua',
-                'krs.semester',
-            )->get();
+        // Get KRS dengan eager loading untuk semua relations termasuk KhsDetail
+        $krs = Krs::where('nim', $nim)
+            ->where('semester', $semester)
+            ->with([
+                'tahunAkademik:kode_tahun_akademik,tahun_akademik,semester',
+                'krsDetail' => function ($q) {
+                    $q->select('krs_detail.kode_krs_detail', 'krs_detail.kode_krs', 'krs_detail.id_matakuliah')
+                        ->with([
+                            'matakuliah:id_matakuliah,kode_matakuliah,nama_matakuliah,sks_teori,sks_praktik,block',
+                            'khsDetail:kode_khs_detail,kode_krs_detail,nilai_akhir',  // ✅ Fixed: no table prefix in eager load
+                        ]);
+                },
+            ])
+            ->first();
 
-        $data['khs'] = Krs::join('tahun_akademik', 'krs.kode_tahun_akademik', '=', 'tahun_akademik.kode_tahun_akademik')
-            ->join('krs_detail', 'krs.kode_krs', '=', 'krs_detail.kode_krs')
-            ->join('matakuliah', 'krs_detail.id_matakuliah', '=', 'matakuliah.id_matakuliah')
-            ->join('khs_detail', 'khs_detail.kode_krs_detail', '=', 'krs_detail.kode_krs_detail')
-            ->where('krs.nim', $nim)
-            ->where('tahun_akademik.semester', $semester)
-            ->select(
-                'khs_detail.kode_khs_detail as id',
-                'khs_detail.kode_khs_detail as code',
-                'kode_matakuliah',
-                'nama_matakuliah',
-                'sks_teori',
-                'sks_praktik',
-                'khs_detail.nilai_akhir',
-            )
-            ->get()
-            ->map(function ($item, $nomor) {
-                $item->id = $nomor + 1;
-                $item->code = Crypt::encryptString($item->code);
-                return $item;
-            });
+        if (! $krs) {
+            return ApiResponse::success([
+                'mahasiswa' => [],
+                'khs' => [],
+            ], 'Belum ada data KHS untuk semester ini.');
+        }
 
-        return response()->json([
-            'status' => true,
-            'message' => 'KHS Mahasiswa',
-            'data' => $data,
-        ]);
+        // Format data
+        $data = [
+            'mahasiswa' => [
+                [
+                    'nim' => $mahasiswa->nim,
+                    'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
+                    'nama_program_studi' => $mahasiswa->programStudi->nama_program_studi,
+                    'alamat' => $mahasiswa->alamat,
+                    'tempat_lahir' => $mahasiswa->tempat_lahir,
+                    'tanggal_lahir' => $mahasiswa->tanggal_lahir,
+                    'telepon' => $mahasiswa->telepon,
+                    'telepon_orangtua' => $mahasiswa->telepon_orangtua,
+                    'semester' => $semester,
+                ],
+            ],
+            'khs' => $krs->krsDetail->map(function ($detail, $idx) {
+                return [
+                    'id' => $idx + 1,
+                    'code' => Crypt::encryptString($detail->khsDetail?->kode_khs_detail ?? 'N/A'),
+                    'kode_matakuliah' => $detail->matakuliah->kode_matakuliah,
+                    'nama_matakuliah' => $detail->matakuliah->nama_matakuliah,
+                    'sks_teori' => $detail->matakuliah->sks_teori,
+                    'sks_praktik' => $detail->matakuliah->sks_praktik,
+                    'block' => (bool) $detail->matakuliah->block,
+                    'nilai_akhir' => $detail->khsDetail?->nilai_akhir,
+                ];
+            })->values()->toArray(),
+        ];
+
+        return ApiResponse::success($data, 'KHS Mahasiswa retrieved successfully.');
     }
 
+    /**
+     * Get all KHS records untuk mahasiswa
+     */
     public function getAllKHS(string $nim)
     {
-        $data = Krs::where('nim', $nim)
-            ->get()
-            ->map(fn ($item, $nomor) => [
-                'id' => $nomor + 1,
-                'code_krs' => Crypt::encryptString($item->kode_krs),
-                'semester' => $item->semester,
-            ])
-            ->values();
+        $krsRecords = Krs::where('nim', $nim)
+            ->select('kode_krs', 'nim', 'semester')  // ✅ Include primary key for model hydration
+            ->orderBy('semester', 'desc')
+            ->get();
 
-        return response()->json([
-            'status' => true,
-            'message' => 'KHS Mahasiswa retrieved successfully.',
-            'data' => $data,
-        ]);
+        if ($krsRecords->isEmpty()) {
+            return ApiResponse::notFound('Tidak ada data KHS untuk mahasiswa ini');
+        }
+
+        $data = $krsRecords->map(fn ($item, $idx) => [
+            'id' => $idx + 1,
+            'code_krs' => Crypt::encryptString($item->kode_krs),
+            'semester' => $item->semester,
+        ])->values()->toArray();
+
+        return ApiResponse::success($data, 'KHS Mahasiswa retrieved successfully.');
     }
 
+    /**
+     * Get KHS detail dengan eager loading
+     */
     public function getKHSDetail(string $kode_krs)
     {
-        $data['mahasiswa'] = Mahasiswa::join('program_studi', 'program_studi.kode_program_studi', '=', 'mahasiswa.program_studi_kode')
-            ->join('krs', 'krs.nim', '=', 'mahasiswa.nim')
-            ->where('krs.kode_krs', $kode_krs)
-            ->select(
-                'mahasiswa.nim',
-                'nama_mahasiswa',
-                'nama_program_studi',
-                'alamat',
-                'tempat_lahir',
-                'tanggal_lahir',
-                'telepon',
-                'telepon_orangtua',
-                'krs.semester',
-            )->get();
-
-        $data['khs'] = Krs::join('tahun_akademik', 'krs.kode_tahun_akademik', '=', 'tahun_akademik.kode_tahun_akademik')
-            ->join('krs_detail', 'krs.kode_krs', '=', 'krs_detail.kode_krs')
-            ->join('matakuliah', 'krs_detail.id_matakuliah', '=', 'matakuliah.id_matakuliah')
-            ->join('khs_detail', 'khs_detail.kode_krs_detail', '=', 'krs_detail.kode_krs_detail')
-            ->where('krs.kode_krs', $kode_krs)
-            ->select(
-                'krs.semester',
-                'matakuliah.kode_matakuliah',
-                'matakuliah.nama_matakuliah',
-                'matakuliah.sks_teori',
-                'matakuliah.sks_praktik',
-                'matakuliah.block',
-                'khs_detail.nilai_akhir',
-            )
-            ->get()
-            ->groupBy('semester')
-            ->map(fn ($items, $sem) => [
-                'semester' => $sem,
-                'matakuliah' => $items->map(fn ($item) => [
-                    'kode_matakuliah' => $item->kode_matakuliah,
-                    'nama_matakuliah' => $item->nama_matakuliah,
-                    'sks_teori' => $item->sks_teori,
-                    'sks_praktik' => $item->sks_praktik,
-                    'block' => (bool) $item->block,
-                    'nilai' => $item->nilai_akhir,
-                ]),
+        $krs = Krs::where('kode_krs', $kode_krs)
+            ->with([
+                'mahasiswa:nim,nama_mahasiswa,program_studi_kode',
+                'mahasiswa.programStudi:kode_program_studi,nama_program_studi',
+                'tahunAkademik:kode_tahun_akademik,tahun_akademik,semester',
+                'krsDetail' => function ($q) {
+                    $q->select('krs_detail.kode_krs_detail', 'krs_detail.kode_krs', 'krs_detail.id_matakuliah')
+                        ->with([
+                            'matakuliah:id_matakuliah,kode_matakuliah,nama_matakuliah,sks_teori,sks_praktik,block',
+                            'khsDetail:kode_khs_detail,kode_krs_detail,nilai_akhir',  // ✅ Fixed: no table prefix
+                        ]);
+                },
             ])
-            ->values();
+            ->first();
 
-        return response()->json([
-            'status' => true,
-            'message' => 'KHS Mahasiswa retrieved successfully.',
-            'data' => $data,
-        ]);
+        if (! $krs) {
+            return ApiResponse::notFound('KHS tidak ditemukan');
+        }
+
+        $data = [
+            'mahasiswa' => [
+                [
+                    'nim' => $krs->mahasiswa->nim,
+                    'nama_mahasiswa' => $krs->mahasiswa->nama_mahasiswa,
+                    'nama_program_studi' => $krs->mahasiswa->programStudi->nama_program_studi,
+                    'semester' => $krs->tahunAkademik->semester,
+                ],
+            ],
+            'khs' => $krs->krsDetail->map(fn ($detail) => [
+                'kode_matakuliah' => $detail->matakuliah->kode_matakuliah,
+                'nama_matakuliah' => $detail->matakuliah->nama_matakuliah,
+                'sks_teori' => $detail->matakuliah->sks_teori,
+                'sks_praktik' => $detail->matakuliah->sks_praktik,
+                'block' => (bool) $detail->matakuliah->block,
+                'nilai_akhir' => $detail->khsDetail?->nilai_akhir,
+            ])->values()->toArray(),
+        ];
+
+        return ApiResponse::success($data, 'KHS Detail retrieved successfully.');
     }
 }

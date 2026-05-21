@@ -184,27 +184,8 @@ class ServiceDosen
             return $this->formatDosenTrash($item, $index + 1);
         });
 
-        if ($paginator->isEmpty()) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Tidak ada Dosen yang dihapus',
-                'data' => null,
-            ], 404);
-        }
-
-        return response()->json([
-            'status' => true,
-            'message' => 'API Dosen (Trash)',
-            'jumlah' => $paginator->total(),
-            'data' => $paginator->items(),
-            'pagination' => [
-                'current_page' => $paginator->currentPage(),
-                'per_page' => $paginator->perPage(),
-                'last_page' => $paginator->lastPage(),
-                'from' => $paginator->firstItem(),
-                'to' => $paginator->lastItem(),
-            ],
-        ]);
+        // Return 200 dengan empty data jika kosong (bukan 404 untuk collection queries)
+        return ApiResponse::paginated($paginator, 'Data Dosen (Trash)');
     }
 
     public function restoreDosen(string $id): JsonResponse

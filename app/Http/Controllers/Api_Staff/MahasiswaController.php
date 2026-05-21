@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api_Staff;
 
 use App\Http\Controllers\Controller;
 use App\Service\ServiceMahasiswa;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -35,7 +36,14 @@ class MahasiswaController extends Controller
             'code' => ['required', 'string'],
         ]);
 
-        $nim = Crypt::decryptString($request->query('code'));
+        try {
+            $nim = Crypt::decryptString($request->query('code'));
+        } catch (DecryptException) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Format code tidak valid',
+            ], 422);
+        }
 
         return $this->service->getOneMahasiswa($nim);
     }
@@ -80,6 +88,11 @@ class MahasiswaController extends Controller
             'status' => ['required', 'in:A,N'],
             'status_pendaftaran' => ['required', 'in:B,L,T'],
         ]);
+
+        // Handle foto upload
+        if ($request->hasFile('foto')) {
+            $validasi['foto'] = $request->file('foto')->store('mahasiswa');
+        }
 
         return $this->service->storeMahasiswa($validasi);
     }
@@ -126,14 +139,33 @@ class MahasiswaController extends Controller
             'status_pendaftaran' => ['nullable', 'in:B,L,T'],
         ]);
 
-        $nim = Crypt::decryptString($validasi['code']);
+        try {
+            $nim = Crypt::decryptString($validasi['code']);
+        } catch (DecryptException) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Format code tidak valid',
+            ], 422);
+        }
+
+        // Handle foto upload
+        if ($request->hasFile('foto')) {
+            $validasi['foto'] = $request->file('foto')->store('mahasiswa');
+        }
 
         return $this->service->updateMahasiswa($nim, $validasi);
     }
 
     public function destroy(string $code): JsonResponse
     {
-        $nim = Crypt::decryptString($code);
+        try {
+            $nim = Crypt::decryptString($code);
+        } catch (DecryptException) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Format code tidak valid',
+            ], 422);
+        }
 
         return $this->service->deleteMahasiswa($nim);
     }
@@ -155,14 +187,28 @@ class MahasiswaController extends Controller
 
     public function restore(string $code): JsonResponse
     {
-        $nim = Crypt::decryptString($code);
+        try {
+            $nim = Crypt::decryptString($code);
+        } catch (DecryptException) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Format code tidak valid',
+            ], 422);
+        }
 
         return $this->service->restoreMahasiswa($nim);
     }
 
     public function forceDelete(string $code): JsonResponse
     {
-        $nim = Crypt::decryptString($code);
+        try {
+            $nim = Crypt::decryptString($code);
+        } catch (DecryptException) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Format code tidak valid',
+            ], 422);
+        }
 
         return $this->service->forceDeleteMahasiswa($nim);
     }
@@ -177,7 +223,7 @@ class MahasiswaController extends Controller
             $request->merge([
                 $field => Crypt::decryptString($request->input($field)),
             ]);
-        } catch (\Illuminate\Contracts\Encryption\DecryptException) {
+        } catch (DecryptException) {
             return response()->json([
                 'status' => false,
                 'message' => "Format {$field} tidak valid",

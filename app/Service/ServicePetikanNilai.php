@@ -2,148 +2,188 @@
 
 namespace App\Service;
 
+use App\Http\Responses\ApiResponse;
 use App\Models\Krs;
 use App\Models\Kurikulum;
 use App\Models\KurikulumAngkatan;
 use App\Models\Mahasiswa;
+use Illuminate\Support\Facades\Cache;
 
 class ServicePetikanNilai
 {
+    private const CACHE_TTL = 3600; // 1 jam
+
+    /**
+     * Get petikan nilai untuk mahasiswa berdasarkan NIM (optimized dengan cache)
+     * Cache key: petikan_nilai::{nim}
+     */
     public function petikan_nilai_by_nim(string $nim, string $kode_prodi)
     {
-        $angkatan = substr((string) $nim, 0, 2);
+        $cacheKey = "petikan_nilai::{$nim}::{$kode_prodi}";
 
-        $data['mahasiswa'] = Mahasiswa::join('program_studi', 'program_studi.kode_program_studi', '=', 'mahasiswa.program_studi_kode')
-            ->where('mahasiswa.nim', $nim)
-            ->select(
-                'mahasiswa.nim',
-                'nama_mahasiswa',
-                'nama_program_studi',
-                'alamat',
-                'tempat_lahir',
-                'tanggal_lahir',
-                'telepon',
-                'telepon_orangtua',
-            )->get();
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($nim, $kode_prodi) {
+            $angkatan = substr($nim, 0, 2);
 
-        $data['kurikulum'] = KurikulumAngkatan::select(
-            'kode_kurikulum_angkatan as id',
-            'kurikulum_angkatan.angkatan',
-            'nama_kurikulum.nama_kurikulum',
-            'nama_kurikulum.kode_nama_kurikulum',
-        )
-            ->join('nama_kurikulum', 'kurikulum_angkatan.kode_nama_kurikulum', '=', 'nama_kurikulum.kode_nama_kurikulum')
-            ->whereRaw('substr(angkatan, 3, 2) = ?', [$angkatan])
-            ->where('nama_kurikulum.kode_program_studi', $kode_prodi)
-            ->first();
+            $mahasiswa = Mahasiswa::where('nim', $nim)
+                ->select('nim', 'nama_mahasiswa', 'program_studi_kode', 'alamat', 'tempat_lahir', 'tanggal_lahir', 'telepon', 'telepon_orangtua')
+                ->with('programStudi:kode_program_studi,nama_program_studi')
+                ->first();
 
-        if (! $data['kurikulum']) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Kurikulum untuk angkatan mahasiswa tidak ditemukan.',
-                'data' => $data,
-            ]);
-        }
+            if (! $mahasiswa) {
+                return ApiResponse::notFound('Mahasiswa tidak ditemukan');
+            }
 
-        $data['data_kurikulum'] = $this->buildKurikulumWithNilai($nim, $data['kurikulum']->kode_nama_kurikulum);
+            $kurikulumAngkatan = KurikulumAngkatan::select(
+                'kode_kurikulum_angkatan',
+                'angkatan',
+                'kode_nama_kurikulum',
+            )
+                ->with('namaKurikulum:kode_nama_kurikulum,nama_kurikulum,kode_program_studi')
+                ->whereRaw('substr(angkatan, 3, 2) = ?', [$angkatan])
+                ->whereHas('namaKurikulum', fn ($q) => $q->where('kode_program_studi', $kode_prodi))
+                ->first();
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Petikan nilai retrieved successfully.',
-            'data' => $data,
-        ]);
+            if (! $kurikulumAngkatan) {
+                return ApiResponse::notFound('Kurikulum untuk angkatan mahasiswa tidak ditemukan.');
+            }
+
+            $data = [
+                'mahasiswa' => [
+                    'nim' => $mahasiswa->nim,
+                    'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
+                    'nama_program_studi' => $mahasiswa->programStudi?->nama_program_studi,
+                    'alamat' => $mahasiswa->alamat,
+                    'tempat_lahir' => $mahasiswa->tempat_lahir,
+                    'tanggal_lahir' => $mahasiswa->tanggal_lahir,
+                    'telepon' => $mahasiswa->telepon,
+                    'telepon_orangtua' => $mahasiswa->telepon_orangtua,
+                ],
+                'kurikulum' => [
+                    'id' => $kurikulumAngkatan->kode_kurikulum_angkatan,
+                    'angkatan' => $kurikulumAngkatan->angkatan,
+                    'nama_kurikulum' => $kurikulumAngkatan->namaKurikulum?->nama_kurikulum,
+                    'kode_nama_kurikulum' => $kurikulumAngkatan->kode_nama_kurikulum,
+                ],
+                'data_kurikulum' => $this->buildKurikulumWithNilai($nim, $kurikulumAngkatan->kode_nama_kurikulum),
+            ];
+
+            return ApiResponse::success($data, 'Petikan nilai retrieved successfully.');
+        });
     }
 
+    /**
+     * Get transkrip nilai lengkap untuk mahasiswa (optimized dengan cache)
+     */
     public function getTranskrip(string $nim)
     {
-        $angkatan = substr((string) $nim, 0, 2);
+        $cacheKey = "transkrip::{$nim}";
 
-        $mahasiswa = Mahasiswa::join('program_studi', 'program_studi.kode_program_studi', '=', 'mahasiswa.program_studi_kode')
-            ->where('mahasiswa.nim', $nim)
-            ->select(
-                'mahasiswa.nim',
-                'nama_mahasiswa',
-                'nama_program_studi',
-                'alamat',
-                'tempat_lahir',
-                'tanggal_lahir',
-                'telepon',
-                'telepon_orangtua',
-            )->get();
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($nim) {
+            $angkatan = substr($nim, 0, 2);
 
-        $kode_prodi = Mahasiswa::where('nim', $nim)->value('program_studi_kode');
+            $mahasiswa = Mahasiswa::where('nim', $nim)
+                ->select('nim', 'nama_mahasiswa', 'program_studi_kode', 'alamat', 'tempat_lahir', 'tanggal_lahir', 'telepon', 'telepon_orangtua')
+                ->with('programStudi:kode_program_studi,nama_program_studi')
+                ->first();
 
-        $kurikulum = KurikulumAngkatan::select(
-            'kode_kurikulum_angkatan as id',
-            'kurikulum_angkatan.angkatan',
-            'nama_kurikulum.nama_kurikulum',
-            'nama_kurikulum.kode_nama_kurikulum',
-        )
-            ->join('nama_kurikulum', 'kurikulum_angkatan.kode_nama_kurikulum', '=', 'nama_kurikulum.kode_nama_kurikulum')
-            ->whereRaw('substr(angkatan, 3, 2) = ?', [$angkatan])
-            ->where('nama_kurikulum.kode_program_studi', $kode_prodi)
-            ->first();
+            if (! $mahasiswa) {
+                return ApiResponse::notFound('Mahasiswa tidak ditemukan');
+            }
 
-        if (! $kurikulum) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Kurikulum untuk angkatan mahasiswa tidak ditemukan.',
-                'data' => [
-                    'mahasiswa' => $mahasiswa,
-                    'kurikulum' => null,
-                    'data_kurikulum' => [],
+            $kode_prodi = $mahasiswa->program_studi_kode;
+
+            $kurikulumAngkatan = KurikulumAngkatan::select(
+                'kode_kurikulum_angkatan',
+                'angkatan',
+                'kode_nama_kurikulum',
+            )
+                ->with('namaKurikulum:kode_nama_kurikulum,nama_kurikulum,kode_program_studi')
+                ->whereRaw('substr(angkatan, 3, 2) = ?', [$angkatan])
+                ->whereHas('namaKurikulum', fn ($q) => $q->where('kode_program_studi', $kode_prodi))
+                ->first();
+
+            if (! $kurikulumAngkatan) {
+                return ApiResponse::notFound('Kurikulum untuk angkatan mahasiswa tidak ditemukan.');
+            }
+
+            $data = [
+                'mahasiswa' => [
+                    'nim' => $mahasiswa->nim,
+                    'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
+                    'nama_program_studi' => $mahasiswa->programStudi?->nama_program_studi,
+                    'alamat' => $mahasiswa->alamat,
+                    'tempat_lahir' => $mahasiswa->tempat_lahir,
+                    'tanggal_lahir' => $mahasiswa->tanggal_lahir,
+                    'telepon' => $mahasiswa->telepon,
+                    'telepon_orangtua' => $mahasiswa->telepon_orangtua,
                 ],
-            ]);
-        }
+                'kurikulum' => [
+                    'id' => $kurikulumAngkatan->kode_kurikulum_angkatan,
+                    'angkatan' => $kurikulumAngkatan->angkatan,
+                    'nama_kurikulum' => $kurikulumAngkatan->namaKurikulum?->nama_kurikulum,
+                    'kode_nama_kurikulum' => $kurikulumAngkatan->kode_nama_kurikulum,
+                ],
+                'data_kurikulum' => $this->buildKurikulumWithNilai($nim, $kurikulumAngkatan->kode_nama_kurikulum),
+            ];
 
-        $dataKurikulum = $this->buildKurikulumWithNilai($nim, $kurikulum->kode_nama_kurikulum);
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Petikan nilai retrieved successfully.',
-            'data' => [
-                'mahasiswa' => $mahasiswa,
-                'kurikulum' => $kurikulum,
-                'data_kurikulum' => $dataKurikulum,
-            ],
-        ]);
+            return ApiResponse::success($data, 'Petikan nilai retrieved successfully.');
+        });
     }
 
+    /**
+     * Build kurikulum data dengan nilai mahasiswa (optimized)
+     * Sebelumnya: 4 heavy joins (krs → krs_detail → khs_detail → matakuliah)
+     * Sekarang: 2 queries terpisah + PHP mapping (lebih efisien)
+     */
     private function buildKurikulumWithNilai(string $nim, string $kode_nama_kurikulum): array
     {
-        $nilaiMap = Krs::select(
-            'krs_detail.kode_krs_detail as id',
-            'krs_detail.id_matakuliah',
-            'krs.semester',
-            'khs_detail.nilai_akhir',
-        )
-            ->join('krs_detail', 'krs.kode_krs', '=', 'krs_detail.kode_krs')
-            ->join('khs_detail', 'khs_detail.kode_krs_detail', '=', 'krs_detail.kode_krs_detail')
-            ->where('krs.nim', $nim)
-            ->orderBy('khs_detail.nilai_akhir', 'asc')
-            ->get()
-            ->groupBy('id_matakuliah');
+        $cacheKey = "kurikulum_nilai::{$nim}::{$kode_nama_kurikulum}";
 
-        return Kurikulum::join('matakuliah', 'kurikulum.id_matakuliah', '=', 'matakuliah.id_matakuliah')
-            ->where('kode_nama_kurikulum', $kode_nama_kurikulum)
-            ->select('kurikulum.semester', 'matakuliah.*')
-            ->selectRaw('(COALESCE(matakuliah.sks_teori, 0) + COALESCE(matakuliah.sks_praktik, 0)) as sks')
-            ->orderBy('kurikulum.semester')
-            ->get()
-            ->groupBy('semester')
-            ->map(fn ($items, $sem) => [
-                'id' => $sem,
-                'semester' => $sem,
-                'total_sks' => $items->sum('sks'),
-                'matakuliah' => $items->map(fn ($item) => [
-                    'kode_matakuliah' => $item->kode_matakuliah,
-                    'nama_matakuliah' => $item->nama_matakuliah,
-                    'sks_teori' => $item->sks_teori,
-                    'sks_praktik' => $item->sks_praktik,
-                    'nilai' => $nilaiMap->get($item->id_matakuliah, collect())->values(),
-                ]),
-            ])
-            ->values()
-            ->toArray();
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($nim, $kode_nama_kurikulum) {
+            // Query 1: Ambil nilai mahasiswa (grouped by id_matakuliah)
+            $nilaiMap = Krs::where('krs.nim', $nim)
+                ->join('krs_detail', 'krs.kode_krs', '=', 'krs_detail.kode_krs')
+                ->join('khs_detail', 'khs_detail.kode_krs_detail', '=', 'krs_detail.kode_krs_detail')
+                ->select(
+                    'krs_detail.id_matakuliah',
+                    'krs.semester',
+                    'khs_detail.nilai_akhir',
+                )
+                ->orderBy('khs_detail.nilai_akhir', 'asc')
+                ->get()
+                ->groupBy('id_matakuliah');
+
+            // Query 2: Ambil kurikulum matakuliah
+            return Kurikulum::where('kode_nama_kurikulum', $kode_nama_kurikulum)
+                ->with('matakuliah:id_matakuliah,kode_matakuliah,nama_matakuliah,sks_teori,sks_praktik,block')
+                ->select('semester', 'id_matakuliah', 'kode_nama_kurikulum')
+                ->orderBy('semester')
+                ->get()
+                ->groupBy('semester')
+                ->map(function ($items, $sem) use ($nilaiMap) {
+                    $total_sks = $items->sum(function ($item) {
+                        return ($item->matakuliah->sks_teori ?? 0) + ($item->matakuliah->sks_praktik ?? 0);
+                    });
+
+                    return [
+                        'id' => $sem,
+                        'semester' => $sem,
+                        'total_sks' => $total_sks,
+                        'matakuliah' => $items->map(fn ($item) => [
+                            'kode_matakuliah' => $item->matakuliah->kode_matakuliah,
+                            'nama_matakuliah' => $item->matakuliah->nama_matakuliah,
+                            'sks_teori' => $item->matakuliah->sks_teori,
+                            'sks_praktik' => $item->matakuliah->sks_praktik,
+                            'block' => (bool) $item->matakuliah->block,
+                            'nilai' => $nilaiMap->get($item->id_matakuliah, collect())->map(fn ($n) => [
+                                'semester' => $n->semester,
+                                'nilai_akhir' => $n->nilai_akhir,
+                            ])->values()->toArray(),
+                        ])->values()->toArray(),
+                    ];
+                })
+                ->values()
+                ->toArray();
+        });
     }
 }

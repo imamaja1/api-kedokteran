@@ -35,7 +35,15 @@ class DosenController extends Controller
             'code' => ['required', 'string'],
         ]);
 
-        $id = Crypt::decryptString($request->query('code'));
+        try {
+            $id = Crypt::decryptString($request->query('code'));
+        } catch (\Illuminate\Contracts\Encryption\DecryptException) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Format kode tidak valid',
+                'errors' => 'Invalid encryption format',
+            ], 422);
+        }
 
         return $this->service->getOneDosen($id);
     }
@@ -86,14 +94,30 @@ class DosenController extends Controller
             'sandi_pengguna' => ['nullable', 'string', 'min:8'],
         ]);
 
-        $id = Crypt::decryptString($validasi['code']);
+        try {
+            $id = Crypt::decryptString($validasi['code']);
+        } catch (\Illuminate\Contracts\Encryption\DecryptException) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Format kode tidak valid',
+                'errors' => 'Invalid encryption format',
+            ], 422);
+        }
 
         return $this->service->updateDosen($id, $validasi);
     }
 
     public function destroy(string $code): JsonResponse
     {
-        $id = Crypt::decryptString($code);
+        try {
+            $id = Crypt::decryptString($code);
+        } catch (\Illuminate\Contracts\Encryption\DecryptException) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Format kode tidak valid',
+                'errors' => 'Invalid encryption format',
+            ], 422);
+        }
 
         return $this->service->deleteDosen($id);
     }
@@ -115,14 +139,30 @@ class DosenController extends Controller
 
     public function restore(string $code): JsonResponse
     {
-        $id = Crypt::decryptString($code);
+        try {
+            $id = Crypt::decryptString($code);
+        } catch (\Illuminate\Contracts\Encryption\DecryptException) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Format kode tidak valid',
+                'errors' => 'Invalid encryption format',
+            ], 422);
+        }
 
         return $this->service->restoreDosen($id);
     }
 
     public function forceDelete(string $code): JsonResponse
     {
-        $id = Crypt::decryptString($code);
+        try {
+            $id = Crypt::decryptString($code);
+        } catch (\Illuminate\Contracts\Encryption\DecryptException) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Format kode tidak valid',
+                'errors' => 'Invalid encryption format',
+            ], 422);
+        }
 
         return $this->service->forceDeleteDosen($id);
     }
@@ -134,7 +174,13 @@ class DosenController extends Controller
             return null;
         }
 
-        return Crypt::decryptString($value);
+        try {
+            return Crypt::decryptString($value);
+        } catch (\Illuminate\Contracts\Encryption\DecryptException) {
+            // Return null to trigger validation failure via when() callback
+            // Or throw exception to be caught at route level
+            return null;
+        }
     }
 
     private function decryptField(Request $request, string $field): ?JsonResponse

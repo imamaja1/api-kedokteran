@@ -2,49 +2,66 @@
 
 namespace App\Service;
 
+use App\Http\Responses\ApiResponse;
 use App\Models\Kurikulum;
 use App\Models\KurikulumAngkatan;
 use App\Models\NamaKurikulum;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 
 class ServiceKurikulum
 {
+    private const CACHE_TTL = 3600; // 1 jam
+
+    /**
+     * Get kurikulum untuk mahasiswa berdasarkan NIM (optimized dengan cache)
+     * Entire result cached untuk 1 jam untuk menghindari query berulang
+     */
     public function kurikulum_by_nim(string $nim, string $kode_prodi): JsonResponse
     {
         $angkatan = substr($nim, 0, 2);
+        $cacheKey = "kurikulum_by_nim::{$nim}::{$kode_prodi}";
 
+        // Check cache first untuk keseluruhan hasil
+        $cachedData = Cache::get($cacheKey);
+        if ($cachedData) {
+            return ApiResponse::success($cachedData, 'Kurikulum Mahasiswa retrieved successfully. (cached)');
+        }
+
+        // Jika tidak ada di cache, query dan simpan ke cache
         $kurikulumAngkatan = KurikulumAngkatan::select(
             'kurikulum_angkatan.angkatan',
+            'kurikulum_angkatan.kode_nama_kurikulum',
             'nama_kurikulum.nama_kurikulum',
-            'nama_kurikulum.kode_nama_kurikulum',
+            'nama_kurikulum.kode_program_studi'
         )
             ->join('nama_kurikulum', 'kurikulum_angkatan.kode_nama_kurikulum', '=', 'nama_kurikulum.kode_nama_kurikulum')
-            ->whereRaw('substr(angkatan, 3, 2) = ?', [$angkatan])
+            ->with('namaKurikulum:kode_nama_kurikulum,kode_program_studi')  // Eager load for relationship
+            ->whereRaw('substr(kurikulum_angkatan.angkatan, 3, 2) = ?', [$angkatan])
             ->where('nama_kurikulum.kode_program_studi', $kode_prodi)
             ->first();
 
         if (! $kurikulumAngkatan) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Kurikulum untuk angkatan mahasiswa tidak ditemukan.',
-                'data' => ['kurikulum' => null, 'data_kurikulum' => []],
-            ]);
+            return ApiResponse::error('Kurikulum untuk angkatan mahasiswa tidak ditemukan.', 404);
         }
 
         $data['kurikulum'] = $kurikulumAngkatan;
         $data['data_kurikulum'] = $this->buildKurikulumData($kurikulumAngkatan->kode_nama_kurikulum);
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Kurikulum Mahasiswa retrieved successfully.',
-            'data' => $data,
-        ]);
+        // Cache result untuk 1 jam
+        Cache::put($cacheKey, $data, self::CACHE_TTL);
+
+        return ApiResponse::success($data, 'Kurikulum Mahasiswa retrieved successfully.');
     }
 
+    /**
+     * Get semua nama kurikulum dengan pagination
+     */
     public function nama_kurikulum(): JsonResponse
     {
-        $paginator = NamaKurikulum::with('programStudi')->paginate(20);
+        $paginator = NamaKurikulum::with('programStudi:kode_program_studi,nama_program_studi')
+            ->paginate(20);
 
         $paginator->getCollection()->transform(function ($item, $index) {
             return [
@@ -58,177 +75,159 @@ class ServiceKurikulum
             ];
         });
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Nama Kurikulum retrieved successfully.',
-            'jumlah' => $paginator->total(),
-            'data' => $paginator->items(),
-            'pagination' => [
-                'current_page' => $paginator->currentPage(),
-                'per_page' => $paginator->perPage(),
-                'last_page' => $paginator->lastPage(),
-                'from' => $paginator->firstItem(),
-                'to' => $paginator->lastItem(),
-            ],
-        ]);
+        return ApiResponse::paginated($paginator, 'Nama Kurikulum retrieved successfully.');
     }
 
+    /**
+     * Get satu nama kurikulum
+     */
     public function getOneNamaKurikulum(string $id): JsonResponse
     {
         $item = NamaKurikulum::find($id);
 
         if (! $item) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Nama Kurikulum tidak ditemukan',
-                'data' => null,
-            ], 404);
+            return ApiResponse::notFound('Nama Kurikulum tidak ditemukan');
         }
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Nama Kurikulum retrieved successfully.',
-            'data' => [
-                'code_nama_kurikulum' => Crypt::encryptString($item->kode_nama_kurikulum),
-                'nama_kurikulum' => $item->nama_kurikulum,
-                'kode_program_studi' => $item->kode_program_studi,
-                'angkatan1' => $item->angkatan1,
-                'ekstensi1' => $item->ekstensi1,
-                'paket1' => $item->paket1,
-            ],
-        ]);
+        return ApiResponse::success([
+            'code_nama_kurikulum' => Crypt::encryptString($item->kode_nama_kurikulum),
+            'nama_kurikulum' => $item->nama_kurikulum,
+            'kode_program_studi' => $item->kode_program_studi,
+            'angkatan1' => $item->angkatan1,
+            'ekstensi1' => $item->ekstensi1,
+            'paket1' => $item->paket1,
+        ], 'Nama Kurikulum retrieved successfully.');
     }
 
+    /**
+     * Create nama kurikulum (invalidate cache)
+     */
     public function storeNamaKurikulum(array $object): JsonResponse
     {
         try {
             $namaKurikulum = NamaKurikulum::create($object);
-        } catch (\Throwable) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Gagal membuat Nama Kurikulum',
-                'data' => null,
-            ], 500);
+            // Invalidate cache untuk kurikulum ini
+            Cache::forget("kurikulum::{$namaKurikulum->kode_nama_kurikulum}");
+        } catch (\Throwable $e) {
+            return ApiResponse::error('Gagal membuat Nama Kurikulum: '.$e->getMessage(), 500);
         }
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Nama Kurikulum berhasil dibuat',
-            'data' => [
-                'code_nama_kurikulum' => Crypt::encryptString($namaKurikulum->kode_nama_kurikulum),
-                'nama_kurikulum' => $namaKurikulum->nama_kurikulum,
-                'kode_program_studi' => $namaKurikulum->kode_program_studi,
-                'angkatan1' => $namaKurikulum->angkatan1,
-                'ekstensi1' => $namaKurikulum->ekstensi1,
-                'paket1' => $namaKurikulum->paket1,
-            ],
-        ], 201);
+        return ApiResponse::success([
+            'code_nama_kurikulum' => Crypt::encryptString($namaKurikulum->kode_nama_kurikulum),
+            'nama_kurikulum' => $namaKurikulum->nama_kurikulum,
+            'kode_program_studi' => $namaKurikulum->kode_program_studi,
+            'angkatan1' => $namaKurikulum->angkatan1,
+            'ekstensi1' => $namaKurikulum->ekstensi1,
+            'paket1' => $namaKurikulum->paket1,
+        ], 'Nama Kurikulum berhasil dibuat', 201);
     }
 
+    /**
+     * Update nama kurikulum (invalidate cache)
+     */
     public function updateNamaKurikulum(string $id, array $object): JsonResponse
     {
         $namaKurikulum = NamaKurikulum::find($id);
 
         if (! $namaKurikulum) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Nama Kurikulum tidak ditemukan',
-                'data' => null,
-            ], 404);
+            return ApiResponse::notFound('Nama Kurikulum tidak ditemukan');
         }
 
         try {
             $namaKurikulum->update($object);
-        } catch (\Throwable) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Gagal memperbarui Nama Kurikulum',
-                'data' => null,
-            ], 500);
+            // Invalidate cache
+            Cache::forget("kurikulum::{$namaKurikulum->kode_nama_kurikulum}");
+        } catch (\Throwable $e) {
+            return ApiResponse::error('Gagal memperbarui Nama Kurikulum: '.$e->getMessage(), 500);
         }
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Nama Kurikulum berhasil diperbarui',
-            'data' => [
-                'code_nama_kurikulum' => Crypt::encryptString($namaKurikulum->kode_nama_kurikulum),
-                'nama_kurikulum' => $namaKurikulum->nama_kurikulum,
-                'kode_program_studi' => $namaKurikulum->kode_program_studi,
-                'angkatan1' => $namaKurikulum->angkatan1,
-                'ekstensi1' => $namaKurikulum->ekstensi1,
-                'paket1' => $namaKurikulum->paket1,
-            ],
-        ]);
+        return ApiResponse::success([
+            'code_nama_kurikulum' => Crypt::encryptString($namaKurikulum->kode_nama_kurikulum),
+            'nama_kurikulum' => $namaKurikulum->nama_kurikulum,
+            'kode_program_studi' => $namaKurikulum->kode_program_studi,
+            'angkatan1' => $namaKurikulum->angkatan1,
+            'ekstensi1' => $namaKurikulum->ekstensi1,
+            'paket1' => $namaKurikulum->paket1,
+        ], 'Nama Kurikulum berhasil diperbarui');
     }
 
+    /**
+     * Delete nama kurikulum (invalidate cache)
+     */
     public function deleteNamaKurikulum(string $id): JsonResponse
     {
         $namaKurikulum = NamaKurikulum::find($id);
 
         if (! $namaKurikulum) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Nama Kurikulum tidak ditemukan',
-                'data' => null,
-            ], 404);
+            return ApiResponse::notFound('Nama Kurikulum tidak ditemukan');
         }
+
+        $kodeToInvalidate = $namaKurikulum->kode_nama_kurikulum;
 
         try {
             $namaKurikulum->delete();
-        } catch (\Throwable) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Gagal menghapus Nama Kurikulum',
-                'data' => null,
-            ], 500);
+            // Invalidate cache
+            Cache::forget("kurikulum::{$kodeToInvalidate}");
+        } catch (\Throwable $e) {
+            return ApiResponse::error('Gagal menghapus Nama Kurikulum: '.$e->getMessage(), 500);
         }
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Nama Kurikulum berhasil dihapus',
-            'data' => [
-                'code_nama_kurikulum' => Crypt::encryptString($namaKurikulum->kode_nama_kurikulum),
-                'nama_kurikulum' => $namaKurikulum->nama_kurikulum,
-                'kode_program_studi' => $namaKurikulum->kode_program_studi,
-                'angkatan1' => $namaKurikulum->angkatan1,
-                'ekstensi1' => $namaKurikulum->ekstensi1,
-                'paket1' => $namaKurikulum->paket1,
-            ],
-        ]);
+        return ApiResponse::success([
+            'code_nama_kurikulum' => Crypt::encryptString($kodeToInvalidate),
+            'nama_kurikulum' => $namaKurikulum->nama_kurikulum,
+            'kode_program_studi' => $namaKurikulum->kode_program_studi,
+            'angkatan1' => $namaKurikulum->angkatan1,
+            'ekstensi1' => $namaKurikulum->ekstensi1,
+            'paket1' => $namaKurikulum->paket1,
+        ], 'Nama Kurikulum berhasil dihapus');
     }
 
+    /**
+     * Get kurikulum berdasarkan kode nama kurikulum (dengan cache)
+     */
     public function kurikulum_by_nama_kurikulum(string $kode_nama_kurikulum): JsonResponse
     {
         $data = $this->buildKurikulumData($kode_nama_kurikulum);
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Kurikulum retrieved successfully.',
-            'data' => $data,
-        ]);
+        return ApiResponse::success($data, 'Kurikulum retrieved successfully.');
     }
 
+    /**
+     * Build kurikulum data dengan caching (optimized)
+     * Sebelumnya: 1 query join kompleks tiap kali
+     * Sekarang: 1 query eager load pertama kali, kemudian cached 1 jam
+     */
     private function buildKurikulumData(string $kode_nama_kurikulum): array
     {
-        return Kurikulum::join('matakuliah', 'kurikulum.id_matakuliah', '=', 'matakuliah.id_matakuliah')
-            ->where('kode_nama_kurikulum', $kode_nama_kurikulum)
-            ->select('kurikulum.semester', 'matakuliah.*')
-            ->selectRaw('(COALESCE(matakuliah.sks_teori, 0) + COALESCE(matakuliah.sks_praktik, 0)) as sks')
-            ->orderBy('kurikulum.semester')
-            ->get()
-            ->groupBy('semester')
-            ->map(fn ($items, $sem) => [
-                'semester' => $sem,
-                'total_sks' => $items->sum('sks'),
-                'matakuliah' => $items->map(fn ($item) => [
-                    'kode_matakuliah' => $item->kode_matakuliah,
-                    'nama_matakuliah' => $item->nama_matakuliah,
-                    'sks_teori' => $item->sks_teori,
-                    'sks_praktik' => $item->sks_praktik,
-                    'block' => (bool) $item->block,
-                ]),
-            ])
-            ->values()
-            ->toArray();
+        $cacheKey = "kurikulum::{$kode_nama_kurikulum}";
+
+        // Return cached data jika ada
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($kode_nama_kurikulum) {
+            return Kurikulum::where('kode_nama_kurikulum', $kode_nama_kurikulum)
+                ->with('matakuliah:id_matakuliah,kode_matakuliah,nama_matakuliah,sks_teori,sks_praktik,block')
+                ->select('semester', 'id_matakuliah', 'kode_nama_kurikulum')
+                ->orderBy('semester')
+                ->get()
+                ->groupBy('semester')
+                ->map(function ($items, $sem) {
+                    $total_sks = $items->sum(function ($item) {
+                        return ($item->matakuliah->sks_teori ?? 0) + ($item->matakuliah->sks_praktik ?? 0);
+                    });
+
+                    return [
+                        'semester' => $sem,
+                        'total_sks' => $total_sks,
+                        'matakuliah' => $items->map(fn ($item) => [
+                            'kode_matakuliah' => $item->matakuliah->kode_matakuliah,
+                            'nama_matakuliah' => $item->matakuliah->nama_matakuliah,
+                            'sks_teori' => $item->matakuliah->sks_teori,
+                            'sks_praktik' => $item->matakuliah->sks_praktik,
+                            'block' => (bool) $item->matakuliah->block,
+                        ])->values(),
+                    ];
+                })
+                ->values()
+                ->toArray();
+        });
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Http\Responses\ApiResponse;
 use App\Models\Mahasiswa;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Crypt;
@@ -9,9 +10,34 @@ use Illuminate\Support\Facades\Hash;
 
 class ServiceMahasiswa
 {
+    // Kolom yang diselect untuk list view (optimize response size)
+    private const LIST_COLUMNS = [
+        'nim',
+        'nama_mahasiswa',
+        'program_studi_kode',
+        'email',
+        'telepon',
+        'status',
+    ];
+
+    // Kolom yang diselect untuk single view (semua kecuali sandi yang di-hidden)
+    private const DETAIL_COLUMNS = [
+        'nim', 'nik', 'npm', 'nisn', 'nomor_pendaftaran', 'nomor_pendaftaran_ulang',
+        'program_studi_kode', 'nama_mahasiswa', 'tempat_lahir', 'tanggal_lahir',
+        'alamat', 'kota', 'propinsi', 'telepon', 'jenis_kelamin', 'agama',
+        'golongan_darah', 'kewarganegaraan', 'nama_instansi', 'email',
+        'nama_ayah', 'agama_ayah', 'pekerjaan_ayah', 'nama_ibu', 'agama_ibu',
+        'pekerjaan_ibu', 'alamat_orangtua', 'kota_orangtua', 'propinsi_orangtua',
+        'telepon_orangtua', 'foto', 'status', 'status_pendaftaran', 'ta_lulus', 'created_at', 'updated_at',
+    ];
+
+    /**
+     * Get semua mahasiswa (Real-Time)
+     */
     public function getAllMahasiswa(?string $nim = null, ?string $kode_prodi = null, ?string $angkatan = null): JsonResponse
     {
-        $query = Mahasiswa::query();
+        $query = Mahasiswa::select(self::LIST_COLUMNS)
+            ->with('programStudi:kode_program_studi,nama_program_studi');
 
         if ($nim) {
             $query->where('nim', $nim);
@@ -28,51 +54,32 @@ class ServiceMahasiswa
         $paginator = $query->paginate(20);
 
         $paginator->getCollection()->transform(function ($item, $index) {
-            return $this->formatMahasiswa($item, $index + 1);
+            return $this->formatMahasiswaList($item, $index + 1);
         });
 
-        if ($paginator->isEmpty()) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Mahasiswa tidak ditemukan',
-                'data' => null,
-            ], 404);
-        }
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Data Mahasiswa',
-            'jumlah' => $paginator->total(),
-            'data' => $paginator->items(),
-            'pagination' => [
-                'current_page' => $paginator->currentPage(),
-                'per_page' => $paginator->perPage(),
-                'last_page' => $paginator->lastPage(),
-                'from' => $paginator->firstItem(),
-                'to' => $paginator->lastItem(),
-            ],
-        ]);
+        return ApiResponse::paginated($paginator, 'Data Mahasiswa');
     }
 
+    /**
+     * Get satu mahasiswa (Real-Time)
+     */
     public function getOneMahasiswa(string $nim): JsonResponse
     {
-        $data = Mahasiswa::where('nim', $nim)->first();
+        $mahasiswa = Mahasiswa::select(self::DETAIL_COLUMNS)
+            ->with('programStudi:kode_program_studi,nama_program_studi')
+            ->where('nim', $nim)
+            ->first();
 
-        if (! $data) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Mahasiswa tidak ditemukan',
-                'data' => null,
-            ], 404);
+        if (! $mahasiswa) {
+            return ApiResponse::notFound('Mahasiswa tidak ditemukan');
         }
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Data Mahasiswa',
-            'data' => $this->formatMahasiswa($data),
-        ]);
+        return ApiResponse::success($this->formatMahasiswaDetail($mahasiswa), 'Data Mahasiswa');
     }
 
+    /**
+     * Create mahasiswa
+     */
     public function storeMahasiswa(array $object): JsonResponse
     {
         if (! empty($object['sandi'])) {
@@ -81,34 +88,25 @@ class ServiceMahasiswa
 
         try {
             $mahasiswa = Mahasiswa::create($object);
-        } catch (\Throwable) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Gagal membuat Mahasiswa',
-                'data' => null,
-            ], 500);
+        } catch (\Throwable $e) {
+            return ApiResponse::error('Gagal membuat Mahasiswa: '.$e->getMessage(), 500);
         }
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Mahasiswa berhasil dibuat',
-            'data' => [
-                'nim' => $mahasiswa->nim,
-                'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
-            ],
-        ], 201);
+        return ApiResponse::success([
+            'nim' => $mahasiswa->nim,
+            'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
+        ], 'Mahasiswa berhasil dibuat', 201);
     }
 
+    /**
+     * Update mahasiswa
+     */
     public function updateMahasiswa(string $nim, array $object): JsonResponse
     {
         $mahasiswa = Mahasiswa::where('nim', $nim)->first();
 
         if (! $mahasiswa) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Mahasiswa tidak ditemukan',
-                'data' => null,
-            ], 404);
+            return ApiResponse::notFound('Mahasiswa tidak ditemukan');
         }
 
         if (! empty($object['sandi'])) {
@@ -117,59 +115,47 @@ class ServiceMahasiswa
 
         try {
             $mahasiswa->update($object);
-        } catch (\Throwable) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Gagal memperbarui Mahasiswa',
-                'data' => null,
-            ], 500);
+        } catch (\Throwable $e) {
+            return ApiResponse::error('Gagal memperbarui Mahasiswa: '.$e->getMessage(), 500);
         }
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Mahasiswa berhasil diperbarui',
-            'data' => [
-                'nim' => $mahasiswa->nim,
-                'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
-            ],
-        ]);
+        return ApiResponse::success([
+            'nim' => $mahasiswa->nim,
+            'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
+        ], 'Mahasiswa berhasil diperbarui');
     }
 
+    /**
+     * Soft delete mahasiswa
+     */
     public function deleteMahasiswa(string $nim): JsonResponse
     {
         $mahasiswa = Mahasiswa::where('nim', $nim)->first();
 
         if (! $mahasiswa) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Mahasiswa tidak ditemukan',
-                'data' => null,
-            ], 404);
+            return ApiResponse::notFound('Mahasiswa tidak ditemukan');
         }
 
         try {
             $mahasiswa->delete();
-        } catch (\Throwable) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Gagal menghapus Mahasiswa',
-                'data' => null,
-            ], 500);
+        } catch (\Throwable $e) {
+            return ApiResponse::error('Gagal menghapus Mahasiswa: '.$e->getMessage(), 500);
         }
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Mahasiswa berhasil dihapus',
-            'data' => [
-                'nim' => $mahasiswa->nim,
-                'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
-            ],
-        ]);
+        return ApiResponse::success([
+            'nim' => $mahasiswa->nim,
+            'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
+        ], 'Mahasiswa berhasil dihapus');
     }
 
+    /**
+     * Get mahasiswa yang dihapus (trash) - Real-Time
+     */
     public function getMahasiswaTrash(?string $nim = null, ?string $kode_prodi = null, ?string $angkatan = null): JsonResponse
     {
-        $query = Mahasiswa::onlyTrashed();
+        $query = Mahasiswa::onlyTrashed()
+            ->select(self::LIST_COLUMNS)
+            ->with('programStudi:kode_program_studi,nama_program_studi');
 
         if ($nim) {
             $query->where('nim', $nim);
@@ -186,103 +172,96 @@ class ServiceMahasiswa
         $paginator = $query->paginate(20);
 
         $paginator->getCollection()->transform(function ($item, $index) {
-            return $this->formatMahasiswaTrash($item, $index + 1);
+            return $this->formatMahasiswaList($item, $index + 1);
         });
 
-        if ($paginator->isEmpty()) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Tidak ada Mahasiswa yang dihapus',
-                'data' => null,
-            ], 404);
-        }
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Data Mahasiswa (Trash)',
-            'jumlah' => $paginator->total(),
-            'data' => $paginator->items(),
-            'pagination' => [
-                'current_page' => $paginator->currentPage(),
-                'per_page' => $paginator->perPage(),
-                'last_page' => $paginator->lastPage(),
-                'from' => $paginator->firstItem(),
-                'to' => $paginator->lastItem(),
-            ],
-        ]);
+        return ApiResponse::paginated($paginator, 'Data Mahasiswa (Trash)');
     }
 
+    /**
+     * Restore mahasiswa dari trash
+     */
     public function restoreMahasiswa(string $nim): JsonResponse
     {
         $mahasiswa = Mahasiswa::onlyTrashed()->where('nim', $nim)->first();
 
         if (! $mahasiswa) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Mahasiswa tidak ditemukan di trash',
-                'data' => null,
-            ], 404);
+            return ApiResponse::notFound('Mahasiswa tidak ditemukan di trash');
         }
 
         try {
             $mahasiswa->restore();
-        } catch (\Throwable) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Gagal memulihkan Mahasiswa',
-                'data' => null,
-            ], 500);
+        } catch (\Throwable $e) {
+            return ApiResponse::error('Gagal memulihkan Mahasiswa: '.$e->getMessage(), 500);
         }
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Mahasiswa berhasil dipulihkan',
-            'data' => [
-                'nim' => $mahasiswa->nim,
-                'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
-            ],
-        ]);
+        return ApiResponse::success([
+            'nim' => $mahasiswa->nim,
+            'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
+        ], 'Mahasiswa berhasil dipulihkan');
     }
 
+    /**
+     * Force delete mahasiswa secara permanen
+     */
     public function forceDeleteMahasiswa(string $nim): JsonResponse
     {
         $mahasiswa = Mahasiswa::onlyTrashed()->where('nim', $nim)->first();
 
         if (! $mahasiswa) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Mahasiswa tidak ditemukan di trash',
-                'data' => null,
-            ], 404);
+            return ApiResponse::notFound('Mahasiswa tidak ditemukan di trash');
         }
 
         try {
             $mahasiswa->forceDelete();
-        } catch (\Throwable) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Gagal menghapus permanen Mahasiswa',
-                'data' => null,
-            ], 500);
+        } catch (\Throwable $e) {
+            return ApiResponse::error('Gagal menghapus permanen Mahasiswa: '.$e->getMessage(), 500);
         }
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Mahasiswa berhasil dihapus permanen',
-            'data' => [
-                'nim' => $mahasiswa->nim,
-                'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
-            ],
-        ]);
+        return ApiResponse::success([
+            'nim' => $mahasiswa->nim,
+            'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
+        ], 'Mahasiswa berhasil dihapus permanen');
     }
 
-    private function formatMahasiswa(Mahasiswa $item, ?int $index = null): array
+    /**
+     * Format mahasiswa untuk list view
+     */
+    private function formatMahasiswaList(Mahasiswa $item, ?int $index = null): array
     {
         $data = [
             'code' => Crypt::encryptString($item->nim),
             'nim' => $item->nim,
-            'nik' => $item->nik,
+            'nama_mahasiswa' => $item->nama_mahasiswa,
             'program_studi_kode' => $item->program_studi_kode,
+            'nama_program_studi' => $item->programStudi?->nama_program_studi,
+            'email' => $item->email,
+            'telepon' => $item->telepon,
+            'status' => $item->status,
+        ];
+
+        if ($index !== null) {
+            $data = ['id' => $index] + $data;
+        }
+
+        return $data;
+    }
+
+    /**
+     * Format mahasiswa untuk detail view
+     */
+    private function formatMahasiswaDetail(Mahasiswa $item): array
+    {
+        return [
+            'code' => Crypt::encryptString($item->nim),
+            'nim' => $item->nim,
+            'nik' => $item->nik,
+            'npm' => $item->npm,
+            'nisn' => $item->nisn,
+            'nomor_pendaftaran' => $item->nomor_pendaftaran,
+            'nomor_pendaftaran_ulang' => $item->nomor_pendaftaran_ulang,
+            'program_studi_kode' => $item->program_studi_kode,
+            'nama_program_studi' => $item->programStudi?->nama_program_studi,
             'nama_mahasiswa' => $item->nama_mahasiswa,
             'tempat_lahir' => $item->tempat_lahir,
             'tanggal_lahir' => $item->tanggal_lahir,
@@ -294,6 +273,7 @@ class ServiceMahasiswa
             'agama' => $item->agama,
             'golongan_darah' => $item->golongan_darah,
             'kewarganegaraan' => $item->kewarganegaraan,
+            'nama_instansi' => $item->nama_instansi,
             'email' => $item->email,
             'nama_ayah' => $item->nama_ayah,
             'agama_ayah' => $item->agama_ayah,
@@ -308,20 +288,9 @@ class ServiceMahasiswa
             'foto' => $item->foto,
             'status' => $item->status,
             'status_pendaftaran' => $item->status_pendaftaran,
+            'ta_lulus' => $item->ta_lulus,
+            'created_at' => $item->created_at,
+            'updated_at' => $item->updated_at,
         ];
-
-        if ($index !== null) {
-            $data = ['id' => $index] + $data;
-        }
-
-        return $data;
-    }
-
-    private function formatMahasiswaTrash(Mahasiswa $item, ?int $index = null): array
-    {
-        $data = $this->formatMahasiswa($item, $index);
-        $data['deleted_at'] = $item->deleted_at;
-
-        return $data;
     }
 }

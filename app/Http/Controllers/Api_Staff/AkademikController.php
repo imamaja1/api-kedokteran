@@ -38,7 +38,15 @@ class AkademikController extends Controller
             'code_nama_kurikulum' => ['required', 'string'],
         ]);
 
-        $kode_nama_kurikulum = Crypt::decryptString($validated['code_nama_kurikulum']);
+        try {
+            $kode_nama_kurikulum = Crypt::decryptString($validated['code_nama_kurikulum']);
+        } catch (\Illuminate\Contracts\Encryption\DecryptException) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Format code_nama_kurikulum tidak valid',
+                'errors' => 'Invalid encryption format',
+            ], 422);
+        }
 
         return $this->kurikulumService->kurikulum_by_nama_kurikulum($kode_nama_kurikulum);
     }
@@ -58,7 +66,15 @@ class AkademikController extends Controller
             'code_krs' => ['required', 'string'],
         ]);
 
-        $kode_krs = Crypt::decryptString($validated['code_krs']);
+        try {
+            $kode_krs = Crypt::decryptString($validated['code_krs']);
+        } catch (\Illuminate\Contracts\Encryption\DecryptException) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Format code_krs tidak valid',
+                'errors' => 'Invalid encryption format',
+            ], 422);
+        }
 
         return $this->krsService->getKRSDetail($kode_krs);
     }
@@ -78,7 +94,15 @@ class AkademikController extends Controller
             'code_krs' => ['required', 'string'],
         ]);
 
-        $kode_krs = Crypt::decryptString($validated['code_krs']);
+        try {
+            $kode_krs = Crypt::decryptString($validated['code_krs']);
+        } catch (\Illuminate\Contracts\Encryption\DecryptException) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Format code_krs tidak valid',
+                'errors' => 'Invalid encryption format',
+            ], 422);
+        }
 
         return $this->khsService->getKHSDetail($kode_krs);
     }

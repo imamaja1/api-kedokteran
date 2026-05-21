@@ -19,13 +19,13 @@
                     <option>PATCH</option>
                     <option>DELETE</option>
                 </select>
-                <input type="url" class="url-input" id="urlInput" placeholder="{{ url('/api') }}/endpoint"
-                    value="{{ url('/api') }}">
                 <button class="btn-send" id="sendBtn" onclick="sendRequest()">
                     <span class="spinner-ring" id="spinner"></span>
                     <i class="bi bi-send-fill" id="sendIcon"></i>
                     <span id="sendLabel">Send</span>
                 </button>
+                <input type="url" class="url-input" id="urlInput" placeholder="{{ url('/api') }}/endpoint"
+                    value="{{ url('/api') }}">
             </div>
         </div>
     </div>

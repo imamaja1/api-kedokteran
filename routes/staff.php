@@ -63,7 +63,7 @@ Route::prefix('api/staff')
                     Route::post('/', [DosenController::class, 'store']);
                     Route::put('/', [DosenController::class, 'update']);
                     Route::delete('/{code}', [DosenController::class, 'destroy']);
-                    Route::post('/{code}/restore', [DosenController::class, 'restore']);
+                    Route::patch('/{code}/restore', [DosenController::class, 'restore']);
                     Route::delete('/{code}/force', [DosenController::class, 'forceDelete']);
                 });
 
@@ -93,7 +93,7 @@ Route::prefix('api/staff')
                     Route::post('/', [MahasiswaController::class, 'store']);
                     Route::put('/', [MahasiswaController::class, 'update']);
                     Route::delete('/{code}', [MahasiswaController::class, 'destroy']);
-                    Route::post('/{code}/restore', [MahasiswaController::class, 'restore']);
+                    Route::patch('/{code}/restore', [MahasiswaController::class, 'restore']);
                     Route::delete('/{code}/force', [MahasiswaController::class, 'forceDelete']);
                 });
 
@@ -103,8 +103,7 @@ Route::prefix('api/staff')
         Route::prefix('blok-kurikulum')
             ->middleware(['throttle:60,1'])
             ->group(function () {
-                Route::prefix('masterdata')->group(function () {
-                });
+                Route::prefix('masterdata')->group(function () {});
             });
 
         // fallback dalam group — return 404 bukan 401
