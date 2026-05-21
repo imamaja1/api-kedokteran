@@ -23,6 +23,8 @@ class Dosen extends Authenticatable
 
     protected $hidden = ['sandi_pengguna'];
 
+    protected $dates = ['deleted_at'];
+
     /**
      * Get the password for the user.
      * Dosen menggunakan field 'sandi_pengguna' bukan 'password'

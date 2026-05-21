@@ -3,14 +3,15 @@
 namespace App\Service;
 
 use App\Models\Dosen;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
 
 class ServiceDosen
 {
-    public function getAllDosen(?string $kode_program_studi = null, ?string $nama_dosen = null, ?string $alamat_email = null)
+    public function getAllDosen(?string $kode_program_studi = null, ?string $nama_dosen = null, ?string $alamat_email = null): JsonResponse
     {
-        $data = Dosen::select('*')
+        $query = Dosen::query()
             ->with('programStudi')
             ->when($kode_program_studi, function ($query, $kode) {
                 return $query->where('kode_program_studi', $kode);
@@ -20,36 +21,30 @@ class ServiceDosen
             })
             ->when($alamat_email, function ($query, $email) {
                 return $query->where('alamat_email', 'like', "%{$email}%");
-            })
-            ->get()
-            ->map(function ($item, $nomor) {
-                return [
-                    'id' => $nomor + 1,
-                    'code' => Crypt::encryptString($item->kode_dosen),
-                    'nama_dosen' => $item->nama_dosen,
-                    'nik' => $item->nik,
-                    'no_telp' => $item->no_telp,
-                    'alamat_email' => $item->alamat_email,
-                    'field_studi' => $item->field_studi,
-                    'alumni' => $item->alumni,
-                    'homebase' => $item->programStudi?->nama_program_studi,
-                    'status_dosen' => $item->status_dosen,
-                    'aktif' => $item->aktif,
-                    'status_login' => $item->status_login,
-                    'signature' => $item->signature,
-                    'created_at' => $item->created_at,
-                    'updated_at' => $item->updated_at,
-                ];
             });
+
+        $paginator = $query->paginate(20);
+
+        $paginator->getCollection()->transform(function ($item, $index) {
+            return $this->formatDosen($item, $index + 1);
+        });
 
         return response()->json([
             'status' => true,
             'message' => 'API Dosen',
-            'data' => $data,
+            'jumlah' => $paginator->total(),
+            'data' => $paginator->items(),
+            'pagination' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'last_page' => $paginator->lastPage(),
+                'from' => $paginator->firstItem(),
+                'to' => $paginator->lastItem(),
+            ],
         ]);
     }
 
-    public function getOneDosen(string $id)
+    public function getOneDosen(string $id): JsonResponse
     {
         $dosen = Dosen::with('programStudi')->where('kode_dosen', $id)->first();
 
@@ -61,31 +56,14 @@ class ServiceDosen
             ], 404);
         }
 
-        $data = [
-            'code' => Crypt::encryptString($dosen->kode_dosen),
-            'nama_dosen' => $dosen->nama_dosen,
-            'nik' => $dosen->nik,
-            'no_telp' => $dosen->no_telp,
-            'alamat_email' => $dosen->alamat_email,
-            'field_studi' => $dosen->field_studi,
-            'alumni' => $dosen->alumni,
-            'homebase' => $dosen->programStudi?->nama_program_studi,
-            'status_dosen' => $dosen->status_dosen,
-            'aktif' => $dosen->aktif,
-            'status_login' => $dosen->status_login,
-            'signature' => $dosen->signature,
-            'created_at' => $dosen->created_at,
-            'updated_at' => $dosen->updated_at,
-        ];
-
         return response()->json([
             'status' => true,
             'message' => 'API Dosen',
-            'data' => $data,
+            'data' => $this->formatDosen($dosen),
         ]);
     }
 
-    public function storeDosen(array $object)
+    public function storeDosen(array $object): JsonResponse
     {
         if (! empty($object['sandi_pengguna'])) {
             $object['sandi_pengguna'] = Hash::make($object['sandi_pengguna']);
@@ -109,13 +87,16 @@ class ServiceDosen
         return response()->json([
             'status' => true,
             'message' => 'Dosen berhasil dibuat',
-            'data' => $dosen,
+            'data' => [
+                'kode_dosen' => $dosen->kode_dosen,
+                'nama_dosen' => $dosen->nama_dosen,
+            ],
         ], 201);
     }
 
-    public function updateDosen(string $id, array $object)
+    public function updateDosen(string $id, array $object): JsonResponse
     {
-        $dosen = Dosen::find($id);
+        $dosen = Dosen::where('kode_dosen', $id)->first();
 
         if (! $dosen) {
             return response()->json([
@@ -137,20 +118,23 @@ class ServiceDosen
             return response()->json([
                 'status' => false,
                 'message' => 'Gagal memperbarui Dosen',
-                'data' => $dosen,
+                'data' => null,
             ], 500);
         }
 
         return response()->json([
             'status' => true,
             'message' => 'Dosen berhasil diperbarui',
-            'data' => $dosen,
+            'data' => [
+                'kode_dosen' => $dosen->kode_dosen,
+                'nama_dosen' => $dosen->nama_dosen,
+            ],
         ]);
     }
 
-    public function deleteDosen(string $id)
+    public function deleteDosen(string $id): JsonResponse
     {
-        $dosen = Dosen::find($id);
+        $dosen = Dosen::where('kode_dosen', $id)->first();
 
         if (! $dosen) {
             return response()->json([
@@ -166,20 +150,23 @@ class ServiceDosen
             return response()->json([
                 'status' => false,
                 'message' => 'Gagal menghapus Dosen',
-                'data' => $dosen,
+                'data' => null,
             ], 500);
         }
 
         return response()->json([
             'status' => true,
             'message' => 'Dosen berhasil dihapus',
-            'data' => $dosen,
+            'data' => [
+                'kode_dosen' => $dosen->kode_dosen,
+                'nama_dosen' => $dosen->nama_dosen,
+            ],
         ]);
     }
 
-    public function getDosenTrash(?string $kode_program_studi = null, ?string $nama_dosen = null, ?string $alamat_email = null)
+    public function getDosenTrash(?string $kode_program_studi = null, ?string $nama_dosen = null, ?string $alamat_email = null): JsonResponse
     {
-        $data = Dosen::onlyTrashed()
+        $query = Dosen::onlyTrashed()
             ->with('programStudi')
             ->when($kode_program_studi, function ($query, $kode) {
                 return $query->where('kode_program_studi', $kode);
@@ -189,32 +176,18 @@ class ServiceDosen
             })
             ->when($alamat_email, function ($query, $email) {
                 return $query->where('alamat_email', 'like', "%{$email}%");
-            })
-            ->get()
-            ->map(function ($item, $nomor) {
-                return [
-                    'id' => $nomor + 1,
-                    'code' => Crypt::encryptString($item->kode_dosen),
-                    'nama_dosen' => $item->nama_dosen,
-                    'nik' => $item->nik,
-                    'no_telp' => $item->no_telp,
-                    'alamat_email' => $item->alamat_email,
-                    'field_studi' => $item->field_studi,
-                    'alumni' => $item->alumni,
-                    'homebase' => $item->programStudi?->nama_program_studi,
-                    'status_dosen' => $item->status_dosen,
-                    'aktif' => $item->aktif,
-                    'status_login' => $item->status_login,
-                    'signature' => $item->signature,
-                    'deleted_at' => $item->deleted_at,
-                ];
             });
 
-        if ($data->isEmpty()) {
+        $paginator = $query->paginate(20);
+
+        $paginator->getCollection()->transform(function ($item, $index) {
+            return $this->formatDosenTrash($item, $index + 1);
+        });
+
+        if ($paginator->isEmpty()) {
             return response()->json([
                 'status' => false,
                 'message' => 'Tidak ada Dosen yang dihapus',
-                'jumlah' => 0,
                 'data' => null,
             ], 404);
         }
@@ -222,12 +195,19 @@ class ServiceDosen
         return response()->json([
             'status' => true,
             'message' => 'API Dosen (Trash)',
-            'jumlah' => $data->count(),
-            'data' => $data,
+            'jumlah' => $paginator->total(),
+            'data' => $paginator->items(),
+            'pagination' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'last_page' => $paginator->lastPage(),
+                'from' => $paginator->firstItem(),
+                'to' => $paginator->lastItem(),
+            ],
         ]);
     }
 
-    public function restoreDosen(string $id)
+    public function restoreDosen(string $id): JsonResponse
     {
         $dosen = Dosen::onlyTrashed()->where('kode_dosen', $id)->first();
 
@@ -245,18 +225,21 @@ class ServiceDosen
             return response()->json([
                 'status' => false,
                 'message' => 'Gagal memulihkan Dosen',
-                'data' => $dosen,
+                'data' => null,
             ], 500);
         }
 
         return response()->json([
             'status' => true,
             'message' => 'Dosen berhasil dipulihkan',
-            'data' => $dosen,
+            'data' => [
+                'kode_dosen' => $dosen->kode_dosen,
+                'nama_dosen' => $dosen->nama_dosen,
+            ],
         ]);
     }
 
-    public function forceDeleteDosen(string $id)
+    public function forceDeleteDosen(string $id): JsonResponse
     {
         $dosen = Dosen::onlyTrashed()->where('kode_dosen', $id)->first();
 
@@ -274,14 +257,49 @@ class ServiceDosen
             return response()->json([
                 'status' => false,
                 'message' => 'Gagal menghapus permanen Dosen',
-                'data' => $dosen,
+                'data' => null,
             ], 500);
         }
 
         return response()->json([
             'status' => true,
             'message' => 'Dosen berhasil dihapus permanen',
-            'data' => $dosen,
+            'data' => [
+                'kode_dosen' => $dosen->kode_dosen,
+                'nama_dosen' => $dosen->nama_dosen,
+            ],
         ]);
+    }
+
+    private function formatDosen(Dosen $item, ?int $index = null): array
+    {
+        $data = [
+            'code' => Crypt::encryptString($item->kode_dosen),
+            'nama_dosen' => $item->nama_dosen,
+            'nik' => $item->nik,
+            'no_telp' => $item->no_telp,
+            'alamat_email' => $item->alamat_email,
+            'field_studi' => $item->field_studi,
+            'alumni' => $item->alumni,
+            'homebase' => $item->programStudi?->nama_program_studi,
+            'status_dosen' => $item->status_dosen,
+            'aktif' => $item->aktif,
+            'status_login' => $item->status_login,
+            'signature' => $item->signature,
+        ];
+
+        if ($index !== null) {
+            $data = ['id' => $index] + $data;
+        }
+
+        return $data;
+    }
+
+    private function formatDosenTrash(Dosen $item, ?int $index = null): array
+    {
+        $data = $this->formatDosen($item, $index);
+        $data['deleted_at'] = $item->deleted_at;
+
+        return $data;
     }
 }

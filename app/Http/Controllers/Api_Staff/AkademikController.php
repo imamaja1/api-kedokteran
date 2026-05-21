@@ -3,78 +3,92 @@
 namespace App\Http\Controllers\Api_Staff;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Service\ServiceMahasiswa;
+use App\Service\ServiceKHS;
+use App\Service\ServiceKRS;
 use App\Service\ServiceKurikulum;
 use App\Service\ServicePetikanNilai;
 use App\Service\ServiceProgramStudi;
-use App\Service\ServiceTahunAngkatan;
-use App\Service\ServiceKRS;
-use App\Service\ServiceKHS;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 
 class AkademikController extends Controller
 {
-    public function __construct()
+    public function __construct(
+        private readonly ServiceProgramStudi $programStudiService,
+        private readonly ServiceKurikulum $kurikulumService,
+        private readonly ServiceKRS $krsService,
+        private readonly ServiceKHS $khsService,
+        private readonly ServicePetikanNilai $petikanNilaiService,
+    ) {}
+
+    public function program_studi(): JsonResponse
     {
-        //
+        return $this->programStudiService->getAllProgramStudi();
     }
 
-    public function program_studi()
+    public function nama_kurikulum(): JsonResponse
     {
-        return (new ServiceProgramStudi())->getAllProgramStudi();
-    }
-    public function NamaKurikulum(){
-        return (new ServiceKurikulum())->nama_kurikulum();
+        return $this->kurikulumService->nama_kurikulum();
     }
 
-    public function Kurikulum(Request $request){
+    public function kurikulum(Request $request): JsonResponse
+    {
         $validated = $request->validate([
             'code_nama_kurikulum' => ['required', 'string'],
         ]);
+
         $kode_nama_kurikulum = Crypt::decryptString($validated['code_nama_kurikulum']);
-        return (new ServiceKurikulum())->kurikulum_by_nama_kurikulum($kode_nama_kurikulum);
+
+        return $this->kurikulumService->kurikulum_by_nama_kurikulum($kode_nama_kurikulum);
     }
 
-    public function KRS(Request $request){
+    public function krs(Request $request): JsonResponse
+    {
         $validated = $request->validate([
             'nim' => ['required', 'string', 'max:20', 'regex:/^\d+$/'],
         ]);
 
-        return (new ServiceKRS())->getAllKRS($validated['nim']);
+        return $this->krsService->getAllKRS($validated['nim']);
     }
 
-    public function KRSDetail(Request $request){
+    public function krs_detail(Request $request): JsonResponse
+    {
         $validated = $request->validate([
             'code_krs' => ['required', 'string'],
         ]);
 
         $kode_krs = Crypt::decryptString($validated['code_krs']);
-        return (new ServiceKRS())->getKRSDetail($kode_krs);
+
+        return $this->krsService->getKRSDetail($kode_krs);
     }
 
-    public function KHS(Request $request){
+    public function khs(Request $request): JsonResponse
+    {
         $validated = $request->validate([
             'nim' => ['required', 'string', 'max:20', 'regex:/^\d+$/'],
         ]);
 
-        return (new ServiceKHS())->getAllKHS($validated['nim']);
+        return $this->khsService->getAllKHS($validated['nim']);
     }
 
-    public function KHSDetail(Request $request){
+    public function khs_detail(Request $request): JsonResponse
+    {
         $validated = $request->validate([
             'code_krs' => ['required', 'string'],
         ]);
 
         $kode_krs = Crypt::decryptString($validated['code_krs']);
-        return (new ServiceKHS())->getKHSDetail($kode_krs);
+
+        return $this->khsService->getKHSDetail($kode_krs);
     }
 
-    public function PetikanNilai(Request $request){
+    public function petikan_nilai(Request $request): JsonResponse
+    {
         $validated = $request->validate([
             'nim' => ['required', 'string', 'max:20', 'regex:/^\d+$/'],
         ]);
 
-        return (new ServicePetikanNilai())->getTranskrip($validated['nim']);
+        return $this->petikanNilaiService->getTranskrip($validated['nim']);
     }
 }

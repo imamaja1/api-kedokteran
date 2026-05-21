@@ -3,190 +3,195 @@
 namespace App\Service;
 
 use App\Models\TahunAkademik;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Crypt;
 
 class ServiceTahunAkademik
 {
-  public function __construct()
-  {
-    //
-  }
+    public function getAllTahunAkademik(array $filters = []): JsonResponse
+    {
+        $query = TahunAkademik::orderByDesc('kode_tahun_akademik');
 
-  public function getAllTahunAkademik(array $filters = [])
-  {
-    $query = TahunAkademik::orderByDesc('kode_tahun_akademik');
+        if (! empty($filters['tahun_akademik'])) {
+            $query->where('tahun_akademik', $filters['tahun_akademik']);
+        }
 
-    if (!empty($filters['tahun_akademik'])) {
-      $query->where('tahun_akademik', $filters['tahun_akademik']);
+        if (! empty($filters['semester'])) {
+            $query->where('semester', $filters['semester']);
+        }
+
+        if (! empty($filters['status'])) {
+            $query->where('status', $filters['status']);
+        }
+
+        $paginator = $query->paginate(20);
+
+        $paginator->getCollection()->transform(function ($item, $index) {
+            return [
+                'id' => $index + 1,
+                'code' => Crypt::encryptString($item->kode_tahun_akademik),
+                'tahun_akademik' => $item->tahun_akademik,
+                'semester' => $item->semester,
+                'tanggal_mulai' => $item->tanggal_mulai?->format('Y-m-d'),
+                'tanggal_berakhir' => $item->tanggal_berakhir?->format('Y-m-d'),
+                'status' => $item->status,
+                'status_kpat' => $item->status_kpat,
+            ];
+        });
+
+        return response()->json([
+            'status' => true,
+            'message' => 'API Tahun Akademik',
+            'jumlah' => $paginator->total(),
+            'data' => $paginator->items(),
+            'pagination' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'last_page' => $paginator->lastPage(),
+                'from' => $paginator->firstItem(),
+                'to' => $paginator->lastItem(),
+            ],
+        ]);
     }
 
-    if (!empty($filters['semester'])) {
-      $query->where('semester', $filters['semester']);
+    public function getOneTahunAkademik(string $id): JsonResponse
+    {
+        $data = TahunAkademik::find($id);
+
+        if (! $data) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Tahun akademik tidak ditemukan',
+                'data' => null,
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'API Tahun Akademik',
+            'data' => [
+                'code' => Crypt::encryptString($data->kode_tahun_akademik),
+                'tahun_akademik' => $data->tahun_akademik,
+                'semester' => $data->semester,
+                'tanggal_mulai' => $data->tanggal_mulai?->format('Y-m-d'),
+                'tanggal_berakhir' => $data->tanggal_berakhir?->format('Y-m-d'),
+                'status' => $data->status,
+                'status_kpat' => $data->status_kpat,
+            ],
+        ]);
     }
 
-    if (!empty($filters['status'])) {
-      $query->where('status', $filters['status']);
+    public function storeTahunAkademik(array $object): JsonResponse
+    {
+        if (isset($object['status']) && $object['status'] === 'A') {
+            TahunAkademik::where('semester', $object['semester'])
+                ->where('status', 'A')
+                ->update(['status' => 'N']);
+        }
+
+        try {
+            $tahunAkademik = TahunAkademik::create($object);
+        } catch (\Throwable) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Gagal membuat Tahun Akademik',
+                'data' => null,
+            ], 500);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Tahun Akademik berhasil dibuat',
+            'data' => [
+                'code' => Crypt::encryptString($tahunAkademik->kode_tahun_akademik),
+                'tahun_akademik' => $tahunAkademik->tahun_akademik,
+                'semester' => $tahunAkademik->semester,
+                'tanggal_mulai' => $tahunAkademik->tanggal_mulai?->format('Y-m-d'),
+                'tanggal_berakhir' => $tahunAkademik->tanggal_berakhir?->format('Y-m-d'),
+                'status' => $tahunAkademik->status,
+                'status_kpat' => $tahunAkademik->status_kpat,
+            ],
+        ], 201);
     }
 
-    $data = $query->get()
-      ->map(function ($item, $nomor) {
-        return [
-          'id' => $nomor + 1,
-          'code' => Crypt::encryptString($item->kode_tahun_akademik),
-          'tahun_akademik' => $item->tahun_akademik,
-          'semester' => $item->semester,
-          'tanggal_mulai' => $item->tanggal_mulai?->format('Y-m-d'),
-          'tanggal_berakhir' => $item->tanggal_berakhir?->format('Y-m-d'),
-          'status' => $item->status,
-          'status_kpat' => $item->status_kpat,
-        ];
-      });
+    public function updateTahunAkademik(string $id, array $object): JsonResponse
+    {
+        $tahunAkademik = TahunAkademik::find($id);
 
-    return response()->json([
-      'status' => true,
-      'message' => 'API Tahun Akademik',
-      'data' => $data,
-    ]);
-  }
+        if (! $tahunAkademik) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Tahun akademik tidak ditemukan',
+                'data' => null,
+            ], 404);
+        }
 
-  public function getOneTahunAkademik($id)
-  {
-    $data = TahunAkademik::find($id);
+        if (isset($object['status']) && $object['status'] === 'A') {
+            TahunAkademik::where('semester', $object['semester'])
+                ->where('status', 'A')
+                ->where('kode_tahun_akademik', '!=', $tahunAkademik->kode_tahun_akademik)
+                ->update(['status' => 'N']);
+        }
 
-    if (!$data) {
-      return response()->json([
-        'status' => false,
-        'message' => 'Tahun akademik tidak ditemukan',
-        'data' => null,
-      ], 404);
+        try {
+            $tahunAkademik->update($object);
+        } catch (\Throwable) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Gagal memperbarui Tahun Akademik',
+                'data' => null,
+            ], 500);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Tahun Akademik berhasil diperbarui',
+            'data' => [
+                'code' => Crypt::encryptString($tahunAkademik->kode_tahun_akademik),
+                'tahun_akademik' => $tahunAkademik->tahun_akademik,
+                'semester' => $tahunAkademik->semester,
+                'tanggal_mulai' => $tahunAkademik->tanggal_mulai?->format('Y-m-d'),
+                'tanggal_berakhir' => $tahunAkademik->tanggal_berakhir?->format('Y-m-d'),
+                'status' => $tahunAkademik->status,
+                'status_kpat' => $tahunAkademik->status_kpat,
+            ],
+        ]);
     }
 
-    return response()->json([
-      'status' => true,
-      'message' => 'API Tahun Akademik',
-      'data' => [
-        'code' => Crypt::encryptString($data->kode_tahun_akademik),
-        'tahun_akademik' => $data->tahun_akademik,
-        'semester' => $data->semester,
-        'tanggal_mulai' => $data->tanggal_mulai?->format('Y-m-d'),
-        'tanggal_berakhir' => $data->tanggal_berakhir?->format('Y-m-d'),
-        'status' => $data->status,
-        'status_kpat' => $data->status_kpat,
-      ],
-    ]);
-  }
+    public function deleteTahunAkademik(string $id): JsonResponse
+    {
+        $tahunAkademik = TahunAkademik::find($id);
 
-  public function storeTahunAkademik(array $object)
-  {
-    if (isset($object['status']) && $object['status'] === 'A') {
-      TahunAkademik::where('semester', $object['semester'])
-        ->where('status', 'A')
-        ->update(['status' => 'N']);
+        if (! $tahunAkademik) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Tahun akademik tidak ditemukan',
+                'data' => null,
+            ], 404);
+        }
+
+        try {
+            $tahunAkademik->delete();
+        } catch (\Throwable) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Gagal menghapus Tahun Akademik',
+                'data' => null,
+            ], 500);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Tahun Akademik berhasil dihapus',
+            'data' => [
+                'code' => Crypt::encryptString($tahunAkademik->kode_tahun_akademik),
+                'tahun_akademik' => $tahunAkademik->tahun_akademik,
+                'semester' => $tahunAkademik->semester,
+                'tanggal_mulai' => $tahunAkademik->tanggal_mulai?->format('Y-m-d'),
+                'tanggal_berakhir' => $tahunAkademik->tanggal_berakhir?->format('Y-m-d'),
+                'status' => $tahunAkademik->status,
+                'status_kpat' => $tahunAkademik->status_kpat,
+            ],
+        ]);
     }
-
-    try {
-      $tahunAkademik = TahunAkademik::create($object);
-    } catch (\Throwable $th) {
-      return response()->json([
-        'status' => false,
-        'message' => 'Gagal membuat Tahun Akademik',
-        'data' => null,
-      ], 500);
-    }
-
-    return response()->json([
-      'status' => true,
-      'message' => 'Tahun Akademik berhasil dibuat',
-      'data' => [
-        'code' => Crypt::encryptString($tahunAkademik->kode_tahun_akademik),
-        'tahun_akademik' => $tahunAkademik->tahun_akademik,
-        'semester' => $tahunAkademik->semester,
-        'tanggal_mulai' => $tahunAkademik->tanggal_mulai?->format('Y-m-d'),
-        'tanggal_berakhir' => $tahunAkademik->tanggal_berakhir?->format('Y-m-d'),
-        'status' => $tahunAkademik->status,
-        'status_kpat' => $tahunAkademik->status_kpat,
-      ],
-    ], 201);
-  }
-
-  public function updateTahunAkademik($id, array $object)
-  {
-    $tahunAkademik = TahunAkademik::find($id);
-
-    if (!$tahunAkademik) {
-      return response()->json([
-        'status' => false,
-        'message' => 'Tahun akademik tidak ditemukan',
-        'data' => null,
-      ], 404);
-    }
-
-    if (isset($object['status']) && $object['status'] === 'A') {
-      TahunAkademik::where('semester', $object['semester'])
-        ->where('status', 'A')
-        ->where('kode_tahun_akademik', '!=', $tahunAkademik->kode_tahun_akademik)
-        ->update(['status' => 'N']);
-    }
-
-    try {
-      $tahunAkademik->update($object);
-    } catch (\Throwable $th) {
-      return response()->json([
-        'status' => false,
-        'message' => 'Gagal memperbarui Tahun Akademik',
-        'data' => null,
-      ], 500);
-    }
-
-    return response()->json([
-      'status' => true,
-      'message' => 'Tahun Akademik berhasil diperbarui',
-      'data' => [
-        'code' => Crypt::encryptString($tahunAkademik->kode_tahun_akademik),
-        'tahun_akademik' => $tahunAkademik->tahun_akademik,
-        'semester' => $tahunAkademik->semester,
-        'tanggal_mulai' => $tahunAkademik->tanggal_mulai?->format('Y-m-d'),
-        'tanggal_berakhir' => $tahunAkademik->tanggal_berakhir?->format('Y-m-d'),
-        'status' => $tahunAkademik->status,
-        'status_kpat' => $tahunAkademik->status_kpat,
-      ],
-    ]);
-  }
-
-  public function deleteTahunAkademik($id)
-  {
-    $tahunAkademik = TahunAkademik::find($id);
-
-    if (!$tahunAkademik) {
-      return response()->json([
-        'status' => false,
-        'message' => 'Tahun akademik tidak ditemukan',
-        'data' => null,
-      ], 404);
-    }
-
-    try {
-      $tahunAkademik->delete();
-    } catch (\Throwable $th) {
-      return response()->json([
-        'status' => false,
-        'message' => 'Gagal menghapus Tahun Akademik',
-        'data' => null,
-      ], 500);
-    }
-
-    return response()->json([
-      'status' => true,
-      'message' => 'Tahun Akademik berhasil dihapus',
-      'data' => [
-        'code' => Crypt::encryptString($tahunAkademik->kode_tahun_akademik),
-        'tahun_akademik' => $tahunAkademik->tahun_akademik,
-        'semester' => $tahunAkademik->semester,
-        'tanggal_mulai' => $tahunAkademik->tanggal_mulai?->format('Y-m-d'),
-        'tanggal_berakhir' => $tahunAkademik->tanggal_berakhir?->format('Y-m-d'),
-        'status' => $tahunAkademik->status,
-        'status_kpat' => $tahunAkademik->status_kpat,
-      ],
-    ]);
-  }
 }

@@ -2,10 +2,13 @@
 
 use App\Http\Controllers\Api_Staff\AkademikController;
 use App\Http\Controllers\Api_Staff\DefaultController;
-use App\Http\Controllers\Api_Staff\MasterDataController;
+use App\Http\Controllers\Api_Staff\DosenController;
+use App\Http\Controllers\Api_Staff\MahasiswaController;
+use App\Http\Controllers\Api_Staff\MatakuliahController;
+use App\Http\Controllers\Api_Staff\NamaKurikulumController;
+use App\Http\Controllers\Api_Staff\ProgramStudiController;
+use App\Http\Controllers\Api_Staff\TahunAkademikController;
 use App\Http\Controllers\Auth\AuthController;
-use App\Models\Dosen;
-use App\Models\Matakuliah;
 use Illuminate\Support\Facades\Route;
 
 // ─── Protected Staff (auth:staff_web) ─────────────────────────────────
@@ -17,68 +20,93 @@ Route::prefix('api/staff')
         Route::get('tahun-angkatan', [DefaultController::class, 'tahun_angkatan']);
 
         // Akademik
-        Route::prefix('akademik')->group(function () {
-            Route::get('program-studi', [AkademikController::class, 'program_studi']);
-            Route::get('nama-kurikulum', [AkademikController::class, 'NamaKurikulum']);
-            Route::get('kurikulum', [AkademikController::class, 'Kurikulum']);
-            Route::get('krs', [AkademikController::class, 'KRS']);
-            Route::get('krs-detail', [AkademikController::class, 'KRSDetail']);
-            Route::get('khs', [AkademikController::class, 'KHS']);
-            Route::get('khs-detail', [AkademikController::class, 'KHSDetail']);
-            Route::get('petikan-nilai', [AkademikController::class, 'PetikanNilai']);
-        });
+        Route::prefix('akademik')
+            ->middleware(['throttle:30,1'])
+            ->group(function () {
+                Route::get('program-studi', [AkademikController::class, 'program_studi']);
+                Route::get('nama-kurikulum', [AkademikController::class, 'nama_kurikulum']);
+                Route::get('kurikulum', [AkademikController::class, 'kurikulum']);
+                Route::get('krs', [AkademikController::class, 'krs']);
+                Route::get('krs-detail', [AkademikController::class, 'krs_detail']);
+                Route::get('khs', [AkademikController::class, 'khs']);
+                Route::get('khs-detail', [AkademikController::class, 'khs_detail']);
+                Route::get('petikan-nilai', [AkademikController::class, 'petikan_nilai']);
+            });
 
         // Master Data
-        Route::prefix('master-data')->group(function () {
-            // Matakuliah
-            Route::get('matakuliah', [MasterDataController::class, 'GetMatakuliah']);
-            Route::get('matakuliah-show', [MasterDataController::class, 'GetOneMatakuliah']);
-            Route::post('matakuliah', [MasterDataController::class, 'StoreMatakuliah']);
-            Route::put('matakuliah', [MasterDataController::class, 'UpdateMatakuliah']);
-            Route::delete('matakuliah/{code}', [MasterDataController::class, 'DeleteMatakuliah']);
+        Route::prefix('master-data')
+            ->middleware(['throttle:60,1'])
+            ->group(function () {
+                // Matakuliah
+                Route::prefix('matakuliah')->group(function () {
+                    Route::get('/', [MatakuliahController::class, 'index']);
+                    Route::get('/show', [MatakuliahController::class, 'show']);
+                    Route::post('/', [MatakuliahController::class, 'store']);
+                    Route::put('/', [MatakuliahController::class, 'update']);
+                    Route::delete('/{code}', [MatakuliahController::class, 'destroy']);
+                });
 
-            // program studi
-            Route::get('program-studi', [MasterDataController::class, 'GetProgramStudi']);
-            Route::get('program-studi-show', [MasterDataController::class, 'GetOneProgramStudi']);
-            Route::post('program-studi', [MasterDataController::class, 'StoreProgramStudi']);
-            Route::put('program-studi', [MasterDataController::class, 'UpdateProgramStudi']);
-            Route::delete('program-studi/{code}', [MasterDataController::class, 'DeleteProgramStudi']);
+                // Program Studi
+                Route::prefix('program-studi')->group(function () {
+                    Route::get('/', [ProgramStudiController::class, 'index']);
+                    Route::get('/show', [ProgramStudiController::class, 'show']);
+                    Route::post('/', [ProgramStudiController::class, 'store']);
+                    Route::put('/', [ProgramStudiController::class, 'update']);
+                    Route::delete('/{code}', [ProgramStudiController::class, 'destroy']);
+                });
 
-            // Dosen (dengan soft delete)
-            Route::get('dosen', [MasterDataController::class, 'GetDosen']);
-            Route::get('dosen-show', [MasterDataController::class, 'GetOneDosen']);
-            Route::get('dosen-trash', [MasterDataController::class, 'GetDosenTrash']);
-            Route::post('dosen', [MasterDataController::class, 'StoreDosen']);
-            Route::put('dosen', [MasterDataController::class, 'UpdateDosen']);
-            Route::delete('dosen/{code}', [MasterDataController::class, 'DeleteDosen']);
-            Route::post('dosen/{code}/restore', [MasterDataController::class, 'RestoreDosen']);
-            Route::delete('dosen/{code}/force', [MasterDataController::class, 'ForceDeleteDosen']);
+                // Dosen (dengan soft delete)
+                Route::prefix('dosen')->group(function () {
+                    Route::get('/', [DosenController::class, 'index']);
+                    Route::get('/show', [DosenController::class, 'show']);
+                    Route::get('/trash', [DosenController::class, 'trash']);
+                    Route::post('/', [DosenController::class, 'store']);
+                    Route::put('/', [DosenController::class, 'update']);
+                    Route::delete('/{code}', [DosenController::class, 'destroy']);
+                    Route::post('/{code}/restore', [DosenController::class, 'restore']);
+                    Route::delete('/{code}/force', [DosenController::class, 'forceDelete']);
+                });
 
-            // nama kurikulum
-            Route::get('nama-kurikulum', [MasterDataController::class, 'GetNamaKurikulum']);
-            Route::get('nama-kurikulum-show', [MasterDataController::class, 'GetOneNamaKurikulum']);
-            Route::post('nama-kurikulum', [MasterDataController::class, 'StoreNamaKurikulum']);
-            Route::put('nama-kurikulum', [MasterDataController::class, 'UpdateNamaKurikulum']);
-            Route::delete('nama-kurikulum/{code}', [MasterDataController::class, 'DeleteNamaKurikulum']);
+                // Nama Kurikulum
+                Route::prefix('nama-kurikulum')->group(function () {
+                    Route::get('/', [NamaKurikulumController::class, 'index']);
+                    Route::get('/show', [NamaKurikulumController::class, 'show']);
+                    Route::post('/', [NamaKurikulumController::class, 'store']);
+                    Route::put('/', [NamaKurikulumController::class, 'update']);
+                    Route::delete('/{code}', [NamaKurikulumController::class, 'destroy']);
+                });
 
-            // tahun ajaran
-            Route::get('tahun-akademik', [MasterDataController::class, 'GetTahunAkademik']);
-            Route::get('tahun-akademik-show', [MasterDataController::class, 'GetOneTahunAkademik']);
-            Route::post('tahun-akademik', [MasterDataController::class, 'StoreTahunAkademik']);
-            Route::put('tahun-akademik', [MasterDataController::class, 'UpdateTahunAkademik']);
-            Route::delete('tahun-akademik/{code}', [MasterDataController::class, 'DeleteTahunAkademik']);
+                // Tahun Akademik
+                Route::prefix('tahun-akademik')->group(function () {
+                    Route::get('/', [TahunAkademikController::class, 'index']);
+                    Route::get('/show', [TahunAkademikController::class, 'show']);
+                    Route::post('/', [TahunAkademikController::class, 'store']);
+                    Route::put('/', [TahunAkademikController::class, 'update']);
+                    Route::delete('/{code}', [TahunAkademikController::class, 'destroy']);
+                });
 
-            // mahasiswa (dengan soft delete)
-            Route::get('mahasiswa', [MasterDataController::class, 'GetMahasiswa']);
-            Route::get('mahasiswa-show', [MasterDataController::class, 'GetOneMahasiswa']);
-            Route::get('mahasiswa-trash', [MasterDataController::class, 'GetMahasiswaTrash']);
-            Route::post('mahasiswa', [MasterDataController::class, 'StoreMahasiswa']);
-            Route::put('mahasiswa', [MasterDataController::class, 'UpdateMahasiswa']);
-            Route::delete('mahasiswa/{code}', [MasterDataController::class, 'DeleteMahasiswa']);
-            Route::post('mahasiswa/{code}/restore', [MasterDataController::class, 'RestoreMahasiswa']);
-            Route::delete('mahasiswa/{code}/force', [MasterDataController::class, 'ForceDeleteMahasiswa']);
+                // Mahasiswa (dengan soft delete)
+                Route::prefix('mahasiswa')->group(function () {
+                    Route::get('/', [MahasiswaController::class, 'index']);
+                    Route::get('/show', [MahasiswaController::class, 'show']);
+                    Route::get('/trash', [MahasiswaController::class, 'trash']);
+                    Route::post('/', [MahasiswaController::class, 'store']);
+                    Route::put('/', [MahasiswaController::class, 'update']);
+                    Route::delete('/{code}', [MahasiswaController::class, 'destroy']);
+                    Route::post('/{code}/restore', [MahasiswaController::class, 'restore']);
+                    Route::delete('/{code}/force', [MahasiswaController::class, 'forceDelete']);
+                });
 
-        });
+            });
+
+        // Kurikulum
+        Route::prefix('blok-kurikulum')
+            ->middleware(['throttle:60,1'])
+            ->group(function () {
+                Route::prefix('masterdata')->group(function () {
+                });
+            });
+
         // fallback dalam group — return 404 bukan 401
         Route::fallback(fn () => response()->json([
             'status' => false,

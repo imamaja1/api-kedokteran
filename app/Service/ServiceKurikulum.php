@@ -5,13 +5,14 @@ namespace App\Service;
 use App\Models\Kurikulum;
 use App\Models\KurikulumAngkatan;
 use App\Models\NamaKurikulum;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Crypt;
 
 class ServiceKurikulum
 {
-    public function kurikulum_by_nim(string $nim, string $kode_prodi)
+    public function kurikulum_by_nim(string $nim, string $kode_prodi): JsonResponse
     {
-        $angkatan = substr((string) $nim, 0, 2);
+        $angkatan = substr($nim, 0, 2);
 
         $kurikulumAngkatan = KurikulumAngkatan::select(
             'kurikulum_angkatan.angkatan',
@@ -32,26 +33,7 @@ class ServiceKurikulum
         }
 
         $data['kurikulum'] = $kurikulumAngkatan;
-
-        $data['data_kurikulum'] = Kurikulum::join('matakuliah', 'kurikulum.id_matakuliah', '=', 'matakuliah.id_matakuliah')
-            ->where('kode_nama_kurikulum', $kurikulumAngkatan->kode_nama_kurikulum)
-            ->select('kurikulum.semester', 'matakuliah.*')
-            ->selectRaw('(COALESCE(matakuliah.sks_teori, 0) + COALESCE(matakuliah.sks_praktik, 0)) as sks')
-            ->orderBy('kurikulum.semester')
-            ->get()
-            ->groupBy('semester')
-            ->map(fn ($items, $sem) => [
-                'semester' => $sem,
-                'total_sks' => $items->sum('sks'),
-                'matakuliah' => $items->map(fn ($item) => [
-                    'kode_matakuliah' => $item->kode_matakuliah,
-                    'nama_matakuliah' => $item->nama_matakuliah,
-                    'sks_teori' => $item->sks_teori,
-                    'sks_praktik' => $item->sks_praktik,
-                    'block' => (bool) $item->block,
-                ]),
-            ])
-            ->values();
+        $data['data_kurikulum'] = $this->buildKurikulumData($kurikulumAngkatan->kode_nama_kurikulum);
 
         return response()->json([
             'status' => true,
@@ -60,30 +42,38 @@ class ServiceKurikulum
         ]);
     }
 
-    public function nama_kurikulum()
+    public function nama_kurikulum(): JsonResponse
     {
-        $data = NamaKurikulum::with('programStudi')
-            ->get()
-            ->map(function ($item, $nomor) {
-                return [
-                    'id' => $nomor + 1,
-                    'code_nama_kurikulum' => Crypt::encryptString($item->kode_nama_kurikulum),
-                    'nama_kurikulum' => $item->nama_kurikulum,
-                    'nama_program_studi' => $item->programStudi?->nama_program_studi,
-                    'angkatan1' => $item->angkatan1,
-                    'ekstensi1' => $item->ekstensi1,
-                    'paket1' => $item->paket1,
-                ];
-            });
+        $paginator = NamaKurikulum::with('programStudi')->paginate(20);
+
+        $paginator->getCollection()->transform(function ($item, $index) {
+            return [
+                'id' => $index + 1,
+                'code_nama_kurikulum' => Crypt::encryptString($item->kode_nama_kurikulum),
+                'nama_kurikulum' => $item->nama_kurikulum,
+                'nama_program_studi' => $item->programStudi?->nama_program_studi,
+                'angkatan1' => $item->angkatan1,
+                'ekstensi1' => $item->ekstensi1,
+                'paket1' => $item->paket1,
+            ];
+        });
 
         return response()->json([
             'status' => true,
             'message' => 'Nama Kurikulum retrieved successfully.',
-            'data' => $data,
+            'jumlah' => $paginator->total(),
+            'data' => $paginator->items(),
+            'pagination' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'last_page' => $paginator->lastPage(),
+                'from' => $paginator->firstItem(),
+                'to' => $paginator->lastItem(),
+            ],
         ]);
     }
 
-    public function getOneNamaKurikulum(string $id)
+    public function getOneNamaKurikulum(string $id): JsonResponse
     {
         $item = NamaKurikulum::find($id);
 
@@ -109,7 +99,7 @@ class ServiceKurikulum
         ]);
     }
 
-    public function storeNamaKurikulum(array $object)
+    public function storeNamaKurikulum(array $object): JsonResponse
     {
         try {
             $namaKurikulum = NamaKurikulum::create($object);
@@ -135,7 +125,7 @@ class ServiceKurikulum
         ], 201);
     }
 
-    public function updateNamaKurikulum(string $id, array $object)
+    public function updateNamaKurikulum(string $id, array $object): JsonResponse
     {
         $namaKurikulum = NamaKurikulum::find($id);
 
@@ -171,7 +161,7 @@ class ServiceKurikulum
         ]);
     }
 
-    public function deleteNamaKurikulum(string $id)
+    public function deleteNamaKurikulum(string $id): JsonResponse
     {
         $namaKurikulum = NamaKurikulum::find($id);
 
@@ -207,9 +197,20 @@ class ServiceKurikulum
         ]);
     }
 
-    public function kurikulum_by_nama_kurikulum(string $kode_nama_kurikulum)
+    public function kurikulum_by_nama_kurikulum(string $kode_nama_kurikulum): JsonResponse
     {
-        $data = Kurikulum::join('matakuliah', 'kurikulum.id_matakuliah', '=', 'matakuliah.id_matakuliah')
+        $data = $this->buildKurikulumData($kode_nama_kurikulum);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Kurikulum retrieved successfully.',
+            'data' => $data,
+        ]);
+    }
+
+    private function buildKurikulumData(string $kode_nama_kurikulum): array
+    {
+        return Kurikulum::join('matakuliah', 'kurikulum.id_matakuliah', '=', 'matakuliah.id_matakuliah')
             ->where('kode_nama_kurikulum', $kode_nama_kurikulum)
             ->select('kurikulum.semester', 'matakuliah.*')
             ->selectRaw('(COALESCE(matakuliah.sks_teori, 0) + COALESCE(matakuliah.sks_praktik, 0)) as sks')
@@ -227,12 +228,7 @@ class ServiceKurikulum
                     'block' => (bool) $item->block,
                 ]),
             ])
-            ->values();
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Kurikulum retrieved successfully.',
-            'data' => $data,
-        ]);
+            ->values()
+            ->toArray();
     }
 }

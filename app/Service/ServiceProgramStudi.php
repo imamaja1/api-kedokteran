@@ -3,39 +3,41 @@
 namespace App\Service;
 
 use App\Models\ProgramStudi;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Crypt;
 
 class ServiceProgramStudi
 {
-    /**
-     * Create a new class instance.
-     */
-    public function __construct()
+    public function getAllProgramStudi(): JsonResponse
     {
-        //
-    }
+        $paginator = ProgramStudi::paginate(20);
 
-    public function getAllProgramStudi()
-    {
-        $data = ProgramStudi::all()
-            ->map(function ($item, $nomor) {
-                return [
-                    'id' => $nomor + 1,
-                    'code' => Crypt::encryptString($item->kode_program_studi),
-                    'nama_program_studi' => $item->nama_program_studi,
-                    'singkatan_program_studi' => $item->singkatan_program_studi,
-                    'kompetensi' => $item->kompetensi,
-                ];
-            });
+        $paginator->getCollection()->transform(function ($item, $index) {
+            return [
+                'id' => $index + 1,
+                'code' => Crypt::encryptString($item->kode_program_studi),
+                'nama_program_studi' => $item->nama_program_studi,
+                'singkatan_program_studi' => $item->singkatan_program_studi,
+                'kompetensi' => $item->kompetensi,
+            ];
+        });
 
         return response()->json([
             'status' => true,
             'message' => 'API Program Studi',
-            'data' => $data,
+            'jumlah' => $paginator->total(),
+            'data' => $paginator->items(),
+            'pagination' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'last_page' => $paginator->lastPage(),
+                'from' => $paginator->firstItem(),
+                'to' => $paginator->lastItem(),
+            ],
         ]);
     }
 
-    public function getOneProgramStudi($id)
+    public function getOneProgramStudi(string $id): JsonResponse
     {
         $data = ProgramStudi::find($id);
 
@@ -59,11 +61,11 @@ class ServiceProgramStudi
         ]);
     }
 
-    public function storeProgramStudi($object)
+    public function storeProgramStudi(array $object): JsonResponse
     {
         try {
             $programStudi = ProgramStudi::create($object);
-        } catch (\Throwable $th) {
+        } catch (\Throwable) {
             return response()->json([
                 'status' => false,
                 'message' => 'Gagal membuat Program Studi',
@@ -82,7 +84,7 @@ class ServiceProgramStudi
         ], 201);
     }
 
-    public function updateProgramStudi($id, $object)
+    public function updateProgramStudi(string $id, array $object): JsonResponse
     {
         $programStudi = ProgramStudi::find($id);
 
@@ -96,7 +98,7 @@ class ServiceProgramStudi
 
         try {
             $programStudi->update($object);
-        } catch (\Throwable $th) {
+        } catch (\Throwable) {
             return response()->json([
                 'status' => false,
                 'message' => 'Gagal memperbarui Program Studi',
@@ -115,7 +117,7 @@ class ServiceProgramStudi
         ]);
     }
 
-    public function deleteProgramStudi($id)
+    public function deleteProgramStudi(string $id): JsonResponse
     {
         $programStudi = ProgramStudi::find($id);
 
@@ -129,7 +131,7 @@ class ServiceProgramStudi
 
         try {
             $programStudi->delete();
-        } catch (\Throwable $th) {
+        } catch (\Throwable) {
             return response()->json([
                 'status' => false,
                 'message' => 'Gagal menghapus Program Studi',
