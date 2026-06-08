@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api_Staff;
 
 use App\Http\Controllers\Controller;
 use App\Service\ServiceMatakuliah;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -46,12 +47,12 @@ class MatakuliahController extends Controller
         }
 
         $validasi = $request->validate([
-            'kode_matakuliah' => ['required', 'string', 'max:20', 'alpha_num', 'unique:matakuliah,kode_matakuliah'],
+            'kode_matakuliah' => ['required', 'string', 'max:20', 'alpha_num'],
             'nama_matakuliah' => ['required', 'string', 'max:255'],
-            'jenis' => ['required', 'boolean'],
+            'jenis' => ['nullable', 'boolean'],
             'sks_teori' => ['required', 'integer', 'min:0'],
             'sks_praktik' => ['required', 'integer', 'min:0'],
-            'block' => ['required', 'boolean'],
+            'block' => ['required', 'in:0,1'],
             'kode_program_studi' => ['required', 'integer', 'exists:program_studi,kode_program_studi'],
         ]);
 
@@ -98,7 +99,7 @@ class MatakuliahController extends Controller
             $request->merge([
                 $field => Crypt::decryptString($request->input($field)),
             ]);
-        } catch (\Illuminate\Contracts\Encryption\DecryptException) {
+        } catch (DecryptException) {
             return response()->json([
                 'status' => false,
                 'message' => "Format {$field} tidak valid",

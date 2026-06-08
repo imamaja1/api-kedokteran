@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\HasCode;
 
 class TahunAkademik extends Model
 {
+    use HasCode;
     protected $table = 'tahun_akademik';
     protected $primaryKey = 'kode_tahun_akademik';
 

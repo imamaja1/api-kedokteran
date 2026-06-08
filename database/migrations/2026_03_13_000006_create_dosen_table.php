@@ -32,7 +32,8 @@ class CreateDosenTable extends Migration
 
             $table->timestamps();
 
-            $table->index('homebase', 'homebase');
+            // Index otomatis dibuat oleh foreign key, tidak perlu explicit index
+            // $table->index('homebase', 'homebase');
             $table->foreign('homebase', 'dosen_ibfk_1')->references('kode_program_studi')->on('program_studi')->onUpdate('CASCADE');
         });
     }
@@ -46,7 +47,7 @@ class CreateDosenTable extends Migration
     {
         Schema::table('dosen', function (Blueprint $table) {
             $table->dropForeign('dosen_ibfk_1');
-            $table->dropIndex('homebase');
+            // $table->dropIndex('homebase');
         });
         Schema::dropIfExists('dosen');
     }

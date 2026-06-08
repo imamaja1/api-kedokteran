@@ -16,7 +16,8 @@ class CreateKrsTable extends Migration
 
             $table->timestamps();
 
-            $table->index('kode_tahun_akademik', 'fk_tahun_akademik');
+            // Index otomatis dibuat oleh foreign key, tidak perlu explicit index
+            // $table->index('kode_tahun_akademik', 'fk_tahun_akademik');
             $table->foreign('kode_tahun_akademik', 'fk_tahun_akademik')->references('kode_tahun_akademik')->on('tahun_akademik')->onUpdate('CASCADE');
         });
     }
@@ -25,7 +26,7 @@ class CreateKrsTable extends Migration
     {
         Schema::table('krs', function (Blueprint $table) {
             $table->dropForeign('fk_tahun_akademik');
-            $table->dropIndex('fk_tahun_akademik');
+            // $table->dropIndex('fk_tahun_akademik');
         });
         Schema::dropIfExists('krs');
     }

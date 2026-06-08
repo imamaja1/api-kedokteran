@@ -10,6 +10,11 @@ return new class extends Migration
      */
     private function safeAddIndex($table, $columns, $indexName)
     {
+        // Skip for non-MySQL connections (e.g., SQLite for testing)
+        if (DB::connection()->getDriverName() !== 'mysql') {
+            return;
+        }
+
         // Check if index already exists
         try {
             $indexes = DB::select("SHOW INDEX FROM {$table}");
@@ -113,6 +118,11 @@ return new class extends Migration
      */
     private function safeDropIndex($table, $indexName)
     {
+        // Skip for non-MySQL connections
+        if (DB::connection()->getDriverName() !== 'mysql') {
+            return;
+        }
+
         try {
             $indexes = DB::select("SHOW INDEX FROM {$table}");
             foreach ($indexes as $index) {

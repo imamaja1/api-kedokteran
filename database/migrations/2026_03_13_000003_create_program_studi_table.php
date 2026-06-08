@@ -17,7 +17,6 @@ class CreateProgramStudiTable extends Migration
             $table->smallIncrements('kode_program_studi');
             $table->string('nama_program_studi', 80);
             $table->char('singkatan_program_studi', 20);
-            $table->enum('kompetensi', ['Y', 'N'])->nullable();
             $table->timestamps();
         });
     }

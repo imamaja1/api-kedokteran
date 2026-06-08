@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api_Staff;
 
 use App\Http\Controllers\Controller;
+use App\Models\Mahasiswa;
 use App\Service\ServiceMahasiswa;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\JsonResponse;
@@ -28,6 +29,33 @@ class MahasiswaController extends Controller
             isset($validated['code']) ? Crypt::decryptString($validated['code']) : null,
             isset($validated['angkatan']) ? substr($validated['angkatan'], 2, 2) : null,
         );
+    }
+
+    public function search(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'nama' => ['required', 'string', 'max:255'],
+        ]);
+
+        $q = $validated['nama'];
+
+        $items = Mahasiswa::where('nim', 'like', "%{$q}%")
+            ->orWhere('nama_mahasiswa', 'like', "%{$q}%")
+            ->select('nim', 'nama_mahasiswa')
+            ->limit(5)
+            ->get()->map(function ($item) {
+                return [
+                    'code' => Crypt::encryptString($item->nim),
+                    'nim' => $item->nim,
+                    'nama_mahasiswa' => $item->nama_mahasiswa,
+                ];
+            });
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Pencarian mahasiswa',
+            'data' => $items,
+        ]);
     }
 
     public function show(Request $request): JsonResponse

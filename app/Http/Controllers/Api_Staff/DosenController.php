@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api_Staff;
 
 use App\Http\Controllers\Controller;
+use App\Models\Dosen;
 use App\Service\ServiceDosen;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -29,6 +31,32 @@ class DosenController extends Controller
         );
     }
 
+    public function search(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'nama' => ['required', 'string', 'max:255'],
+        ]);
+
+        $q = $validated['nama'];
+
+        $items = Dosen::where('nama_dosen', 'like', "%{$q}%")
+            ->select('kode_dosen', 'nama_dosen', 'homebase')
+            ->limit(5)
+            ->get()->map(function ($item) {
+                return [
+                    'code' => Crypt::encryptString($item->kode_dosen),
+                    'nama_dosen' => $item->nama_dosen,
+                    'program_studi' => $item->programStudi->nama_program_studi ?? null,
+                ];
+            });
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Pencarian dosen',
+            'data' => $items,
+        ]);
+    }
+
     public function show(Request $request): JsonResponse
     {
         $request->validate([
@@ -37,7 +65,7 @@ class DosenController extends Controller
 
         try {
             $id = Crypt::decryptString($request->query('code'));
-        } catch (\Illuminate\Contracts\Encryption\DecryptException) {
+        } catch (DecryptException) {
             return response()->json([
                 'status' => false,
                 'message' => 'Format kode tidak valid',
@@ -96,7 +124,7 @@ class DosenController extends Controller
 
         try {
             $id = Crypt::decryptString($validasi['code']);
-        } catch (\Illuminate\Contracts\Encryption\DecryptException) {
+        } catch (DecryptException) {
             return response()->json([
                 'status' => false,
                 'message' => 'Format kode tidak valid',
@@ -111,7 +139,7 @@ class DosenController extends Controller
     {
         try {
             $id = Crypt::decryptString($code);
-        } catch (\Illuminate\Contracts\Encryption\DecryptException) {
+        } catch (DecryptException) {
             return response()->json([
                 'status' => false,
                 'message' => 'Format kode tidak valid',
@@ -141,7 +169,7 @@ class DosenController extends Controller
     {
         try {
             $id = Crypt::decryptString($code);
-        } catch (\Illuminate\Contracts\Encryption\DecryptException) {
+        } catch (DecryptException) {
             return response()->json([
                 'status' => false,
                 'message' => 'Format kode tidak valid',
@@ -156,7 +184,7 @@ class DosenController extends Controller
     {
         try {
             $id = Crypt::decryptString($code);
-        } catch (\Illuminate\Contracts\Encryption\DecryptException) {
+        } catch (DecryptException) {
             return response()->json([
                 'status' => false,
                 'message' => 'Format kode tidak valid',
@@ -176,7 +204,7 @@ class DosenController extends Controller
 
         try {
             return Crypt::decryptString($value);
-        } catch (\Illuminate\Contracts\Encryption\DecryptException) {
+        } catch (DecryptException) {
             // Return null to trigger validation failure via when() callback
             // Or throw exception to be caught at route level
             return null;
@@ -193,7 +221,7 @@ class DosenController extends Controller
             $request->merge([
                 $field => Crypt::decryptString($request->input($field)),
             ]);
-        } catch (\Illuminate\Contracts\Encryption\DecryptException) {
+        } catch (DecryptException) {
             return response()->json([
                 'status' => false,
                 'message' => "Format {$field} tidak valid",

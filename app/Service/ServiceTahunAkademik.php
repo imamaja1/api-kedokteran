@@ -4,7 +4,6 @@ namespace App\Service;
 
 use App\Models\TahunAkademik;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Crypt;
 
 class ServiceTahunAkademik
 {
@@ -29,7 +28,7 @@ class ServiceTahunAkademik
         $paginator->getCollection()->transform(function ($item, $index) {
             return [
                 'id' => $index + 1,
-                'code' => Crypt::encryptString($item->kode_tahun_akademik),
+                'code' => $item->toCode(),
                 'tahun_akademik' => $item->tahun_akademik,
                 'semester' => $item->semester,
                 'tanggal_mulai' => $item->tanggal_mulai?->format('Y-m-d'),
@@ -70,7 +69,7 @@ class ServiceTahunAkademik
             'status' => true,
             'message' => 'API Tahun Akademik',
             'data' => [
-                'code' => Crypt::encryptString($data->kode_tahun_akademik),
+                'code' => $data->toCode(),
                 'tahun_akademik' => $data->tahun_akademik,
                 'semester' => $data->semester,
                 'tanggal_mulai' => $data->tanggal_mulai?->format('Y-m-d'),
@@ -103,7 +102,7 @@ class ServiceTahunAkademik
             'status' => true,
             'message' => 'Tahun Akademik berhasil dibuat',
             'data' => [
-                'code' => Crypt::encryptString($tahunAkademik->kode_tahun_akademik),
+                'code' => $tahunAkademik->toCode(),
                 'tahun_akademik' => $tahunAkademik->tahun_akademik,
                 'semester' => $tahunAkademik->semester,
                 'tanggal_mulai' => $tahunAkademik->tanggal_mulai?->format('Y-m-d'),
@@ -147,7 +146,7 @@ class ServiceTahunAkademik
             'status' => true,
             'message' => 'Tahun Akademik berhasil diperbarui',
             'data' => [
-                'code' => Crypt::encryptString($tahunAkademik->kode_tahun_akademik),
+                'code' => $tahunAkademik->toCode(),
                 'tahun_akademik' => $tahunAkademik->tahun_akademik,
                 'semester' => $tahunAkademik->semester,
                 'tanggal_mulai' => $tahunAkademik->tanggal_mulai?->format('Y-m-d'),
@@ -184,7 +183,7 @@ class ServiceTahunAkademik
             'status' => true,
             'message' => 'Tahun Akademik berhasil dihapus',
             'data' => [
-                'code' => Crypt::encryptString($tahunAkademik->kode_tahun_akademik),
+                'code' => $tahunAkademik->toCode(),
                 'tahun_akademik' => $tahunAkademik->tahun_akademik,
                 'semester' => $tahunAkademik->semester,
                 'tanggal_mulai' => $tahunAkademik->tanggal_mulai?->format('Y-m-d'),

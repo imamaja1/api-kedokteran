@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\HasCode;
 
 class Matakuliah extends Model
 {
+    use HasCode;
     protected $table = 'matakuliah';
     protected $primaryKey = 'id_matakuliah';
 

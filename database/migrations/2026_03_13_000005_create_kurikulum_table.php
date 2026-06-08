@@ -21,7 +21,8 @@ class CreateKurikulumTable extends Migration
             $table->integer('id_matakuliah')->nullable();
             $table->timestamps();
 
-            $table->index('kode_nama_kurikulum', 'FK_kurikulum_nama_kurikulum');
+            // Index otomatis dibuat oleh foreign key, tidak perlu explicit index
+            // $table->index('kode_nama_kurikulum', 'FK_kurikulum_nama_kurikulum');
             $table->foreign('kode_nama_kurikulum', 'FK_kurikulum_nama_kurikulum')->references('kode_nama_kurikulum')->on('nama_kurikulum')->onUpdate('CASCADE')->onDelete('CASCADE');
         });
     }
@@ -35,7 +36,7 @@ class CreateKurikulumTable extends Migration
     {
         Schema::table('kurikulum', function (Blueprint $table) {
             $table->dropForeign('FK_kurikulum_nama_kurikulum');
-            $table->dropIndex('FK_kurikulum_nama_kurikulum');
+            // $table->dropIndex('FK_kurikulum_nama_kurikulum');
         });
         Schema::dropIfExists('kurikulum');
     }

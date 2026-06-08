@@ -28,7 +28,9 @@ class DatabaseSeeder extends Seeder
             'role' => 'staff',
         ]);
 
-        // Seed dokumentasi API dari route yang sudah ada
-        $this->call(ApiDocSeeder::class);
+        // Seed API Connections
+        $this->call([
+            ApiConnectionSeeder::class,
+        ]);
     }
 }

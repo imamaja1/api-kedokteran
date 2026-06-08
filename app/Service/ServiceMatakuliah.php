@@ -4,7 +4,6 @@ namespace App\Service;
 
 use App\Models\Matakuliah;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Crypt;
 
 class ServiceMatakuliah
 {
@@ -28,7 +27,7 @@ class ServiceMatakuliah
         $paginator->getCollection()->transform(function ($item, $index) {
             return [
                 'id' => $index + 1,
-                'code' => Crypt::encryptString($item->id_matakuliah),
+                'code' => $item->toCode(),
                 'kode_matakuliah' => $item->kode_matakuliah,
                 'nama_matakuliah' => $item->nama_matakuliah,
                 'sks_teori' => $item->sks_teori,
@@ -75,7 +74,7 @@ class ServiceMatakuliah
             'status' => true,
             'message' => 'API Matakuliah',
             'data' => [
-                'code' => Crypt::encryptString($matakuliah->id_matakuliah),
+                'code' => $matakuliah->toCode(),
                 'kode_matakuliah' => $matakuliah->kode_matakuliah,
                 'nama_matakuliah' => $matakuliah->nama_matakuliah,
                 'sks_teori' => $matakuliah->sks_teori,
@@ -100,7 +99,14 @@ class ServiceMatakuliah
         return response()->json([
             'status' => true,
             'message' => 'Matakuliah berhasil dibuat',
-            'data' => $matakuliah->only('kode_matakuliah', 'nama_matakuliah', 'sks_teori', 'sks_praktik', 'block'),
+            'data' => [
+                'code' => $matakuliah->toCode(),
+                'kode_matakuliah' => $matakuliah->kode_matakuliah,
+                'nama_matakuliah' => $matakuliah->nama_matakuliah,
+                'sks_teori' => $matakuliah->sks_teori,
+                'sks_praktik' => $matakuliah->sks_praktik,
+                'block' => (bool) $matakuliah->block,
+            ],
         ], 201);
     }
 
@@ -129,7 +135,14 @@ class ServiceMatakuliah
         return response()->json([
             'status' => true,
             'message' => 'Matakuliah berhasil diperbarui',
-            'data' => $matakuliah->only('kode_matakuliah', 'nama_matakuliah', 'sks_teori', 'sks_praktik', 'block'),
+            'data' => [
+                'code' => $matakuliah->toCode(),
+                'kode_matakuliah' => $matakuliah->kode_matakuliah,
+                'nama_matakuliah' => $matakuliah->nama_matakuliah,
+                'sks_teori' => $matakuliah->sks_teori,
+                'sks_praktik' => $matakuliah->sks_praktik,
+                'block' => (bool) $matakuliah->block,
+            ],
         ]);
     }
 
@@ -158,7 +171,14 @@ class ServiceMatakuliah
         return response()->json([
             'status' => true,
             'message' => 'Matakuliah berhasil dihapus',
-            'data' => $matakuliah->only('kode_matakuliah', 'nama_matakuliah', 'sks_teori', 'sks_praktik', 'block'),
+            'data' => [
+                'code' => $matakuliah->toCode(),
+                'kode_matakuliah' => $matakuliah->kode_matakuliah,
+                'nama_matakuliah' => $matakuliah->nama_matakuliah,
+                'sks_teori' => $matakuliah->sks_teori,
+                'sks_praktik' => $matakuliah->sks_praktik,
+                'block' => (bool) $matakuliah->block,
+            ],
         ]);
     }
 }

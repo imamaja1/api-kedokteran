@@ -16,8 +16,9 @@ class CreateKrsDetailTable extends Migration
 
             $table->timestamps();
 
-            $table->index('kode_krs', 'FK_krs_detail_krs');
-            $table->index('id_matakuliah', 'id_matakuliah');
+            // Index otomatis dibuat oleh foreign key, tidak perlu explicit index
+            // $table->index('kode_krs', 'FK_krs_detail_krs');
+            // $table->index('id_matakuliah', 'id_matakuliah');
 
             $table->foreign('kode_krs', 'FK_krs_detail_krs')->references('kode_krs')->on('krs')->onDelete('CASCADE')->onUpdate('CASCADE');
             $table->foreign('id_matakuliah', 'krs_detail_ibfk_1')->references('id_matakuliah')->on('matakuliah')->onUpdate('CASCADE');
@@ -29,8 +30,8 @@ class CreateKrsDetailTable extends Migration
         Schema::table('krs_detail', function (Blueprint $table) {
             $table->dropForeign('FK_krs_detail_krs');
             $table->dropForeign('krs_detail_ibfk_1');
-            $table->dropIndex('FK_krs_detail_krs');
-            $table->dropIndex('id_matakuliah');
+            // $table->dropIndex('FK_krs_detail_krs');
+            // $table->dropIndex('id_matakuliah');
         });
         Schema::dropIfExists('krs_detail');
     }

@@ -59,10 +59,11 @@ class ServicePetikanNilai
                     'telepon_orangtua' => $mahasiswa->telepon_orangtua,
                 ],
                 'kurikulum' => [
-                    'id' => $kurikulumAngkatan->kode_kurikulum_angkatan,
+                    'id' => 1,
+                    'code' => $kurikulumAngkatan->toCode(),
                     'angkatan' => $kurikulumAngkatan->angkatan,
                     'nama_kurikulum' => $kurikulumAngkatan->namaKurikulum?->nama_kurikulum,
-                    'kode_nama_kurikulum' => $kurikulumAngkatan->kode_nama_kurikulum,
+                    'code_nama_kurikulum' => $kurikulumAngkatan->namaKurikulum?->toCode(),
                 ],
                 'data_kurikulum' => $this->buildKurikulumWithNilai($nim, $kurikulumAngkatan->kode_nama_kurikulum),
             ];
@@ -118,15 +119,16 @@ class ServicePetikanNilai
                     'telepon_orangtua' => $mahasiswa->telepon_orangtua,
                 ],
                 'kurikulum' => [
-                    'id' => $kurikulumAngkatan->kode_kurikulum_angkatan,
+                    'id' => 1,
+                    'code' => $kurikulumAngkatan->toCode(),
                     'angkatan' => $kurikulumAngkatan->angkatan,
                     'nama_kurikulum' => $kurikulumAngkatan->namaKurikulum?->nama_kurikulum,
-                    'kode_nama_kurikulum' => $kurikulumAngkatan->kode_nama_kurikulum,
+                    'code_nama_kurikulum' => $kurikulumAngkatan->namaKurikulum?->toCode(),
                 ],
                 'data_kurikulum' => $this->buildKurikulumWithNilai($nim, $kurikulumAngkatan->kode_nama_kurikulum),
             ];
 
-            return ApiResponse::success($data, 'Petikan nilai retrieved successfully.');
+            return ApiResponse::success($data, 'Transkrip nilai retrieved successfully.');
         });
     }
 

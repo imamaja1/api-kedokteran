@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\HasCode;
 
 class Mengajar extends Model
 {
+    use HasCode;
     protected $table = 'mengajar';
     protected $primaryKey = 'mengajar_id';
     public $timestamps = false;

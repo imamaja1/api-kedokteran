@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Crypt;
 
@@ -20,8 +21,8 @@ class ApiConnection extends Model
     ];
 
     protected $casts = [
-        'extra_headers'     => 'array',
-        'is_active'         => 'boolean',
+        'extra_headers' => 'array',
+        'is_active' => 'boolean',
         'cookie_expires_at' => 'datetime',
     ];
 
@@ -38,7 +39,16 @@ class ApiConnection extends Model
      */
     public function getPasswordAttribute(?string $value): ?string
     {
-        return $value ? Crypt::decryptString($value) : null;
+        if (! $value) {
+            return null;
+        }
+
+        try {
+            return Crypt::decryptString($value);
+        } catch (DecryptException $e) {
+            // Return null if decryption fails (corrupted data)
+            return null;
+        }
     }
 
     /**

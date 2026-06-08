@@ -4,7 +4,6 @@ namespace App\Service;
 
 use App\Models\ProgramStudi;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Crypt;
 
 class ServiceProgramStudi
 {
@@ -15,7 +14,7 @@ class ServiceProgramStudi
         $paginator->getCollection()->transform(function ($item, $index) {
             return [
                 'id' => $index + 1,
-                'code' => Crypt::encryptString($item->kode_program_studi),
+                'code' => $item->toCode(),
                 'nama_program_studi' => $item->nama_program_studi,
                 'singkatan_program_studi' => $item->singkatan_program_studi,
                 'kompetensi' => $item->kompetensi,
@@ -53,7 +52,7 @@ class ServiceProgramStudi
             'status' => true,
             'message' => 'API Program Studi',
             'data' => [
-                'code' => Crypt::encryptString($data->kode_program_studi),
+                'code' => $data->toCode(),
                 'nama_program_studi' => $data->nama_program_studi,
                 'singkatan_program_studi' => $data->singkatan_program_studi,
                 'kompetensi' => $data->kompetensi,
@@ -77,6 +76,7 @@ class ServiceProgramStudi
             'status' => true,
             'message' => 'Program Studi berhasil dibuat',
             'data' => [
+                'code' => $programStudi->toCode(),
                 'nama_program_studi' => $programStudi->nama_program_studi,
                 'singkatan_program_studi' => $programStudi->singkatan_program_studi,
                 'kompetensi' => $programStudi->kompetensi,
@@ -110,6 +110,7 @@ class ServiceProgramStudi
             'status' => true,
             'message' => 'Program Studi berhasil diperbarui',
             'data' => [
+                'code' => $programStudi->toCode(),
                 'nama_program_studi' => $programStudi->nama_program_studi,
                 'singkatan_program_studi' => $programStudi->singkatan_program_studi,
                 'kompetensi' => $programStudi->kompetensi,
@@ -143,6 +144,7 @@ class ServiceProgramStudi
             'status' => true,
             'message' => 'Program Studi berhasil dihapus',
             'data' => [
+                'code' => $programStudi->toCode(),
                 'nama_program_studi' => $programStudi->nama_program_studi,
                 'singkatan_program_studi' => $programStudi->singkatan_program_studi,
                 'kompetensi' => $programStudi->kompetensi,

@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\HasCode;
 
 class Kelas extends Model
 {
+    use HasCode;
     protected $table = 'kelas';
     protected $primaryKey = 'kelas_id';
     public $timestamps = false;
@@ -33,5 +35,15 @@ class Kelas extends Model
     public function mengajar()
     {
         return $this->hasMany(Mengajar::class, 'kelas_id', 'kelas_id');
+    }
+
+    public function programStudi()
+    {
+        return $this->belongsTo(ProgramStudi::class, 'kode_program_studi', 'kode_program_studi');
+    }
+
+    public function tahunAkademik()
+    {
+        return $this->belongsTo(TahunAkademik::class, 'kode_tahun_akademik', 'kode_tahun_akademik');
     }
 }

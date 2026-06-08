@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Traits\HasCode;
 use Illuminate\Database\Eloquent\Model;
 
 class Krs extends Model
 {
+    use HasCode;
+
     protected $table = 'krs';
 
     protected $primaryKey = 'kode_krs';

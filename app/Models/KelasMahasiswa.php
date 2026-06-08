@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\HasCode;
 
 class KelasMahasiswa extends Model
 {
+    use HasCode;
     protected $table = 'kelas_mahasiswa';
     protected $primaryKey = 'kelas_mahasiswa_id';
     public $incrementing = false;

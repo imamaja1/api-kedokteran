@@ -4,7 +4,6 @@ namespace App\Service;
 
 use App\Models\Dosen;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
 
 class ServiceDosen
@@ -88,7 +87,7 @@ class ServiceDosen
             'status' => true,
             'message' => 'Dosen berhasil dibuat',
             'data' => [
-                'kode_dosen' => $dosen->kode_dosen,
+                'code' => $dosen->toCode(),
                 'nama_dosen' => $dosen->nama_dosen,
             ],
         ], 201);
@@ -126,7 +125,7 @@ class ServiceDosen
             'status' => true,
             'message' => 'Dosen berhasil diperbarui',
             'data' => [
-                'kode_dosen' => $dosen->kode_dosen,
+                'code' => $dosen->toCode(),
                 'nama_dosen' => $dosen->nama_dosen,
             ],
         ]);
@@ -158,7 +157,7 @@ class ServiceDosen
             'status' => true,
             'message' => 'Dosen berhasil dihapus',
             'data' => [
-                'kode_dosen' => $dosen->kode_dosen,
+                'code' => $dosen->toCode(),
                 'nama_dosen' => $dosen->nama_dosen,
             ],
         ]);
@@ -214,7 +213,7 @@ class ServiceDosen
             'status' => true,
             'message' => 'Dosen berhasil dipulihkan',
             'data' => [
-                'kode_dosen' => $dosen->kode_dosen,
+                'code' => $dosen->toCode(),
                 'nama_dosen' => $dosen->nama_dosen,
             ],
         ]);
@@ -246,7 +245,7 @@ class ServiceDosen
             'status' => true,
             'message' => 'Dosen berhasil dihapus permanen',
             'data' => [
-                'kode_dosen' => $dosen->kode_dosen,
+                'code' => $dosen->toCode(),
                 'nama_dosen' => $dosen->nama_dosen,
             ],
         ]);
@@ -255,7 +254,7 @@ class ServiceDosen
     private function formatDosen(Dosen $item, ?int $index = null): array
     {
         $data = [
-            'code' => Crypt::encryptString($item->kode_dosen),
+            'code' => $item->toCode(),
             'nama_dosen' => $item->nama_dosen,
             'nik' => $item->nik,
             'no_telp' => $item->no_telp,
@@ -284,3 +283,4 @@ class ServiceDosen
         return $data;
     }
 }
+

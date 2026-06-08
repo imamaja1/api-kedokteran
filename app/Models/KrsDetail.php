@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\HasCode;
 
 class KrsDetail extends Model
 {
+    use HasCode;
     protected $table = 'krs_detail';
     protected $primaryKey = 'kode_krs_detail';
     public $incrementing = false;

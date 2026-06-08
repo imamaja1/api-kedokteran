@@ -2,17 +2,19 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Laravel\Sanctum\HasApiTokens;
+use App\Models\Traits\HasCode;
 
 class Dosen extends Authenticatable
 {
-    use HasApiTokens, SoftDeletes;
+    use HasApiTokens, SoftDeletes, HasCode;
 
     protected $table = 'dosen';
+
     protected $primaryKey = 'kode_dosen';
+
     public $incrementing = false;
 
     protected $fillable = [

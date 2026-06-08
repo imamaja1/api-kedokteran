@@ -8,7 +8,6 @@ use App\Models\KurikulumAngkatan;
 use App\Models\NamaKurikulum;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Crypt;
 
 class ServiceKurikulum
 {
@@ -46,7 +45,11 @@ class ServiceKurikulum
             return ApiResponse::error('Kurikulum untuk angkatan mahasiswa tidak ditemukan.', 404);
         }
 
-        $data['kurikulum'] = $kurikulumAngkatan;
+        $data['kurikulum'] = [
+            'angkatan' => $kurikulumAngkatan->angkatan,
+            'code_nama_kurikulum' => $kurikulumAngkatan->namaKurikulum?->toCode(),
+            'nama_kurikulum' => $kurikulumAngkatan->namaKurikulum?->nama_kurikulum,
+        ];
         $data['data_kurikulum'] = $this->buildKurikulumData($kurikulumAngkatan->kode_nama_kurikulum);
 
         // Cache result untuk 1 jam
@@ -66,7 +69,7 @@ class ServiceKurikulum
         $paginator->getCollection()->transform(function ($item, $index) {
             return [
                 'id' => $index + 1,
-                'code_nama_kurikulum' => Crypt::encryptString($item->kode_nama_kurikulum),
+                'code_nama_kurikulum' => $item->toCode(),
                 'nama_kurikulum' => $item->nama_kurikulum,
                 'nama_program_studi' => $item->programStudi?->nama_program_studi,
                 'angkatan1' => $item->angkatan1,
@@ -90,9 +93,8 @@ class ServiceKurikulum
         }
 
         return ApiResponse::success([
-            'code_nama_kurikulum' => Crypt::encryptString($item->kode_nama_kurikulum),
+            'code_nama_kurikulum' => $item->toCode(),
             'nama_kurikulum' => $item->nama_kurikulum,
-            'kode_program_studi' => $item->kode_program_studi,
             'angkatan1' => $item->angkatan1,
             'ekstensi1' => $item->ekstensi1,
             'paket1' => $item->paket1,
@@ -113,9 +115,8 @@ class ServiceKurikulum
         }
 
         return ApiResponse::success([
-            'code_nama_kurikulum' => Crypt::encryptString($namaKurikulum->kode_nama_kurikulum),
+            'code_nama_kurikulum' => $namaKurikulum->toCode(),
             'nama_kurikulum' => $namaKurikulum->nama_kurikulum,
-            'kode_program_studi' => $namaKurikulum->kode_program_studi,
             'angkatan1' => $namaKurikulum->angkatan1,
             'ekstensi1' => $namaKurikulum->ekstensi1,
             'paket1' => $namaKurikulum->paket1,
@@ -142,9 +143,8 @@ class ServiceKurikulum
         }
 
         return ApiResponse::success([
-            'code_nama_kurikulum' => Crypt::encryptString($namaKurikulum->kode_nama_kurikulum),
+            'code_nama_kurikulum' => $namaKurikulum->toCode(),
             'nama_kurikulum' => $namaKurikulum->nama_kurikulum,
-            'kode_program_studi' => $namaKurikulum->kode_program_studi,
             'angkatan1' => $namaKurikulum->angkatan1,
             'ekstensi1' => $namaKurikulum->ekstensi1,
             'paket1' => $namaKurikulum->paket1,
@@ -173,9 +173,8 @@ class ServiceKurikulum
         }
 
         return ApiResponse::success([
-            'code_nama_kurikulum' => Crypt::encryptString($kodeToInvalidate),
+            'code_nama_kurikulum' => $namaKurikulum->toCode(),
             'nama_kurikulum' => $namaKurikulum->nama_kurikulum,
-            'kode_program_studi' => $namaKurikulum->kode_program_studi,
             'angkatan1' => $namaKurikulum->angkatan1,
             'ekstensi1' => $namaKurikulum->ekstensi1,
             'paket1' => $namaKurikulum->paket1,

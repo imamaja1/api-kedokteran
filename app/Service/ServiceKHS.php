@@ -5,7 +5,6 @@ namespace App\Service;
 use App\Http\Responses\ApiResponse;
 use App\Models\Krs;
 use App\Models\Mahasiswa;
-use Illuminate\Support\Facades\Crypt;
 
 class ServiceKHS
 {
@@ -78,7 +77,7 @@ class ServiceKHS
             'khs' => $krs->krsDetail->map(function ($detail, $idx) {
                 return [
                     'id' => $idx + 1,
-                    'code' => Crypt::encryptString($detail->khsDetail?->kode_khs_detail ?? 'N/A'),
+                    'code' => $detail->khsDetail ? $detail->khsDetail->toCode() : null,
                     'kode_matakuliah' => $detail->matakuliah->kode_matakuliah,
                     'nama_matakuliah' => $detail->matakuliah->nama_matakuliah,
                     'sks_teori' => $detail->matakuliah->sks_teori,
@@ -108,7 +107,7 @@ class ServiceKHS
 
         $data = $krsRecords->map(fn ($item, $idx) => [
             'id' => $idx + 1,
-            'code_krs' => Crypt::encryptString($item->kode_krs),
+            'code_krs' => $item->toCode(),
             'semester' => $item->semester,
         ])->values()->toArray();
 
@@ -148,7 +147,9 @@ class ServiceKHS
                     'semester' => $krs->tahunAkademik->semester,
                 ],
             ],
-            'khs' => $krs->krsDetail->map(fn ($detail) => [
+            'khs' => $krs->krsDetail->map(fn ($detail, $idx) => [
+                'id' => $idx + 1,
+                'code' => $detail->toCode(),
                 'kode_matakuliah' => $detail->matakuliah->kode_matakuliah,
                 'nama_matakuliah' => $detail->matakuliah->nama_matakuliah,
                 'sks_teori' => $detail->matakuliah->sks_teori,

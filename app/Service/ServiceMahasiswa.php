@@ -5,7 +5,6 @@ namespace App\Service;
 use App\Http\Responses\ApiResponse;
 use App\Models\Mahasiswa;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
 
 class ServiceMahasiswa
@@ -93,6 +92,7 @@ class ServiceMahasiswa
         }
 
         return ApiResponse::success([
+            'code' => $mahasiswa->toCode(),
             'nim' => $mahasiswa->nim,
             'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
         ], 'Mahasiswa berhasil dibuat', 201);
@@ -120,6 +120,7 @@ class ServiceMahasiswa
         }
 
         return ApiResponse::success([
+            'code' => $mahasiswa->toCode(),
             'nim' => $mahasiswa->nim,
             'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
         ], 'Mahasiswa berhasil diperbarui');
@@ -143,6 +144,7 @@ class ServiceMahasiswa
         }
 
         return ApiResponse::success([
+            'code' => $mahasiswa->toCode(),
             'nim' => $mahasiswa->nim,
             'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
         ], 'Mahasiswa berhasil dihapus');
@@ -196,6 +198,7 @@ class ServiceMahasiswa
         }
 
         return ApiResponse::success([
+            'code' => $mahasiswa->toCode(),
             'nim' => $mahasiswa->nim,
             'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
         ], 'Mahasiswa berhasil dipulihkan');
@@ -219,6 +222,7 @@ class ServiceMahasiswa
         }
 
         return ApiResponse::success([
+            'code' => $mahasiswa->toCode(),
             'nim' => $mahasiswa->nim,
             'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
         ], 'Mahasiswa berhasil dihapus permanen');
@@ -230,10 +234,9 @@ class ServiceMahasiswa
     private function formatMahasiswaList(Mahasiswa $item, ?int $index = null): array
     {
         $data = [
-            'code' => Crypt::encryptString($item->nim),
+            'code' => $item->toCode(),
             'nim' => $item->nim,
             'nama_mahasiswa' => $item->nama_mahasiswa,
-            'program_studi_kode' => $item->program_studi_kode,
             'nama_program_studi' => $item->programStudi?->nama_program_studi,
             'email' => $item->email,
             'telepon' => $item->telepon,
@@ -253,14 +256,13 @@ class ServiceMahasiswa
     private function formatMahasiswaDetail(Mahasiswa $item): array
     {
         return [
-            'code' => Crypt::encryptString($item->nim),
+            'code' => $item->toCode(),
             'nim' => $item->nim,
             'nik' => $item->nik,
             'npm' => $item->npm,
             'nisn' => $item->nisn,
             'nomor_pendaftaran' => $item->nomor_pendaftaran,
             'nomor_pendaftaran_ulang' => $item->nomor_pendaftaran_ulang,
-            'program_studi_kode' => $item->program_studi_kode,
             'nama_program_studi' => $item->programStudi?->nama_program_studi,
             'nama_mahasiswa' => $item->nama_mahasiswa,
             'tempat_lahir' => $item->tempat_lahir,

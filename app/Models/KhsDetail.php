@@ -2,11 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Traits\HasCode;
 use Illuminate\Database\Eloquent\Model;
 
 class KhsDetail extends Model
 {
+    use HasCode;
+
     protected $table = 'khs_detail';
+
     protected $primaryKey = 'kode_khs_detail';
 
     protected $fillable = [

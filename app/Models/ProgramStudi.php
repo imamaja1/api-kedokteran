@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\HasCode;
 
 class ProgramStudi extends Model
 {
+    use HasCode;
     protected $table = 'program_studi';
     protected $primaryKey = 'kode_program_studi';
 

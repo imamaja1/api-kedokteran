@@ -14,7 +14,8 @@ class CreateKhsDetailTable extends Migration
             $table->float('nilai_akhir', 10, 2)->nullable();
             $table->enum('tidak_berhak', ['A','N'])->nullable();
             $table->timestamps();
-            $table->index('kode_krs_detail', 'FK_khs_detail_krs_detail');
+            // Index otomatis dibuat oleh foreign key, tidak perlu explicit index
+            // $table->index('kode_krs_detail', 'FK_khs_detail_krs_detail');
             $table->foreign('kode_krs_detail', 'khs_detail_ibfk_1')->references('kode_krs_detail')->on('krs_detail')->onDelete('CASCADE')->onUpdate('CASCADE');
         });
     }
@@ -23,7 +24,7 @@ class CreateKhsDetailTable extends Migration
     {
         Schema::table('khs_detail', function (Blueprint $table) {
             $table->dropForeign('khs_detail_ibfk_1');
-            $table->dropIndex('FK_khs_detail_krs_detail');
+            // $table->dropIndex('FK_khs_detail_krs_detail');
         });
         Schema::dropIfExists('khs_detail');
     }
