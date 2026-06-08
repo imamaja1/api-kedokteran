@@ -88,7 +88,7 @@ class ServiceKHS
             })->values()->toArray(),
         ];
 
-        return ApiResponse::success($data, 'KHS Mahasiswa retrieved successfully.');
+        return ApiResponse::success($data, 'KHS Mahasiswa berhasil diambil.');
     }
 
     /**
@@ -111,7 +111,7 @@ class ServiceKHS
             'semester' => $item->semester,
         ])->values()->toArray();
 
-        return ApiResponse::success($data, 'KHS Mahasiswa retrieved successfully.');
+        return ApiResponse::success($data, 'KHS Mahasiswa berhasil diambil.');
     }
 
     /**
@@ -128,7 +128,7 @@ class ServiceKHS
                     $q->select('krs_detail.kode_krs_detail', 'krs_detail.kode_krs', 'krs_detail.id_matakuliah')
                         ->with([
                             'matakuliah:id_matakuliah,kode_matakuliah,nama_matakuliah,sks_teori,sks_praktik,block',
-                            'khsDetail:kode_khs_detail,kode_krs_detail,nilai_akhir',  // ✅ Fixed: no table prefix
+                            'khsDetail:kode_khs_detail,kode_krs_detail,nilai_akhir',
                         ]);
                 },
             ])
@@ -159,6 +159,6 @@ class ServiceKHS
             ])->values()->toArray(),
         ];
 
-        return ApiResponse::success($data, 'KHS Detail retrieved successfully.');
+        return ApiResponse::success($data, 'Detail KHS berhasil diambil.');
     }
 }

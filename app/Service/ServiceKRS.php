@@ -75,7 +75,7 @@ class ServiceKRS
             'krs' => $krs->krsDetail->map(function ($detail, $idx) {
                 return [
                     'id' => $idx + 1,
-                    'kode' => $detail->toCode(),
+                    'code' => $detail->toCode(),
                     'kode_matakuliah' => $detail->matakuliah->kode_matakuliah,
                     'nama_matakuliah' => $detail->matakuliah->nama_matakuliah,
                     'sks_teori' => $detail->matakuliah->sks_teori,
@@ -85,7 +85,7 @@ class ServiceKRS
             })->values()->toArray(),
         ];
 
-        return ApiResponse::success($data, 'KRS Mahasiswa retrieved successfully.');
+        return ApiResponse::success($data, 'KRS Mahasiswa berhasil diambil.');
     }
 
     /**
@@ -94,7 +94,7 @@ class ServiceKRS
     public function getAllKRS(string $nim)
     {
         $krsRecords = Krs::where('nim', $nim)
-            ->select('kode_krs', 'nim', 'semester')  // Include primary key explicitly
+            ->select('kode_krs', 'nim', 'semester')
             ->orderBy('semester', 'desc')
             ->get();
 
@@ -108,7 +108,7 @@ class ServiceKRS
             'semester' => $item->semester,
         ])->values()->toArray();
 
-        return ApiResponse::success($data, 'KRS Mahasiswa retrieved successfully.');
+        return ApiResponse::success($data, 'KRS Mahasiswa berhasil diambil.');
     }
 
     /**
@@ -153,6 +153,6 @@ class ServiceKRS
             ])->values()->toArray(),
         ];
 
-        return ApiResponse::success($data, 'KRS Detail retrieved successfully.');
+        return ApiResponse::success($data, 'Detail KRS berhasil diambil.');
     }
 }
