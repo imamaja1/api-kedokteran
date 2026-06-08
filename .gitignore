@@ -23,4 +23,4 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 /doc
-/database
+/database/api_documentation.sql
