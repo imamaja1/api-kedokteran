@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureIsKaprodi;
 use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\EnsureValidSanctumCookie;
 use App\Http\Middleware\LogActivity;
@@ -42,6 +43,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Catatan: 'admin' dan 'staff' alias dihapus — gunakan 'role:admin' / 'role:admin,staff'
         $middleware->alias([
             'role' => EnsureRole::class,
+            'kaprodi' => EnsureIsKaprodi::class,
             'sanctum.cookie' => EnsureValidSanctumCookie::class,
             'log.activity' => LogActivity::class,
         ]);

@@ -5,8 +5,12 @@ namespace App\Http\Controllers\Api_Staff;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\AssessmentTemplate;
+use App\Models\KurikulumAngkatan;
+use App\Models\Matakuliah;
 use App\Service\Assessment\TemplateBuilderService;
 use App\Service\Assessment\TreeTraversalService;
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -76,14 +80,35 @@ class AssessmentTemplateController extends Controller
     {
         try {
             $validated = $request->validate([
-                'id_matakuliah' => 'required|integer|exists:matakuliah,id_matakuliah',
-                'kode_kurikulum_angkatan' => 'required|integer|exists:kurikulum_angkatan,kode_kurikulum_angkatan',
+                'code_matakuliah' => 'required|string',
+                'code_kurikulum_angkatan' => 'required|string',
                 'structure' => 'required|array',
             ]);
+            try {
+                $id_matakuliah = (int) Crypt::decryptString($validated['code_matakuliah']);
+                $kode_kurikulum_angkatan = (int) Crypt::decryptString($validated['code_kurikulum_angkatan']);
+            } catch (DecryptException) {
+                return ApiResponse::validation([
+                    'code_matakuliah' => 'Format code matakuliah tidak valid',
+                    'code_kurikulum_angkatan' => 'Format code kurikulum angkatan tidak valid',
+                ]);
+            }
+            $matakuliahExists = Matakuliah::where('id_matakuliah', $id_matakuliah)->exists();
+            $kurikulumExists = KurikulumAngkatan::where('kode_kurikulum_angkatan', $kode_kurikulum_angkatan)->exists();
+
+            if (! $matakuliahExists || ! $kurikulumExists) {
+                return ApiResponse::validation(
+                    [
+                        'code_matakuliah' => $matakuliahExists ? null : 'Matakuliah tidak ditemukan',
+                        'code_kurikulum_angkatan' => $kurikulumExists ? null : 'Kurikulum angkatan tidak ditemukan',
+                    ],
+                    'Referensi data tidak valid'
+                );
+            }
 
             $template = $this->builderService->createTemplate(
-                (int) $validated['id_matakuliah'],
-                (int) $validated['kode_kurikulum_angkatan'],
+                $id_matakuliah,
+                $kode_kurikulum_angkatan,
                 $validated['structure'],
             );
 
@@ -103,6 +128,15 @@ class AssessmentTemplateController extends Controller
             ], 'Template created successfully.', 201);
         } catch (\InvalidArgumentException $e) {
             return ApiResponse::validation(['structure' => $e->getMessage()], 'Invalid structure');
+        } catch (QueryException $e) {
+            if ($e->getCode() === '23000') {
+                return ApiResponse::validation(
+                    ['template' => 'Template untuk matakuliah dan kurikulum angkatan ini sudah ada.'],
+                    'Template sudah terdaftar'
+                );
+            }
+
+            return ApiResponse::serverError('Database error: '.$e->getMessage());
         } catch (\Exception $e) {
             return ApiResponse::serverError('Error: '.$e->getMessage());
         }
@@ -144,7 +178,7 @@ class AssessmentTemplateController extends Controller
                 'tree' => $this->treeService->buildTree($template),
                 'leaf_nodes' => $this->treeService->getLeafNodes($template),
             ], 'Template retrieved successfully.');
-        } catch (\Illuminate\Contracts\Encryption\DecryptException) {
+        } catch (DecryptException) {
             return ApiResponse::validation(['code' => 'Format code tidak valid']);
         } catch (\Exception $e) {
             return ApiResponse::serverError('Error: '.$e->getMessage());
@@ -189,10 +223,19 @@ class AssessmentTemplateController extends Controller
                 'created_at' => $newTemplate->created_at,
                 'updated_at' => $newTemplate->updated_at,
             ], 'New version created successfully.');
-        } catch (\Illuminate\Contracts\Encryption\DecryptException) {
+        } catch (DecryptException) {
             return ApiResponse::validation(['code' => 'Format code tidak valid']);
         } catch (\InvalidArgumentException $e) {
             return ApiResponse::validation(['structure' => $e->getMessage()], 'Invalid structure');
+        } catch (QueryException $e) {
+            if ($e->getCode() === '23000') {
+                return ApiResponse::validation(
+                    ['template' => 'Template versi baru untuk matakuliah dan kurikulum angkatan ini gagal dibuat. Silakan cek kembali data yang ada.'],
+                    'Template sudah terdaftar'
+                );
+            }
+
+            return ApiResponse::serverError('Database error: '.$e->getMessage());
         } catch (\Exception $e) {
             return ApiResponse::serverError('Error: '.$e->getMessage());
         }

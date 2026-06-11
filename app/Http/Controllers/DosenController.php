@@ -21,6 +21,14 @@ class DosenController extends Controller
             ], 401);
         }
 
+        // Determine role status: dekan, kaprodi, or dosen
+        $roleStatus = 'dosen';
+        if ($user->dekanFakultas) {
+            $roleStatus = 'dekan';
+        } elseif ($user->kaprodiProgramStudi) {
+            $roleStatus = 'kaprodi';
+        }
+
         return response()->json([
             'status' => true,
             'message' => 'Profil dosen retrieved successfully.',
@@ -31,8 +39,8 @@ class DosenController extends Controller
                 'nama_dosen' => $user->nama_dosen,
                 'alamat_email' => $user->alamat_email,
                 'status_dosen' => $user->status_dosen,
-                'homebase' => $user->homebase,
                 'nama_program_studi' => optional($user->programStudi)->nama_program_studi,
+                'status' => $roleStatus,
             ],
         ]);
     }

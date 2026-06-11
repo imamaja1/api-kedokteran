@@ -10,6 +10,35 @@ use App\Models\PerwalianKrsValidasi;
 
 class ServicePerwalian
 {
+    private function queryPerwalianByDosenSemester(int $kode_dosen, int $semester): \Illuminate\Support\Collection
+    {
+        return Perwalian::with(['mahasiswa', 'dosen', 'dosenPerwakilan'])
+            ->where(function ($q) use ($kode_dosen) {
+                $q->where('kode_dosen', $kode_dosen)
+                    ->orWhere('kode_dosen_perwakilan', $kode_dosen);
+            })
+            ->whereHas('mahasiswa.krs', function ($q) use ($semester) {
+                $q->where('semester', $semester);
+            })
+            ->get();
+    }
+
+    private function mapPerwalianCollection(\Illuminate\Support\Collection $records): array
+    {
+        return $records->map(function ($record, $idx) {
+            return [
+                'id' => $idx + 1,
+                'code' => $record->toCode(),
+                'nim' => $record->nim,
+                'nama_mahasiswa' => optional($record->mahasiswa)->nama_mahasiswa,
+                'code_dosen' => $record->dosen?->toCode(),
+                'nama_dosen' => optional($record->dosen)->nama_dosen,
+                'code_dosen_perwakilan' => $record->dosenPerwakilan?->toCode(),
+                'nama_dosen_perwakilan' => optional($record->dosenPerwakilan)->nama_dosen,
+            ];
+        })->values()->toArray();
+    }
+
     public function getPerwalianByMahasiswa(string $nim)
     {
         $mahasiswa = Mahasiswa::with('programStudi')
@@ -298,35 +327,29 @@ class ServicePerwalian
 
     public function getJumlahPerwalian(int $kode_dosen, int $semester): JsonResponse
     {
-        $perwalian = Perwalian::with(['mahasiswa', 'dosen', 'dosenPerwakilan'])
-            ->where(function ($q) use ($kode_dosen) {
-                $q->where('kode_dosen', $kode_dosen)
-                    ->orWhere('kode_dosen_perwakilan', $kode_dosen);
-            })
-            ->whereHas('mahasiswa.krs', function ($q) use ($semester) {
-                $q->where('semester', $semester);
-            })
-            ->get();
+        $perwalian = $this->queryPerwalianByDosenSemester($kode_dosen, $semester);
 
         $data = [
             'code_dosen' => optional(Dosen::find($kode_dosen))->toCode(),
             'semester' => $semester,
             'jumlah' => $perwalian->count(),
-            'perwalian' => $perwalian->map(function ($record, $idx) {
-                return [
-                    'id' => $idx + 1,
-                    'code' => $record->toCode(),
-                    'nim' => $record->nim,
-                    'nama_mahasiswa' => optional($record->mahasiswa)->nama_mahasiswa,
-                    'code_dosen' => $record->dosen?->toCode(),
-                    'nama_dosen' => optional($record->dosen)->nama_dosen,
-                    'code_dosen_perwakilan' => $record->dosenPerwakilan?->toCode(),
-                    'nama_dosen_perwakilan' => optional($record->dosenPerwakilan)->nama_dosen,
-                ];
-            })->values()->toArray(),
+            'perwalian' => $this->mapPerwalianCollection($perwalian),
         ];
 
         return ApiResponse::success($data, 'Jumlah perwalian retrieved successfully.');
+    }
+
+    public function getDaftarPerwalian(int $kode_dosen, int $semester): JsonResponse
+    {
+        $perwalian = $this->queryPerwalianByDosenSemester($kode_dosen, $semester);
+
+        $data = [
+            'code_dosen' => optional(Dosen::find($kode_dosen))->toCode(),
+            'semester' => $semester,
+            'perwalian' => $this->mapPerwalianCollection($perwalian),
+        ];
+
+        return ApiResponse::success($data, 'Daftar perwalian retrieved successfully.');
     }
 
     public function storeValidasiKrs(array $payload): JsonResponse
@@ -334,6 +357,17 @@ class ServicePerwalian
         $mahasiswa = Mahasiswa::find($payload['nim']);
         if (! $mahasiswa) {
             return ApiResponse::notFound('Mahasiswa tidak ditemukan');
+        }
+
+        $isPembimbing = Perwalian::where('nim', $payload['nim'])
+            ->where(function ($q) use ($payload) {
+                $q->where('kode_dosen', $payload['kode_dosen_validator'])
+                    ->orWhere('kode_dosen_perwakilan', $payload['kode_dosen_validator']);
+            })
+            ->exists();
+
+        if (! $isPembimbing) {
+            return ApiResponse::error('Anda bukan pembimbing mahasiswa ini.', 403);
         }
 
         $existing = PerwalianKrsValidasi::where('nim', $payload['nim'])

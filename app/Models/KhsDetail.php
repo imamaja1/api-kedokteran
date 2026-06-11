@@ -14,8 +14,7 @@ class KhsDetail extends Model
     protected $primaryKey = 'kode_khs_detail';
 
     protected $fillable = [
-        'kode_krs_detail', 'nilai_harian', 'nilai_uts',
-        'nilai_uas', 'nilai_akhir', 'tidak_berhak',
+        'kode_krs_detail', 'nilai_akhir', 'tidak_berhak',
     ];
 
     public function krsDetail()

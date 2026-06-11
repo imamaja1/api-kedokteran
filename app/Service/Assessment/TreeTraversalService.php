@@ -68,7 +68,7 @@ class TreeTraversalService
 
     private function collectLeaves(array $node, array &$leaves): void
     {
-        if ($node['type'] === 'input' || empty($node['children'])) {
+        if (($node['type'] ?? null) === 'input' || empty($node['children'])) {
             $leaves[] = $node;
             return;
         }

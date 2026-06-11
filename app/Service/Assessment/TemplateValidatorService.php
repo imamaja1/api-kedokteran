@@ -12,8 +12,8 @@ class TemplateValidatorService
             return ['valid' => false, 'errors' => ['Structure cannot be empty']];
         }
 
-        if (!isset($structure['key']) || !isset($structure['name']) || !isset($structure['weight'])) {
-            return ['valid' => false, 'errors' => ['Root must have key, name, and weight']];
+        if (!isset($structure['name']) || !isset($structure['weight'])) {
+            return ['valid' => false, 'errors' => ['Root must have name and weight']];
         }
 
         if ($structure['weight'] != 100) {
@@ -28,23 +28,28 @@ class TemplateValidatorService
 
     private function validateNode(array $node, &$errors, &$keys, $path = ''): void
     {
-        if (empty($node['key']) || empty($node['name'])) {
-            $errors[] = "Node missing key or name at path: {$path}";
+        if (empty($node['name'])) {
+            $errors[] = "Node missing name at path: {$path}";
             return;
         }
 
-        if (isset($keys[$node['key']])) {
-            $errors[] = "Duplicate key: {$node['key']}";
-            return;
+        // Key will be auto-generated from name if empty, so only check if provided
+        if (!empty($node['key'])) {
+            if (isset($keys[$node['key']])) {
+                $errors[] = "Duplicate key: {$node['key']}";
+                return;
+            }
+            $keys[$node['key']] = true;
         }
-        $keys[$node['key']] = true;
 
         if (!is_numeric($node['weight']) || $node['weight'] < 0 || $node['weight'] > 100) {
-            $errors[] = "Invalid weight for {$node['key']}: must be 0-100";
+            $nodeName = $node['key'] ?? $node['name'];
+            $errors[] = "Invalid weight for {$nodeName}: must be 0-100";
         }
 
-        if ($node['type'] === 'input' && !empty($node['children'])) {
-            $errors[] = "Input node '{$node['key']}' cannot have children";
+        if (($node['type'] ?? null) === 'input' && !empty($node['children'])) {
+            $nodeName = $node['key'] ?? $node['name'];
+            $errors[] = "Input node '{$nodeName}' cannot have children";
         }
 
         if (!empty($node['children'])) {
@@ -56,7 +61,8 @@ class TemplateValidatorService
             }
 
             if (abs($totalWeight - 100) > 0.01) {
-                $errors[] = "Total weight for '{$node['key']}' is {$totalWeight}, must be 100";
+                $nodeName = $node['key'] ?? $node['name'];
+                $errors[] = "Total weight for '{$nodeName}' is {$totalWeight}, must be 100";
             }
         }
     }

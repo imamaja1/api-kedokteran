@@ -1,7 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api_Dosen\KurikulumController;
-use App\Http\Controllers\Api_Dosen\NilaiController;
+use App\Http\Controllers\Api_Dosen\PenilaianDosenController;
+use App\Http\Controllers\Api_Dosen\PenilaianKaprodiController;
 use App\Http\Controllers\Api_Dosen\PerwalianController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\DosenController;
@@ -37,15 +38,31 @@ Route::prefix('api')
         Route::post('/dosen/perwalian/validasi', [PerwalianController::class, 'validasiKrs']);
         Route::post('/dosen/perwalian/batal', [PerwalianController::class, 'batalPerwalian']);
 
-        // ─── Penilaian (3 endpoints) ──────────────────────────────────────
-        Route::get('/dosen/penilaian', [NilaiController::class, 'getTreePenilaian']);
-        Route::get('/dosen/penilaian/mahasiswa', [NilaiController::class, 'getMahasiswa']);
-        Route::post('/dosen/penilaian/input', [NilaiController::class, 'inputNilai']);
+        // ─── Penilaian Dosen (6 endpoints) ────────────────────────────────
+        Route::prefix('/dosen/penilaian')->group(function () {
+            Route::get('/kelas', [PenilaianDosenController::class, 'getKelasPenilaian']);
+            Route::get('/mahasiswa', [PenilaianDosenController::class, 'getMahasiswaPenilaian']);
+            Route::get('/template', [PenilaianDosenController::class, 'getTemplate']);
+            Route::get('/detail', [PenilaianDosenController::class, 'getDetailNilaiMahasiswa']);
+            Route::post('/input', [PenilaianDosenController::class, 'inputNilai']);
+            Route::put('/update', [PenilaianDosenController::class, 'updateNilai']);
+        });
+
+        // ─── Kaprodi (5 endpoints, dengan middleware kaprodi) ──────────────
+        Route::prefix('/dosen/kaprodi')
+            ->middleware('kaprodi')
+            ->group(function () {
+                Route::get('/penilaian/kelas', [PenilaianKaprodiController::class, 'getKelasPenilaian']);
+                Route::get('/penilaian/mahasiswa', [PenilaianKaprodiController::class, 'getMahasiswaPenilaian']);
+                Route::get('/penilaian/detail', [PenilaianKaprodiController::class, 'getDetailNilaiMahasiswa']);
+                Route::post('/penilaian/validasi', [PenilaianKaprodiController::class, 'validasi']);
+                Route::post('/penilaian/revisi', [PenilaianKaprodiController::class, 'revisi']);
+            });
 
         // ─── Fallback ─────────────────────────────────────────────────────
-        Route::fallback(fn() => response()->json([
-            'status'  => false,
+        Route::fallback(fn () => response()->json([
+            'status' => false,
             'message' => 'Endpoint tidak ditemukan.',
-            'error'   => 'NOT_FOUND',
+            'error' => 'NOT_FOUND',
         ], 404));
     });

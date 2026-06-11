@@ -44,7 +44,7 @@ class PerwalianController extends Controller
             'per_page' => 'sometimes|integer|min:1|max:50',
         ]);
 
-        return $this->servicePerwalian->getJumlahPerwalian(
+        return $this->servicePerwalian->getDaftarPerwalian(
             $this->getKodeDosen(),
             (int) $request->input('semester')
         );

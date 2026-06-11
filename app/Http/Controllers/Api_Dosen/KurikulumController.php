@@ -27,7 +27,6 @@ class KurikulumController extends Controller
     {
         $request->validate([
             'code_mahasiswa' => 'required|string',
-            'kode_program_studi' => 'required|string|exists:program_studi,kode_program_studi',
         ]);
 
         $mahasiswa = Mahasiswa::findByCode($request->input('code_mahasiswa'));
@@ -37,7 +36,7 @@ class KurikulumController extends Controller
 
         return $this->serviceKurikulum->kurikulum_by_nim(
             $mahasiswa->nim,
-            $request->input('kode_program_studi')
+            $mahasiswa->program_studi_kode
         );
     }
 

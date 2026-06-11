@@ -1,0 +1,467 @@
+<?php
+
+namespace App\Service;
+
+use App\Http\Responses\ApiResponse;
+use App\Models\AssessmentTemplate;
+use App\Models\Kelas;
+use App\Models\KelasMahasiswa;
+use App\Models\KhsDetail;
+use App\Models\Mahasiswa;
+use App\Models\PenilaianStatus;
+use App\Models\ProgramStudi;
+use App\Models\StudentScore;
+use App\Models\ValidationStudentScore;
+use App\Service\Assessment\ScoreCalculationService;
+use App\Service\Assessment\TreeTraversalService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+
+class ServicePenilaianKaprodi
+{
+    public function __construct(
+        private readonly TreeTraversalService $treeService,
+        private readonly ScoreCalculationService $scoreCalculationService,
+    ) {}
+
+    public function getKelasPenilaian(int $kodeDosen): JsonResponse
+    {
+        $programStudi = ProgramStudi::where('kode_dosen_kaprodi', $kodeDosen)->first();
+
+        if (! $programStudi) {
+            return ApiResponse::error('Anda bukan Kaprodi untuk program studi manapun.', 403);
+        }
+
+        $kelasList = Kelas::where('kode_program_studi', $programStudi->kode_program_studi)
+            ->with([
+                'namaKelas:nama_kelas_id,nama_kelas',
+                'matakuliah:id_matakuliah,kode_matakuliah,nama_matakuliah',
+                'tahunAkademik:kode_tahun_akademik,tahun_akademik,semester',
+            ])
+            ->orderBy('kelas_id', 'desc')
+            ->get();
+
+        $data = $kelasList->map(function ($kelas) use ($programStudi) {
+            $totalMhs = KelasMahasiswa::where('kelas_id', $kelas->kelas_id)->count();
+
+            $proses = PenilaianStatus::where('kelas_id', $kelas->kelas_id)
+                ->where('status', 'proses')
+                ->count();
+
+            $validasi = PenilaianStatus::where('kelas_id', $kelas->kelas_id)
+                ->where('status', 'validasi')
+                ->count();
+
+            return [
+                'code_kelas' => $kelas->toCode(),
+                'nama_kelas' => $kelas->namaKelas?->nama_kelas,
+                'semester' => $kelas->semester,
+                'tahun_akademik' => $kelas->tahunAkademik?->tahun_akademik,
+                'nama_program_studi' => $programStudi->nama_program_studi,
+                'kode_matakuliah' => $kelas->matakuliah?->kode_matakuliah,
+                'nama_matakuliah' => $kelas->matakuliah?->nama_matakuliah,
+                'jumlah_mahasiswa' => $totalMhs,
+                'proses' => $proses,
+                'validasi' => $validasi,
+            ];
+        })->values()->toArray();
+
+        return ApiResponse::success($data, 'Kelas penilaian kaprodi retrieved successfully.');
+    }
+
+    public function getMahasiswaPenilaian(string $codeKelas, int $kodeDosen): JsonResponse
+    {
+        $kelas = Kelas::findByCode($codeKelas);
+
+        if (! $kelas) {
+            return ApiResponse::notFound('Kelas tidak ditemukan');
+        }
+
+        $programStudi = ProgramStudi::where('kode_dosen_kaprodi', $kodeDosen)
+            ->where('kode_program_studi', $kelas->kode_program_studi)
+            ->first();
+
+        if (! $programStudi) {
+            return ApiResponse::error('Anda bukan Kaprodi untuk program studi kelas ini.', 403);
+        }
+
+        $template = AssessmentTemplate::where('id_matakuliah', $kelas->id_matakuliah)
+            ->active()
+            ->first();
+
+        $kelasMahasiswa = KelasMahasiswa::where('kelas_id', $kelas->kelas_id)
+            ->with([
+                'krsDetail' => function ($q) {
+                    $q->with('matakuliah:id_matakuliah,kode_matakuliah,nama_matakuliah')
+                        ->with('khsDetail');
+                    $q->with(['krs' => function ($q2) {
+                        $q2->with('mahasiswa:nim,nama_mahasiswa');
+                    }]);
+                },
+            ])
+            ->get();
+
+        $data = $kelasMahasiswa->map(function ($km) use ($template, $kelas) {
+            $krsDetail = $km->krsDetail;
+            $khs = $krsDetail?->khsDetail;
+            $krs = $krsDetail?->krs;
+            $mahasiswa = $krs?->mahasiswa;
+
+            $validation = ValidationStudentScore::where('template_id', $template->id)
+                ->where('nim', $mahasiswa?->nim)
+                ->first();
+
+            $penilaian = PenilaianStatus::where('kelas_id', $kelas->kelas_id)
+                ->where('nim', $mahasiswa?->nim)
+                ->first();
+
+            $status = 'belum_input';
+            if ($validation) {
+                $status = $validation->status;
+            }
+
+            $sudahDiisi = 0;
+            $totalNodes = 0;
+            if ($validation && $template) {
+                $leafNodes = $this->treeService->getLeafNodes($template);
+                $totalNodes = count($leafNodes);
+
+                $sudahDiisi = StudentScore::where('template_id', $template->id)
+                    ->where('nim', $mahasiswa?->nim)
+                    ->whereNotNull('score')
+                    ->count();
+            }
+
+            return [
+                'code_mahasiswa' => $mahasiswa?->toCode(),
+                'nim' => $mahasiswa?->nim,
+                'nama_mahasiswa' => $mahasiswa?->nama_mahasiswa,
+                'status_penilaian' => $status,
+                'nilai_akhir' => $khs?->nilai_akhir,
+                'catatan_dosen' => $penilaian?->catatan_dosen,
+                'catatan_kaprodi' => $validation?->catatan_validasi,
+                'validated_by' => $validation?->validator?->nama_dosen,
+                'validated_at' => $validation?->validated_at?->toIso8601String(),
+                'sudah_diisi' => $sudahDiisi,
+                'total_nodes' => $totalNodes,
+            ];
+        })->filter()->values()->toArray();
+
+        return ApiResponse::success($data, 'Daftar mahasiswa penilaian kaprodi retrieved successfully.');
+    }
+
+    public function validasiPenilaian(string $codeKelas, string $codeMhs, ?string $catatan, int $kodeDosen): JsonResponse
+    {
+        $kelas = Kelas::findByCode($codeKelas);
+
+        if (! $kelas) {
+            return ApiResponse::notFound('Kelas tidak ditemukan');
+        }
+
+        $mahasiswa = Mahasiswa::findByCode($codeMhs);
+
+        if (! $mahasiswa) {
+            return ApiResponse::notFound('Mahasiswa tidak ditemukan');
+        }
+
+        $programStudi = ProgramStudi::where('kode_dosen_kaprodi', $kodeDosen)
+            ->where('kode_program_studi', $kelas->kode_program_studi)
+            ->first();
+
+        if (! $programStudi) {
+            return ApiResponse::error('Anda bukan Kaprodi untuk program studi kelas ini.', 403);
+        }
+
+        $template = AssessmentTemplate::where('id_matakuliah', $kelas->id_matakuliah)
+            ->active()
+            ->first();
+
+        if (! $template) {
+            return ApiResponse::notFound('Template penilaian untuk matakuliah ini belum tersedia.');
+        }
+
+        $validation = ValidationStudentScore::where('template_id', $template->id)
+            ->where('nim', $mahasiswa->nim)
+            ->first();
+
+        if (! $validation) {
+            return ApiResponse::notFound('Data penilaian untuk mahasiswa ini tidak ditemukan.');
+        }
+
+        if ($validation->status !== 'proses') {
+            return ApiResponse::error('Penilaian tidak dapat divalidasi (sudah divalidasi atau sedang direvisi).', 422);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $validation->update([
+                'status' => 'validasi',
+                'validated_by' => $kodeDosen,
+                'validated_at' => now(),
+                'catatan_validasi' => $catatan,
+            ]);
+
+            PenilaianStatus::where('kelas_id', $kelas->kelas_id)
+                ->where('nim', $mahasiswa->nim)
+                ->update([
+                    'status' => 'validasi',
+                    'kaprodi_validated_by' => $kodeDosen,
+                    'validated_at' => now(),
+                    'catatan_kaprodi' => $catatan,
+                ]);
+
+            $nilaiAkhir = $this->scoreCalculationService->calculateFinalScore($template, $mahasiswa->nim);
+
+            $km = KelasMahasiswa::where('kelas_id', $kelas->kelas_id)
+                ->whereHas('krsDetail.krs', function ($q) use ($mahasiswa) {
+                    $q->where('nim', $mahasiswa->nim);
+                })
+                ->first();
+
+            $krsDetail = $km?->krsDetail;
+
+            if ($krsDetail) {
+                $khsDetail = KhsDetail::where('kode_krs_detail', $krsDetail->kode_krs_detail)->first();
+
+                if ($khsDetail) {
+                    $khsDetail->update([
+                        'nilai_akhir' => $nilaiAkhir,
+                        'tidak_berhak' => 'A',
+                    ]);
+                } else {
+                    KhsDetail::create([
+                        'kode_krs_detail' => $krsDetail->kode_krs_detail,
+                        'nilai_akhir' => $nilaiAkhir,
+                        'tidak_berhak' => 'A',
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return ApiResponse::success([
+                'code_mahasiswa' => $mahasiswa->toCode(),
+                'nim' => $mahasiswa->nim,
+                'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
+                'status' => 'validasi',
+                'nilai_akhir' => $nilaiAkhir,
+                'validated_at' => now()->toIso8601String(),
+            ], 'Penilaian berhasil divalidasi.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return ApiResponse::serverError('Terjadi kesalahan: '.$e->getMessage());
+        }
+    }
+
+    public function getDetailNilaiMahasiswa(string $codeKelas, string $codeMahasiswa, int $kodeDosen): JsonResponse
+    {
+        $kelas = Kelas::findByCode($codeKelas);
+        if (! $kelas) {
+            return ApiResponse::notFound('Kelas tidak ditemukan');
+        }
+
+        $programStudi = ProgramStudi::where('kode_dosen_kaprodi', $kodeDosen)
+            ->where('kode_program_studi', $kelas->kode_program_studi)
+            ->first();
+
+        if (! $programStudi) {
+            return ApiResponse::error('Anda bukan Kaprodi untuk program studi kelas ini.', 403);
+        }
+
+        $mahasiswa = Mahasiswa::findByCode($codeMahasiswa);
+        if (! $mahasiswa) {
+            return ApiResponse::notFound('Mahasiswa tidak ditemukan');
+        }
+
+        $template = AssessmentTemplate::where('id_matakuliah', $kelas->id_matakuliah)
+            ->active()
+            ->first();
+
+        if (! $template) {
+            return ApiResponse::notFound('Template penilaian untuk matakuliah ini belum tersedia.');
+        }
+
+        // Get all scores for this student
+        $scores = StudentScore::where('template_id', $template->id)
+            ->where('nim', $mahasiswa->nim)
+            ->get()
+            ->keyBy('node_key');
+
+        // Build tree with scores
+        $data = [
+            'code_mahasiswa' => $mahasiswa->toCode(),
+            'nim' => $mahasiswa->nim,
+            'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
+            'template_id' => $template->id,
+            'structure' => $this->buildTreeWithScores($template, $scores),
+        ];
+
+        return ApiResponse::success($data, 'Detail nilai mahasiswa retrieved successfully.');
+    }
+
+    private function buildTreeWithScores(AssessmentTemplate $template, Collection $scores): array
+    {
+        return $this->attachScoresToNode($template->structure, $scores);
+    }
+
+    private function attachScoresToNode(array $node, Collection $scores): array
+    {
+        $result = [
+            'key' => $node['key'],
+            'name' => $node['name'],
+            'weight' => $node['weight'],
+            'type' => $node['type'] ?? 'category',
+        ];
+
+        // Jika leaf node (input type), tambahkan score
+        if (($node['type'] ?? null) === 'input') {
+            $score = $scores->get($node['key']);
+            $result['score'] = $score?->score ?? null;
+            $result['dosen_kode_dosen'] = $score?->dosen_kode_dosen;
+        }
+
+        // Jika ada children, proses rekursif
+        if (! empty($node['children'])) {
+            $result['children'] = array_map(
+                fn ($child) => $this->attachScoresToNode($child, $scores),
+                $node['children']
+            );
+
+            // Hitung score kategori jika semua children sudah input
+            if (($node['type'] ?? null) !== 'input') {
+                $leafScores = $this->extractLeafScoresFromChildren($result['children']);
+                $calculatedScore = $this->calculateCategoryScore($result['children']);
+                $result['calculated_score'] = $calculatedScore;
+                $result['filled_count'] = count(array_filter($leafScores, fn ($s) => $s !== null));
+                $result['total_nodes'] = count($leafScores);
+            }
+        }
+
+        return $result;
+    }
+
+    private function extractLeafScoresFromChildren(array $children): array
+    {
+        $scores = [];
+        foreach ($children as $child) {
+            if (($child['type'] ?? null) === 'input') {
+                $scores[] = $child['score'] ?? null;
+            } elseif (! empty($child['children'])) {
+                $scores = array_merge($scores, $this->extractLeafScoresFromChildren($child['children']));
+            }
+        }
+
+        return $scores;
+    }
+
+    private function calculateCategoryScore(array $children): ?float
+    {
+        $totalScore = 0;
+        $totalWeight = 0;
+
+        foreach ($children as $child) {
+            $childScore = null;
+
+            if (isset($child['score'])) {
+                $childScore = $child['score'];
+            } elseif (isset($child['calculated_score'])) {
+                $childScore = $child['calculated_score'];
+            }
+
+            if ($childScore !== null) {
+                $totalScore += $childScore * ($child['weight'] / 100);
+                $totalWeight += $child['weight'];
+            }
+        }
+
+        return $totalWeight > 0 ? round($totalScore, 1) : null;
+    }
+
+    public function revisiPenilaian(string $codeKelas, string $codeMhs, string $catatan, int $kodeDosen): JsonResponse
+    {
+        $kelas = Kelas::findByCode($codeKelas);
+
+        if (! $kelas) {
+            return ApiResponse::notFound('Kelas tidak ditemukan');
+        }
+
+        $mahasiswa = Mahasiswa::findByCode($codeMhs);
+
+        if (! $mahasiswa) {
+            return ApiResponse::notFound('Mahasiswa tidak ditemukan');
+        }
+
+        $programStudi = ProgramStudi::where('kode_dosen_kaprodi', $kodeDosen)
+            ->where('kode_program_studi', $kelas->kode_program_studi)
+            ->first();
+
+        if (! $programStudi) {
+            return ApiResponse::error('Anda bukan Kaprodi untuk program studi kelas ini.', 403);
+        }
+
+        $template = AssessmentTemplate::where('id_matakuliah', $kelas->id_matakuliah)
+            ->active()
+            ->first();
+
+        if (! $template) {
+            return ApiResponse::notFound('Template penilaian untuk matakuliah ini belum tersedia.');
+        }
+
+        $validation = ValidationStudentScore::where('template_id', $template->id)
+            ->where('nim', $mahasiswa->nim)
+            ->first();
+
+        if (! $validation) {
+            return ApiResponse::notFound('Data penilaian untuk mahasiswa ini tidak ditemukan.');
+        }
+
+        if ($validation->status !== 'validasi') {
+            return ApiResponse::error('Penilaian tidak dapat direvisi (belum divalidasi).', 422);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $validation->update([
+                'status' => 'revisi',
+                'catatan_validasi' => $catatan,
+            ]);
+
+            PenilaianStatus::where('kelas_id', $kelas->kelas_id)
+                ->where('nim', $mahasiswa->nim)
+                ->update([
+                    'status' => 'revisi',
+                    'catatan_kaprodi' => $catatan,
+                ]);
+
+            $km = KelasMahasiswa::where('kelas_id', $kelas->kelas_id)
+                ->whereHas('krsDetail.krs', function ($q) use ($mahasiswa) {
+                    $q->where('nim', $mahasiswa->nim);
+                })
+                ->first();
+
+            $krsDetail = $km?->krsDetail;
+
+            if ($krsDetail) {
+                KhsDetail::where('kode_krs_detail', $krsDetail->kode_krs_detail)->delete();
+            }
+
+            DB::commit();
+
+            return ApiResponse::success([
+                'code_mahasiswa' => $mahasiswa->toCode(),
+                'nim' => $mahasiswa->nim,
+                'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
+                'status' => 'revisi',
+                'catatan_kaprodi' => $catatan,
+            ], 'Penilaian berhasil direvisi dan dikembalikan ke dosen untuk diperbaiki.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return ApiResponse::serverError('Terjadi kesalahan: '.$e->getMessage());
+        }
+    }
+}

@@ -14,12 +14,22 @@ class ProgramStudi extends Model
     protected $fillable = [
         'id_jurusan', 'id_jenjang', 'nama_program_studi',
         'singkatan_program_studi', 'kode_fakultas', 'kode_prodi_univ',
-        'kode_pengguna', 'kompetensi',
+        'kode_pengguna', 'kompetensi', 'kode_dosen_kaprodi',
     ];
 
     public function dosen()
     {
         return $this->hasMany(Dosen::class, 'homebase', 'kode_program_studi');
+    }
+
+    public function kaprodi()
+    {
+        return $this->belongsTo(Dosen::class, 'kode_dosen_kaprodi', 'kode_dosen');
+    }
+
+    public function fakultas()
+    {
+        return $this->belongsTo(Fakultas::class, 'kode_fakultas', 'kode_fakultas');
     }
 
     public function namaKurikulum()

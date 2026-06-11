@@ -41,4 +41,14 @@ class Dosen extends Authenticatable
     {
         return $this->belongsTo(ProgramStudi::class, 'homebase', 'kode_program_studi');
     }
+
+    public function kaprodiProgramStudi()
+    {
+        return $this->hasOne(ProgramStudi::class, 'kode_dosen_kaprodi', 'kode_dosen');
+    }
+
+    public function dekanFakultas()
+    {
+        return $this->hasOne(Fakultas::class, 'kode_dosen_dekan', 'kode_dosen');
+    }
 }

@@ -32,12 +32,12 @@ class ScoreCalculationService
     {
         $node = $this->treeService->findNode($template, $nodeKey);
 
-        if (!$node) {
+        if (! $node) {
             return null;
         }
 
         // Input node: return stored score from map
-        if ($node['type'] === 'input') {
+        if (($node['type'] ?? null) === 'input') {
             return $scores[$nodeKey] ?? null;
         }
 
@@ -107,7 +107,7 @@ class ScoreCalculationService
     {
         $node = $this->treeService->findNode($template, $nodeKey);
 
-        if (!$node) {
+        if (! $node) {
             return [];
         }
 
@@ -116,12 +116,12 @@ class ScoreCalculationService
         $breakdown = [
             'node_key' => $nodeKey,
             'node_name' => $node['name'],
-            'type' => $node['type'],
+            'type' => $node['type'] ?? 'category',
             'final_score' => $this->calculateNodeScoreFromMap($template, $scores, $nodeKey),
             'components' => [],
         ];
 
-        if (!empty($node['children'])) {
+        if (! empty($node['children'])) {
             foreach ($node['children'] as $child) {
                 $childScore = $this->calculateNodeScoreFromMap($template, $scores, $child['key']);
 

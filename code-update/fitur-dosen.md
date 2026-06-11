@@ -1,4 +1,4 @@
-# Pengembangan Route Dosen — 4 Fitur
+# Pengembangan Route Dosen — Fitur Lengkap
 
 ## Daftar Isi
 
@@ -7,7 +7,7 @@
 - [Fitur 1: Profil](#fitur-1-profil)
 - [Fitur 2: Kurikulum](#fitur-2-kurikulum)
 - [Fitur 3: Perwalian](#fitur-3-perwalian)
-- [Fitur 4: Penilaian](#fitur-4-penilaian)
+- [Fitur 4: Penilaian Dosen → Kaprodi](#fitur-4-penilaian-dosen--kaprodi)
 - [Route File — Hasil Akhir](#route-file--hasil-akhir)
 - [Catatan Penting](#catatan-penting)
 
@@ -15,28 +15,36 @@
 
 ## Latar Belakang
 
-Route dosen saat ini hanya punya 5 endpoint dasar (logout, me, index, show, update).
-Perlu dikembangkan 4 fitur utama: **Profil, Kurikulum, Perwalian, Penilaian**.
+Route dosen dikembangkan menjadi 4 fitur utama: **Profil, Kurikulum, Perwalian, Penilaian dengan Kaprodi Validasi**.
 
-Total akhir: **17 endpoint** (5 lama + 12 baru).
+Total akhir: **17 endpoint** (3 auth + 2 profil + 1 data dosen + 3 kurikulum + 6 perwalian + 9 penilaian).
 
 ---
 
 ## Ringkasan File
 
-| # | File | Status |
-|---|------|--------|
-| 1 | `app/Models/Kelas.php` | **UBAH** — tambah `use HasCode` |
-| 2 | `app/Models/KelasMahasiswa.php` | **UBAH** — tambah `use HasCode` |
-| 3 | `app/Models/Mengajar.php` | **UBAH** — tambah `use HasCode` |
-| 4 | `app/Http/Controllers/DosenController.php` | **UBAH** — tambah method `me()`, `profileUpdate()` |
-| 5 | `app/Http/Controllers/Api_Dosen/PerwalianController.php` | **UBAH** — isi dari kosong (6 method) |
-| 6 | `app/Http/Controllers/Api_Dosen/KurikulumController.php` | **BARU** |
-| 7 | `app/Http/Controllers/Api_Dosen/NilaiController.php` | **BARU** |
-| 8 | `app/Service/ServicePerwalian.php` | **UBAH** — tambah method validasi, riwayat, jumlah |
-| 9 | `app/Service/ServiceMengajar.php` | **BARU** |
-| 10 | `app/Service/ServiceNilaiDosen.php` | **BARU** |
-| 11 | `routes/dosen.php` | **UBAH** — rewrite semua route |
+| #   | File                                                             | Status    | Keterangan                    |
+| --- | ---------------------------------------------------------------- | --------- | ----------------------------- |
+| 1   | `database/migrations/..._modify_student_scores_add_tracking.php` | **BARU**  | +4 kolom di student_scores    |
+| 2   | `database/migrations/..._create_penilaian_status_table.php`      | **BARU**  | Tabel tracking per-mahasiswa  |
+| 3   | `database/migrations/..._add_kaprodi_to_program_studi.php`       | **BARU**  | FK kaprodi                    |
+| 4   | `database/migrations/..._create_fakultas_table.php`              | **BARU**  | Untuk dekan                   |
+| 5   | `database/migrations/..._add_fakultas_to_program_studi.php`      | **BARU**  | FK fakultas                   |
+| 6   | `app/Models/PenilaianStatus.php`                                 | **BARU**  | Model baru                    |
+| 7   | `app/Models/Fakultas.php`                                        | **BARU**  | Model baru                    |
+| 8   | `app/Models/StudentScore.php`                                    | **UBAH**  | +4 fillable, +2 relasi        |
+| 9   | `app/Models/ProgramStudi.php`                                    | **UBAH**  | +2 relasi (kaprodi, fakultas) |
+| 10  | `app/Models/Dosen.php`                                           | **UBAH**  | +2 relasi (kaprodi, dekan)    |
+| 11  | `app/Models/KhsDetail.php`                                       | **UBAH**  | Fix fillable                  |
+| 12  | `app/Http/Middleware/EnsureIsKaprodi.php`                        | **BARU**  | Middleware kaprodi            |
+| 13  | `bootstrap/app.php`                                              | **UBAH**  | Register middleware           |
+| 14  | `app/Service/ServicePenilaianDosen.php`                          | **BARU**  | 5 methods                     |
+| 15  | `app/Service/ServicePenilaianKaprodi.php`                        | **BARU**  | 4 methods                     |
+| 16  | `app/Http/Controllers/Api_Dosen/PenilaianDosenController.php`    | **BARU**  | 5 endpoints                   |
+| 17  | `app/Http/Controllers/Api_Dosen/PenilaianKaprodiController.php`  | **BARU**  | 4 endpoints                   |
+| 18  | `routes/dosen.php`                                               | **UBAH**  | 17 routes                     |
+| 19  | `app/Service/ServiceNilaiDosen.php`                              | **HAPUS** | Diganti                       |
+| 20  | `app/Http/Controllers/Api_Dosen/NilaiController.php`             | **HAPUS** | Diganti                       |
 
 ---
 
@@ -44,73 +52,10 @@ Total akhir: **17 endpoint** (5 lama + 12 baru).
 
 ### Endpoint
 
-| Method | Endpoint | Controller | Fungsi |
-|--------|----------|------------|--------|
-| `GET` | `/api/dosen/me` | `DosenController@me` | Profil lengkap dosen login |
-| `PUT` | `/api/dosen/profile/update` | `DosenController@profileUpdate` | Update data diri (pakai auth) |
-
-### Detail
-
-#### `GET /api/dosen/me`
-
-Pindahkan dari `AuthController@me_dosen` ke `DosenController@me`.
-
-```php
-public function me(): JsonResponse
-{
-    $dosen = Auth::guard('dosen_web')->user();
-    $dosen->load('programStudi');
-
-    return response()->json([
-        'status' => true,
-        'data' => [
-            'code' => $dosen->toCode(),
-            'kode_dosen' => $dosen->kode_dosen,
-            'nik' => $dosen->nik,
-            'nama_dosen' => $dosen->nama_dosen,
-            'alamat_email' => $dosen->alamat_email,
-            'no_telp' => $dosen->no_telp,
-            'field_studi' => $dosen->field_studi,
-            'alumni' => $dosen->alumni,
-            'homebase' => $dosen->programStudi?->nama_program_studi,
-            'status_dosen' => $dosen->status_dosen,
-            'aktif' => $dosen->aktif,
-            'signature' => $dosen->signature,
-        ],
-    ]);
-}
-```
-
-#### `PUT /api/dosen/profile/update`
-
-Tidak perlu `kode_dosen` di body — pakai user yang sedang login.
-
-```php
-public function profileUpdate(Request $request): JsonResponse
-{
-    $dosen = Auth::guard('dosen_web')->user();
-
-    $validated = $request->validate([
-        'no_telp' => 'sometimes|string|max:20',
-        'alamat_email' => 'sometimes|email|max:75',
-        'field_studi' => 'sometimes|string|max:100',
-        'alumni' => 'sometimes|string|max:100',
-        'sandi_pengguna' => 'sometimes|string|min:6',
-        'signature' => 'sometimes|string',
-    ]);
-
-    if (isset($validated['sandi_pengguna'])) {
-        $validated['sandi_pengguna'] = Hash::make($validated['sandi_pengguna']);
-    }
-
-    $dosen->update($validated);
-
-    return ApiResponse::success([
-        'code' => $dosen->toCode(),
-        'nama_dosen' => $dosen->nama_dosen,
-    ], 'Profil berhasil diperbarui.');
-}
-```
+| Method | Endpoint                    | Controller                      | Fungsi                     |
+| ------ | --------------------------- | ------------------------------- | -------------------------- |
+| `GET`  | `/api/dosen/me`             | `DosenController@me`            | Profil lengkap dosen login |
+| `PUT`  | `/api/dosen/profile/update` | `DosenController@profileUpdate` | Update data diri           |
 
 ---
 
@@ -118,57 +63,11 @@ public function profileUpdate(Request $request): JsonResponse
 
 ### Endpoint
 
-| Method | Endpoint | Controller | Fungsi |
-|--------|----------|------------|--------|
-| `GET` | `/api/dosen/kurikulum` | `KurikulumController@index` | Daftar nama kurikulum |
-| `GET` | `/api/dosen/kurikulum/detail` | `KurikulumController@show` | Detail kurikulum (?code_nama_kurikulum=) |
-
-### Controller — `KurikulumController`
-
-```php
-<?php
-
-namespace App\Http\Controllers\Api_Dosen;
-
-use App\Http\Controllers\Controller;
-use App\Http\Responses\ApiResponse;
-use App\Service\ServiceKurikulum;
-use Illuminate\Contracts\Encryption\DecryptException;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Crypt;
-
-class KurikulumController extends Controller
-{
-    public function __construct(
-        private readonly ServiceKurikulum $kurikulumService,
-    ) {}
-
-    public function index(): JsonResponse
-    {
-        return $this->kurikulumService->nama_kurikulum();
-    }
-
-    public function show(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'code_nama_kurikulum' => ['required', 'string'],
-        ]);
-
-        try {
-            $kode = Crypt::decryptString($validated['code_nama_kurikulum']);
-        } catch (DecryptException) {
-            return ApiResponse::validation(['code_nama_kurikulum' => 'Format code tidak valid']);
-        }
-
-        return $this->kurikulumService->kurikulum_by_nama_kurikulum($kode);
-    }
-}
-```
-
-Reuse service yang sudah ada:
-- `ServiceKurikulum.nama_kurikulum()` — return daftar nama kurikulum (paginated)
-- `ServiceKurikulum.kurikulum_by_nama_kurikulum(kode)` — return matakuliah per semester
+| Method | Endpoint                      | Controller                           | Fungsi                |
+| ------ | ----------------------------- | ------------------------------------ | --------------------- |
+| `GET`  | `/api/dosen/kurikulum`        | `KurikulumController@getKurikulum`   | Daftar nama kurikulum |
+| `GET`  | `/api/dosen/kurikulum/kelas`  | `KurikulumController@getKelasDosen`  | Kelas yang diajar     |
+| `GET`  | `/api/dosen/kurikulum/detail` | `KurikulumController@getDetailKelas` | Detail kelas          |
 
 ---
 
@@ -176,624 +75,322 @@ Reuse service yang sudah ada:
 
 ### Endpoint
 
-| Method | Endpoint | Controller | Fungsi |
-|--------|----------|------------|--------|
-| `GET` | `/api/dosen/perwalian/jumlah` | `PerwalianController@jumlah` | Jumlah mahasiswa bimbingan |
-| `GET` | `/api/dosen/perwalian/mahasiswa` | `PerwalianController@mahasiswaBimbingan` | Daftar mahasiswa bimbingan |
-| `GET` | `/api/dosen/perwalian/mahasiswa/{code}` | `PerwalianController@detailMahasiswa` | Detail mahasiswa + KRS/KHS |
-| `GET` | `/api/dosen/perwalian/mahasiswa/{code}/krs` | `PerwalianController@krsMahasiswa` | KRS mahasiswa (untuk divalidasi) |
-| `POST` | `/api/dosen/perwalian/validasi-krs` | `PerwalianController@validasiKrs` | Approve/reject KRS |
-| `GET` | `/api/dosen/perwalian/validasi` | `PerwalianController@riwayatValidasi` | Riwayat validasi saya |
-
-### Controller — `PerwalianController`
-
-```php
-<?php
-
-namespace App\Http\Controllers\Api_Dosen;
-
-use App\Http\Controllers\Controller;
-use App\Http\Responses\ApiResponse;
-use App\Models\Perwalian;
-use App\Models\PerwalianKrsValidasi;
-use App\Service\ServiceKHS;
-use App\Service\ServiceKRS;
-use App\Service\ServicePerwalian;
-use Illuminate\Contracts\Encryption\DecryptException;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Crypt;
-
-class PerwalianController extends Controller
-{
-    public function __construct(
-        private readonly ServicePerwalian $perwalianService,
-        private readonly ServiceKRS $krsService,
-        private readonly ServiceKHS $khsService,
-    ) {}
-
-    public function jumlah(): JsonResponse
-    {
-        $dosen = Auth::guard('dosen_web')->user();
-
-        $jumlah = Perwalian::where('kode_dosen', $dosen->kode_dosen)
-            ->orWhere('kode_dosen_perwakilan', $dosen->kode_dosen)
-            ->count();
-
-        return ApiResponse::success([
-            'jumlah_mahasiswa_bimbingan' => $jumlah,
-        ]);
-    }
-
-    public function mahasiswaBimbingan(): JsonResponse
-    {
-        $dosen = Auth::guard('dosen_web')->user();
-        return $this->perwalianService->getPerwalianByDosen((int) $dosen->kode_dosen);
-    }
-
-    public function detailMahasiswa(string $code): JsonResponse
-    {
-        try {
-            $nim = Crypt::decryptString($code);
-        } catch (DecryptException) {
-            return ApiResponse::validation(['code' => 'Format code tidak valid']);
-        }
-
-        $dosen = Auth::guard('dosen_web')->user();
-
-        // Validasi: dosen ini adalah pembimbingnya
-        $perwalian = Perwalian::where('nim', $nim)
-            ->where(function ($q) use ($dosen) {
-                $q->where('kode_dosen', $dosen->kode_dosen)
-                  ->orWhere('kode_dosen_perwakilan', $dosen->kode_dosen);
-            })->first();
-
-        if (! $perwalian) {
-            return ApiResponse::error('Anda bukan pembimbing mahasiswa ini.', 403);
-        }
-
-        // Ambil data perwalian + KRS + KHS
-        $dataPerwalian = $this->perwalianService->getPerwalianByMahasiswa($nim);
-        $dataKRS = $this->krsService->getKRSMhs($nim);
-        $dataKHS = $this->khsService->getKHSMhs($nim);
-
-        // Gabungkan response (handle jika dataKRS/dataKHS adalah JsonResponse)
-        $response = json_decode($dataPerwalian->getContent(), true);
-        $response['krs_terakhir'] = json_decode($dataKRS->getContent(), true)['data'] ?? [];
-        $response['khs_terakhir'] = json_decode($dataKHS->getContent(), true)['data'] ?? [];
-
-        return response()->json($response);
-    }
-
-    public function krsMahasiswa(string $code): JsonResponse
-    {
-        try {
-            $nim = Crypt::decryptString($code);
-        } catch (DecryptException) {
-            return ApiResponse::validation(['code' => 'Format code tidak valid']);
-        }
-
-        $dosen = Auth::guard('dosen_web')->user();
-
-        // Validasi pembimbing
-        $perwalian = Perwalian::where('nim', $nim)
-            ->where(function ($q) use ($dosen) {
-                $q->where('kode_dosen', $dosen->kode_dosen)
-                  ->orWhere('kode_dosen_perwakilan', $dosen->kode_dosen);
-            })->first();
-
-        if (! $perwalian) {
-            return ApiResponse::error('Anda bukan pembimbing mahasiswa ini.', 403);
-        }
-
-        // Ambil status validasi terakhir
-        $validasi = PerwalianKrsValidasi::where('nim', $nim)
-            ->where('kode_dosen_validator', $dosen->kode_dosen)
-            ->first();
-
-        $dataKRS = $this->krsService->getKRSMhs($nim);
-        $response = json_decode($dataKRS->getContent(), true);
-        $response['status_validasi'] = $validasi ? $validasi->status_krs : null;
-
-        return response()->json($response);
-    }
-
-    public function validasiKrs(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'code' => ['required', 'string'],
-            'status' => ['required', 'string', 'in:approved,rejected'],
-        ]);
-
-        try {
-            $nim = Crypt::decryptString($validated['code']);
-        } catch (DecryptException) {
-            return ApiResponse::validation(['code' => 'Format code tidak valid']);
-        }
-
-        $dosen = Auth::guard('dosen_web')->user();
-
-        // Validasi pembimbing
-        $perwalian = Perwalian::where('nim', $nim)
-            ->where(function ($q) use ($dosen) {
-                $q->where('kode_dosen', $dosen->kode_dosen)
-                  ->orWhere('kode_dosen_perwakilan', $dosen->kode_dosen);
-            })->first();
-
-        if (! $perwalian) {
-            return ApiResponse::error('Anda bukan pembimbing mahasiswa ini.', 403);
-        }
-
-        // Mapping status: approved → A, rejected → N
-        $statusMap = ['approved' => 'A', 'rejected' => 'N'];
-
-        $validasi = PerwalianKrsValidasi::updateOrCreate(
-            [
-                'nim' => $nim,
-                'kode_dosen_validator' => $dosen->kode_dosen,
-            ],
-            ['status_krs' => $statusMap[$validated['status']]]
-        );
-
-        return ApiResponse::success([
-            'nim' => $nim,
-            'status_krs' => $validasi->status_krs,
-        ], 'Validasi KRS berhasil.');
-    }
-
-    public function riwayatValidasi(): JsonResponse
-    {
-        $dosen = Auth::guard('dosen_web')->user();
-
-        $validasi = PerwalianKrsValidasi::where('kode_dosen_validator', $dosen->kode_dosen)
-            ->with('mahasiswa:nim,nama_mahasiswa')
-            ->orderByDesc('created_at')
-            ->get();
-
-        return ApiResponse::success(
-            $validasi->map(fn ($v) => [
-                'nim' => $v->nim,
-                'nama_mahasiswa' => $v->mahasiswa?->nama_mahasiswa,
-                'status_krs' => $v->status_krs,
-                'tanggal' => $v->created_at,
-            ])->values()->toArray(),
-            'Riwayat validasi KRS.'
-        );
-    }
-}
-```
-
-### Service — Method Baru di `ServicePerwalian`
-
-Semua method perwalian yang di-reuse sudah ada:
-- `getPerwalianByDosen(int $kode_dosen)` ✅ sudah ada
-- `getPerwalianByMahasiswa(string $nim)` ✅ sudah ada
-
-Tidak perlu method baru di ServicePerwalian — logic validasi KRS cukup di Controller karena sederhana (updateOrCreate langsung ke model).
+| Method | Endpoint                        | Controller                             | Fungsi                     |
+| ------ | ------------------------------- | -------------------------------------- | -------------------------- |
+| `GET`  | `/api/dosen/perwalian/jumlah`   | `PerwalianController@jumlahPerwalian`  | Jumlah mahasiswa bimbingan |
+| `GET`  | `/api/dosen/perwalian/daftar`   | `PerwalianController@daftarPerwalian`  | Daftar mahasiswa bimbingan |
+| `GET`  | `/api/dosen/perwalian/riwayat`  | `PerwalianController@riwayatPerwalian` | Riwayat perwalian          |
+| `GET`  | `/api/dosen/perwalian/krs`      | `PerwalianController@showKrsDetail`    | Detail KRS mahasiswa       |
+| `POST` | `/api/dosen/perwalian/validasi` | `PerwalianController@validasiKrs`      | Validasi KRS               |
+| `POST` | `/api/dosen/perwalian/batal`    | `PerwalianController@batalPerwalian`   | Batalkan perwalian         |
 
 ---
 
-## Fitur 4: Penilaian
+## Fitur 4: Penilaian Dosen → Kaprodi
+
+### Prinsip Utama
+
+> **`khs_detail` hanya menyimpan `nilai_akhir`** — tidak ada `nilai_harian/uts/uas`.
+> `nilai_akhir` dihitung dari `student_scores` via `ScoreCalculationService`.
+> Jadi: **dosen → student_scores → ScoreCalculationService → khs_detail**.
+
+### Status Flow
+
+```
+                    ┌──────────────┐
+                    │ TIDAK ADA    │ ← belum_input (inferred)
+                    │ RECORD       │
+                    └──────┬───────┘
+                           │ dosen input scores
+                           ▼
+                    ┌──────────────┐
+                    │   PROSES     │ ← penilaian_status + student_scores
+                    └──────┬───────┘
+                           │
+                    ┌──────┴───────┐
+                    │              │
+              Kaprodi          Kaprodi
+             VALIDASI          REVISI
+                    │              │
+                    ▼              ▼
+           ┌──────────────┐ ┌──────────────┐
+           │  VALIDASI    │ │   PROSES     │ ← balik ke dosen
+           │              │ │ + catatan    │
+           └──────┬───────┘ └──────────────┘
+                  │
+                  │ ScoreCalculationService
+                  │ calculateFinalScore()
+                  │
+                  ▼
+           ┌──────────────┐
+           │  KHS_DETAIL  │ ← nilai_akhir + tidak_berhak = 'A'
+           └──────────────┘
+```
 
 ### Endpoint
 
-| Method | Endpoint | Controller | Fungsi |
-|--------|----------|------------|--------|
-| `GET` | `/api/dosen/nilai/kelas` | `NilaiController@kelas` | Daftar kelas yang diajar (+ template) |
-| `GET` | `/api/dosen/nilai/kelas/{code_kelas}` | `NilaiController@detailKelas` | Detail kelas + template penilaian |
-| `GET` | `/api/dosen/nilai/kelas/{code_kelas}/mahasiswa` | `NilaiController@mahasiswaKelas` | Daftar mahasiswa + nilai di kelas |
-| `POST` | `/api/dosen/nilai/input` | `NilaiController@inputNilai` | Input/update nilai 1 mahasiswa |
-| `POST` | `/api/dosen/nilai/input-batch` | `NilaiController@inputNilaiBatch` | Input nilai banyak mahasiswa |
-| `GET` | `/api/dosen/nilai/rekap/{code_kelas}` | `NilaiController@rekapKelas` | Rekap nilai per kelas |
+#### Penilaian Dosen (5 endpoints)
 
-### Service — `ServiceMengajar` (BARU)
+| Method | Endpoint                                     | Controller                                       | Fungsi                          |
+| ------ | -------------------------------------------- | ------------------------------------------------ | ------------------------------- |
+| `GET`  | `/api/dosen/penilaian/kelas`                 | `PenilaianDosenController@getKelasPenilaian`     | Daftar kelas + status ringkas   |
+| `GET`  | `/api/dosen/penilaian/mahasiswa?code_kelas=` | `PenilaianDosenController@getMahasiswaPenilaian` | Daftar mahasiswa + status       |
+| `GET`  | `/api/dosen/penilaian/template?code_kelas=`  | `PenilaianDosenController@getTemplate`           | Template leaf nodes untuk input |
+| `POST` | `/api/dosen/penilaian/input`                 | `PenilaianDosenController@inputNilai`            | Input scores per-node           |
+| `PUT`  | `/api/dosen/penilaian/update`                | `PenilaianDosenController@updateNilai`           | Update scores (selama proses)   |
+
+#### Kaprodi (5 endpoints, dengan middleware `kaprodi`)
+
+| Method | Endpoint                                                                | Controller                                           | Fungsi                        |
+| ------ | ----------------------------------------------------------------------- | ---------------------------------------------------- | ----------------------------- |
+| `GET`  | `/api/dosen/kaprodi/penilaian/kelas`                                    | `PenilaianKaprodiController@getKelasPenilaian`       | Daftar kelas di prodi         |
+| `GET`  | `/api/dosen/kaprodi/penilaian/mahasiswa?code_kelas=`                    | `PenilaianKaprodiController@getMahasiswaPenilaian`   | Status per mahasiswa          |
+| `GET`  | `/api/dosen/kaprodi/penilaian/detail?code_kelas=...&code_mahasiswa=...` | `PenilaianKaprodiController@getDetailNilaiMahasiswa` | Detail nilai + hitung lengkap |
+| `POST` | `/api/dosen/kaprodi/penilaian/validasi`                                 | `PenilaianKaprodiController@validasi`                | Validasi → masuk KHS          |
+| `POST` | `/api/dosen/kaprodi/penilaian/revisi`                                   | `PenilaianKaprodiController@revisi`                  | Revisi → balik dosen          |
+
+### Database Changes
+
+#### Migration 1: Modifikasi `student_scores`
 
 ```php
-<?php
+Schema::table('student_scores', function (Blueprint $table) {
+    $table->unsignedBigInteger('dosen_kode_dosen')->nullable()->after('assessor_id');
+    $table->enum('status', ['proses', 'validasi'])->default('proses')->after('dosen_kode_dosen');
+    $table->unsignedBigInteger('validated_by')->nullable()->after('status');
+    $table->timestamp('validated_at')->nullable()->after('validated_by');
 
-namespace App\Service;
+    $table->foreign('dosen_kode_dosen')->references('kode_dosen')->on('dosen')->nullOnDelete();
+    $table->foreign('validated_by')->references('kode_dosen')->on('dosen')->nullOnDelete();
+});
+```
 
-use App\Http\Responses\ApiResponse;
-use App\Models\AssessmentTemplate;
-use App\Models\KelasMahasiswa;
-use App\Models\Mengajar;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Crypt;
+#### Migration 2: Tabel baru `penilaian_status`
 
-class ServiceMengajar
+```php
+Schema::create('penilaian_status', function (Blueprint $table) {
+    $table->id();
+    $table->unsignedInteger('kelas_id');
+    $table->char('nim', 12);
+    $table->uuid('template_id');
+    $table->enum('status', ['proses', 'validasi'])->default('proses');
+    $table->unsignedBigInteger('dosen_input_by');
+    $table->unsignedBigInteger('kaprodi_validated_by')->nullable();
+    $table->timestamp('validated_at')->nullable();
+    $table->text('catatan_dosen')->nullable();
+    $table->text('catatan_kaprodi')->nullable();
+    $table->timestamps();
+
+    $table->foreign('kelas_id')->references('kelas_id')->on('kelas')->cascadeOnDelete();
+    $table->foreign('nim')->references('nim')->on('mahasiswa')->cascadeOnDelete();
+    $table->foreign('template_id')->references('id')->on('assessment_templates')->cascadeOnDelete();
+    $table->foreign('dosen_input_by')->references('kode_dosen')->on('dosen')->cascadeOnDelete();
+    $table->foreign('kaprodi_validated_by')->references('kode_dosen')->on('dosen')->nullOnDelete();
+
+    $table->unique(['kelas_id', 'nim'], 'uq_penilaian_kelas_nim');
+});
+```
+
+#### Migration 3: Tambah `kode_dosen_kaprodi` ke `program_studi`
+
+```php
+Schema::table('program_studi', function (Blueprint $table) {
+    $table->unsignedBigInteger('kode_dosen_kaprodi')->nullable()->after('kode_program_studi');
+    $table->foreign('kode_dosen_kaprodi')->references('kode_dosen')->on('dosen')->nullOnDelete();
+});
+```
+
+#### Migration 4: Tabel `fakultas`
+
+```php
+Schema::create('fakultas', function (Blueprint $table) {
+    $table->smallIncrements('kode_fakultas');
+    $table->string('nama_fakultas', 100);
+    $table->unsignedBigInteger('kode_dosen_dekan')->nullable();
+    $table->timestamps();
+
+    $table->foreign('kode_dosen_dekan')->references('kode_dosen')->on('dosen')->nullOnDelete();
+});
+```
+
+#### Migration 5: Tambah `kode_fakultas` ke `program_studi`
+
+```php
+Schema::table('program_studi', function (Blueprint $table) {
+    $table->unsignedSmallInteger('kode_fakultas')->nullable()->after('singkatan_program_studi');
+    $table->foreign('kode_fakultas')->references('kode_fakultas')->on('fakultas')->nullOnDelete();
+});
+```
+
+### Model Changes
+
+#### NEW: `PenilaianStatus`
+
+```php
+class PenilaianStatus extends Model
 {
-    public function getKelasDiajar(int $kodeDosen, ?int $semester = null): JsonResponse
+    protected $table = 'penilaian_status';
+    protected $fillable = [
+        'kelas_id', 'nim', 'template_id', 'status',
+        'dosen_input_by', 'kaprodi_validated_by', 'validated_at',
+        'catatan_dosen', 'catatan_kaprodi',
+    ];
+    protected $casts = ['validated_at' => 'datetime'];
+
+    public function kelas() { return $this->belongsTo(Kelas::class); }
+    public function mahasiswa() { return $this->belongsTo(Mahasiswa::class, 'nim', 'nim'); }
+    public function template() { return $this->belongsTo(AssessmentTemplate::class, 'template_id'); }
+    public function dosenInput() { return $this->belongsTo(Dosen::class, 'dosen_input_by', 'kode_dosen'); }
+    public function kaprodiValidator() { return $this->belongsTo(Dosen::class, 'kaprodi_validated_by', 'kode_dosen'); }
+}
+```
+
+#### NEW: `Fakultas`
+
+```php
+class Fakultas extends Model
+{
+    use HasCode;
+    protected $table = 'fakultas';
+    protected $primaryKey = 'kode_fakultas';
+    protected $fillable = ['nama_fakultas', 'kode_dosen_dekan'];
+
+    public function dekan() { return $this->belongsTo(Dosen::class, 'kode_dosen_dekan', 'kode_dosen'); }
+    public function programStudi() { return $this->hasMany(ProgramStudi::class, 'kode_fakultas'); }
+}
+```
+
+#### UBAH: `StudentScore`
+
+```php
+protected $fillable = [
+    'template_id', 'nim', 'node_key', 'score', 'assessor_id', 'notes',
+    'dosen_kode_dosen', 'status', 'validated_by', 'validated_at',
+];
+
+public function dosenInput()
+{
+    return $this->belongsTo(Dosen::class, 'dosen_kode_dosen', 'kode_dosen');
+}
+
+public function kaprodiValidator()
+{
+    return $this->belongsTo(Dosen::class, 'validated_by', 'kode_dosen');
+}
+```
+
+#### UBAH: `ProgramStudi`
+
+```php
+public function kaprodi()
+{
+    return $this->belongsTo(Dosen::class, 'kode_dosen_kaprodi', 'kode_dosen');
+}
+
+public function fakultas()
+{
+    return $this->belongsTo(Fakultas::class, 'kode_fakultas', 'kode_fakultas');
+}
+```
+
+#### UBAH: `Dosen`
+
+```php
+public function kaprodiProgramStudi()
+{
+    return $this->hasOne(ProgramStudi::class, 'kode_dosen_kaprodi', 'kode_dosen');
+}
+
+public function dekanFakultas()
+{
+    return $this->hasOne(Fakultas::class, 'kode_dosen_dekan', 'kode_dosen');
+}
+```
+
+#### UBAH: `KhsDetail`
+
+```php
+// Hanya kolom yang ADA di DB:
+protected $fillable = [
+    'kode_krs_detail', 'nilai_akhir', 'tidak_berhak',
+];
+```
+
+### Middleware: `EnsureIsKaprodi`
+
+```php
+class EnsureIsKaprodi
+{
+    public function handle(Request $request, Closure $next)
     {
-        $query = Mengajar::where('kode_dosen', $kodeDosen)
-            ->with([
-                'kelas.matakuliah',
-                'kelas.namaKelas',
-                'kelas.tahunAkademik',
-            ]);
+        $dosen = Auth::guard('dosen_web')->user();
 
-        if ($semester) {
-            $query->whereHas('kelas', fn($q) => $q->where('semester', $semester));
+        if (! $dosen) {
+            return ApiResponse::unauthorized();
         }
 
-        $mengajar = $query->get();
+        $isKaprodi = ProgramStudi::where('kode_dosen_kaprodi', $dosen->kode_dosen)
+            ->exists();
 
-        $data = $mengajar->map(function ($m) {
-            $template = AssessmentTemplate::active()
-                ->byMatakuliah($m->kelas->id_matakuliah)
-                ->first();
-
-            $totalMhs = KelasMahasiswa::where('kelas_id', $m->kelas->kelas_id)->count();
-
-            return [
-                'code_kelas' => Crypt::encryptString($m->kelas->kelas_id),
-                'nama_kelas' => $m->kelas->namaKelas?->nama_kelas,
-                'matakuliah' => $m->kelas->matakuliah?->nama_matakuliah,
-                'kode_matakuliah' => $m->kelas->matakuliah?->kode_matakuliah,
-                'sks' => ($m->kelas->matakuliah?->sks_teori ?? 0) + ($m->kelas->matakuliah?->sks_praktik ?? 0),
-                'semester' => $m->kelas->semester,
-                'tahun_akademik' => $m->kelas->tahunAkademik?->tahun_akademik,
-                'total_mahasiswa' => $totalMhs,
-                'template' => $template ? [
-                    'code' => Crypt::encryptString($template->id),
-                    'versi' => $template->versi,
-                ] : null,
-            ];
-        })->values()->toArray();
-
-        return ApiResponse::success($data, 'Kelas yang diajar.');
-    }
-
-    public function getDetailKelas(int $kelasId, int $kodeDosen): JsonResponse
-    {
-        $mengajar = Mengajar::where('kode_dosen', $kodeDosen)
-            ->whereHas('kelas', fn($q) => $q->where('kelas_id', $kelasId))
-            ->with(['kelas.matakuliah', 'kelas.namaKelas', 'kelas.tahunAkademik'])
-            ->first();
-
-        if (! $mengajar) {
-            return ApiResponse::error('Kelas tidak ditemukan atau Anda tidak mengajar di kelas ini.', 404);
+        if (! $isKaprodi) {
+            return ApiResponse::error('Anda tidak memiliki akses sebagai Kaprodi.', 403);
         }
 
-        $template = AssessmentTemplate::active()
-            ->byMatakuliah($mengajar->kelas->id_matakuliah)
-            ->first();
-
-        $data = [
-            'code_kelas' => Crypt::encryptString($mengajar->kelas->kelas_id),
-            'nama_kelas' => $mengajar->kelas->namaKelas?->nama_kelas,
-            'matakuliah' => $mengajar->kelas->matakuliah?->nama_matakuliah,
-            'kode_matakuliah' => $mengajar->kelas->matakuliah?->kode_matakuliah,
-            'sks' => ($mengajar->kelas->matakuliah?->sks_teori ?? 0) + ($mengajar->kelas->matakuliah?->sks_praktik ?? 0),
-            'semester' => $mengajar->kelas->semester,
-            'tahun_akademik' => $mengajar->kelas->tahunAkademik?->tahun_akademik,
-            'template' => $template ? [
-                'code' => Crypt::encryptString($template->id),
-                'versi' => $template->versi,
-                'structure' => $template->structure,
-            ] : null,
-        ];
-
-        return ApiResponse::success($data, 'Detail kelas.');
-    }
-
-    public function getMahasiswaDiKelas(int $kelasId, int $kodeDosen, ?string $templateId = null): JsonResponse
-    {
-        $mengajar = Mengajar::where('kode_dosen', $kodeDosen)
-            ->whereHas('kelas', fn($q) => $q->where('kelas_id', $kelasId))
-            ->first();
-
-        if (! $mengajar) {
-            return ApiResponse::error('Anda tidak mengajar di kelas ini.', 404);
-        }
-
-        $kelasMhs = KelasMahasiswa::where('kelas_id', $kelasId)
-            ->with(['krsDetail.krs.mahasiswa:nim,nama_mahasiswa'])
-            ->get()
-            ->map(function ($km) {
-                return [
-                    'code' => Crypt::encryptString($km->krsDetail?->krs?->mahasiswa?->nim),
-                    'nim' => $km->krsDetail?->krs?->mahasiswa?->nim,
-                    'nama_mahasiswa' => $km->krsDetail?->krs?->mahasiswa?->nama_mahasiswa,
-                ];
-            })->filter(fn($m) => $m['nim'] !== null)->values();
-
-        if ($templateId) {
-            $kelasMhs = app(\App\Service\Assessment\TreeTraversalService::class)
-                ->getLeafNodes(AssessmentTemplate::find($templateId));
-
-            // Diisi di controller
-        }
-
-        return ApiResponse::success($kelasMhs, 'Mahasiswa di kelas.');
+        return $next($request);
     }
 }
 ```
 
-### Service — `ServiceNilaiDosen` (BARU)
+Registrasi di `bootstrap/app.php`:
 
 ```php
-<?php
-
-namespace App\Service;
-
-use App\Http\Responses\ApiResponse;
-use App\Models\AssessmentTemplate;
-use App\Models\KelasMahasiswa;
-use App\Models\Mengajar;
-use App\Models\StudentScore;
-use App\Service\Assessment\ScoreCalculationService;
-use App\Service\Assessment\TreeTraversalService;
-use Illuminate\Http\JsonResponse;
-
-class ServiceNilaiDosen
-{
-    public function __construct(
-        private readonly TreeTraversalService $treeService,
-        private readonly ScoreCalculationService $scoreService,
-    ) {}
-
-    public function getMahasiswaDenganNilai(int $kelasId, int $kodeDosen, string $templateId): JsonResponse
-    {
-        $mengajar = Mengajar::where('kode_dosen', $kodeDosen)
-            ->whereHas('kelas', fn($q) => $q->where('kelas_id', $kelasId))
-            ->first();
-
-        if (! $mengajar) {
-            return ApiResponse::error('Anda tidak mengajar di kelas ini.', 404);
-        }
-
-        $template = AssessmentTemplate::findOrFail($templateId);
-        $leafNodes = $this->treeService->getLeafNodes($template);
-        $leafKeys = $leafNodes->pluck('key');
-
-        $mahasiswa = KelasMahasiswa::where('kelas_id', $kelasId)
-            ->with(['krsDetail.krs.mahasiswa:nim,nama_mahasiswa'])
-            ->get()
-            ->map(function ($km) use ($template, $leafKeys) {
-                $nim = $km->krsDetail?->krs?->mahasiswa?->nim;
-                if (! $nim) return null;
-
-                $scores = StudentScore::where('template_id', $template->id)
-                    ->where('nim', $nim)
-                    ->whereIn('node_key', $leafKeys)
-                    ->pluck('score', 'node_key');
-
-                return [
-                    'nim' => $nim,
-                    'nama_mahasiswa' => $km->krsDetail->krs->mahasiswa->nama_mahasiswa,
-                    'nilai' => $leafKeys->mapWithKeys(fn($key) => [
-                        $key => isset($scores[$key]) ? (float) $scores[$key] : null,
-                    ]),
-                    'nilai_akhir' => $this->scoreService->calculateFinalScore($template, $nim),
-                ];
-            })->filter()->values();
-
-        return ApiResponse::success($mahasiswa, 'Mahasiswa dengan nilai.');
-    }
-
-    public function inputNilai(string $templateId, string $nim, array $nilai): JsonResponse
-    {
-        $template = AssessmentTemplate::findOrFail($templateId);
-        $leafNodes = $this->treeService->getLeafNodes($template);
-        $validKeys = $leafNodes->pluck('key')->toArray();
-
-        foreach ($nilai as $key => $score) {
-            if (! in_array($key, $validKeys)) continue;
-
-            StudentScore::updateOrCreate(
-                [
-                    'template_id' => $templateId,
-                    'nim' => $nim,
-                    'node_key' => $key,
-                ],
-                [
-                    'score' => $score,
-                    // assessor_id sengaja tidak diisi karena FK ke users table, bukan dosen
-                ]
-            );
-        }
-
-        $finalScore = $this->scoreService->calculateFinalScore($template, $nim);
-
-        return ApiResponse::success([
-            'nim' => $nim,
-            'nilai_akhir' => $finalScore,
-        ], 'Nilai berhasil disimpan.');
-    }
-
-    public function rekapNilaiKelas(int $kelasId, int $kodeDosen, string $templateId): JsonResponse
-    {
-        $mengajar = Mengajar::where('kode_dosen', $kodeDosen)
-            ->whereHas('kelas', fn($q) => $q->where('kelas_id', $kelasId))
-            ->first();
-
-        if (! $mengajar) {
-            return ApiResponse::error('Anda tidak mengajar di kelas ini.', 404);
-        }
-
-        $template = AssessmentTemplate::findOrFail($templateId);
-
-        $mahasiswa = KelasMahasiswa::where('kelas_id', $kelasId)
-            ->with(['krsDetail.krs.mahasiswa:nim,nama_mahasiswa'])
-            ->get()
-            ->map(function ($km) use ($template) {
-                $nim = $km->krsDetail?->krs?->mahasiswa?->nim;
-                if (! $nim) return null;
-
-                return [
-                    'nim' => $nim,
-                    'nama_mahasiswa' => $km->krsDetail->krs->mahasiswa->nama_mahasiswa,
-                    'nilai_akhir' => $this->scoreService->calculateFinalScore($template, $nim),
-                ];
-            })->filter();
-
-        $nilaiAkhir = $mahasiswa->pluck('nilai_akhir')->filter();
-        $tertinggi = $nilaiAkhir->max();
-        $terendah = $nilaiAkhir->min();
-        $rataRata = $nilaiAkhir->avg();
-
-        return ApiResponse::success([
-            'rekap' => $mahasiswa->values(),
-            'statistik' => [
-                'tertinggi' => $tertinggi,
-                'terendah' => $terendah,
-                'rata_rata' => round($rataRata, 2),
-                'jumlah_mahasiswa' => $mahasiswa->count(),
-            ],
-        ], 'Rekap nilai kelas.');
-    }
-}
+$middleware->alias([
+    'kaprodi' => EnsureIsKaprodi::class,
+    // ... existing aliases
+]);
 ```
 
-### Controller — `NilaiController`
+### Service: `ServicePenilaianDosen`
 
-```php
-<?php
+| Method                                          | Fungsi                        |
+| ----------------------------------------------- | ----------------------------- |
+| `getKelasPenilaian($kodeDosen)`                 | Daftar kelas + jumlah input   |
+| `getMahasiswaPenilaian($codeKelas, $kodeDosen)` | Daftar mahasiswa + status     |
+| `getTemplateForKelas($codeKelas, $kodeDosen)`   | Template tree untuk input     |
+| `inputNilai($payload, $kodeDosen)`              | Input scores per-node         |
+| `updateNilai($payload, $kodeDosen)`             | Update scores (selama proses) |
 
-namespace App\Http\Controllers\Api_Dosen;
+### Service: `ServicePenilaianKaprodi`
 
-use App\Http\Controllers\Controller;
-use App\Http\Responses\ApiResponse;
-use App\Service\ServiceMengajar;
-use App\Service\ServiceNilaiDosen;
-use Illuminate\Contracts\Encryption\DecryptException;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Crypt;
+| Method                                                            | Fungsi                |
+| ----------------------------------------------------------------- | --------------------- |
+| `getKelasPenilaian($kodeDosen)`                                   | Daftar kelas di prodi |
+| `getMahasiswaPenilaian($codeKelas, $kodeDosen)`                   | Status per mahasiswa  |
+| `getDetailNilaiMahasiswa($codeKelas, $codeMahasiswa, $kodeDosen)` | Detail nilai per node |
+| `validasiPenilaian(...)`                                          | Validasi → masuk KHS  |
+| `revisiPenilaian(...)`                                            | Revisi → balik dosen  |
 
-class NilaiController extends Controller
-{
-    public function __construct(
-        private readonly ServiceMengajar $mengajarService,
-        private readonly ServiceNilaiDosen $nilaiDosenService,
-    ) {}
+### Alur `validasiPenilaian()` Detail
 
-    public function kelas(Request $request): JsonResponse
-    {
-        $dosen = Auth::guard('dosen_web')->user();
-        $semester = $request->query('semester');
-
-        return $this->mengajarService->getKelasDiajar((int) $dosen->kode_dosen, $semester);
-    }
-
-    public function detailKelas(string $code_kelas): JsonResponse
-    {
-        try {
-            $kelasId = Crypt::decryptString($code_kelas);
-        } catch (DecryptException) {
-            return ApiResponse::validation(['code_kelas' => 'Format code tidak valid']);
-        }
-
-        $dosen = Auth::guard('dosen_web')->user();
-
-        return $this->mengajarService->getDetailKelas((int) $kelasId, (int) $dosen->kode_dosen);
-    }
-
-    public function mahasiswaKelas(string $code_kelas, Request $request): JsonResponse
-    {
-        try {
-            $kelasId = Crypt::decryptString($code_kelas);
-        } catch (DecryptException) {
-            return ApiResponse::validation(['code_kelas' => 'Format code tidak valid']);
-        }
-
-        $dosen = Auth::guard('dosen_web')->user();
-        $templateCode = $request->query('code_template');
-
-        if ($templateCode) {
-            try {
-                $templateId = Crypt::decryptString($templateCode);
-                return $this->nilaiDosenService->getMahasiswaDenganNilai(
-                    (int) $kelasId, (int) $dosen->kode_dosen, $templateId
-                );
-            } catch (DecryptException) {
-                return ApiResponse::validation(['code_template' => 'Format code tidak valid']);
-            }
-        }
-
-        return $this->mengajarService->getMahasiswaDiKelas(
-            (int) $kelasId, (int) $dosen->kode_dosen
-        );
-    }
-
-    public function inputNilai(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'code_template' => ['required', 'string'],
-            'code' => ['required', 'string'],
-            'nilai' => ['required', 'array'],
-            'nilai.*' => ['numeric', 'min:0', 'max:100'],
-        ]);
-
-        try {
-            $templateId = Crypt::decryptString($validated['code_template']);
-            $nim = Crypt::decryptString($validated['code']);
-        } catch (DecryptException) {
-            return ApiResponse::validation(['code' => 'Format code tidak valid']);
-        }
-
-        return $this->nilaiDosenService->inputNilai($templateId, $nim, $validated['nilai']);
-    }
-
-    public function inputNilaiBatch(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'code_template' => ['required', 'string'],
-            'data' => ['required', 'array'],
-            'data.*.code' => ['required', 'string'],
-            'data.*.nilai' => ['required', 'array'],
-        ]);
-
-        try {
-            $templateId = Crypt::decryptString($validated['code_template']);
-        } catch (DecryptException) {
-            return ApiResponse::validation(['code_template' => 'Format code tidak valid']);
-        }
-
-        $results = [];
-        foreach ($validated['data'] as $item) {
-            try {
-                $nim = Crypt::decryptString($item['code']);
-                $results[] = json_decode(
-                    $this->nilaiDosenService->inputNilai($templateId, $nim, $item['nilai'])->getContent(),
-                    true
-                );
-            } catch (DecryptException) {
-                continue;
-            }
-        }
-
-        return ApiResponse::success($results, 'Nilai batch berhasil disimpan.');
-    }
-
-    public function rekapKelas(string $code_kelas, Request $request): JsonResponse
-    {
-        try {
-            $kelasId = Crypt::decryptString($code_kelas);
-        } catch (DecryptException) {
-            return ApiResponse::validation(['code_kelas' => 'Format code tidak valid']);
-        }
-
-        $dosen = Auth::guard('dosen_web')->user();
-
-        $templateCode = $request->query('code_template');
-        if (! $templateCode) {
-            return ApiResponse::validation(['code_template' => 'code_template required']);
-        }
-
-        try {
-            $templateId = Crypt::decryptString($templateCode);
-        } catch (DecryptException) {
-            return ApiResponse::validation(['code_template' => 'Format code tidak valid']);
-        }
-
-        return $this->nilaiDosenService->rekapNilaiKelas(
-            (int) $kelasId, (int) $dosen->kode_dosen, $templateId
-        );
-    }
-}
+```
+1. Decode code_kelas → Kelas
+2. Decode code_mahasiswa → Mahasiswa
+3. Cek: ProgramStudi::where('kode_dosen_kaprodi', kodeDosen)
+        ->where('kode_program_studi', kelas->kode_program_studi) exists?
+4. Cek: PenilaianStatus::where('kelas_id', kelas_id)
+        ->where('nim', nim)->where('status', 'proses') exists?
+5. Update penilaian_status → status='validasi', kaprodi_validated_by, validated_at
+6. Update student_scores → status='validasi' untuk semua node (template_id + nim)
+7. Hitung: ScoreCalculationService::calculateFinalScore(template, nim)
+   → recursive: leaf_scores × weight = parent_score → ... → root = nilai_akhir
+8. Cari KrsDetail via:
+   KelasMahasiswa::where('kelas_id', kelas_id)
+       ->whereHas('krsDetail.krs', fn($q) => $q->where('nim', nim))
+       ->first()->krsDetail
+9. Tulis KhsDetail::updateOrCreate(
+       ['kode_krs_detail' => krsDetail->kode_krs_detail],
+       ['nilai_akhir' => calculated_value, 'tidak_berhak' => 'A']
+   )
 ```
 
 ---
@@ -806,7 +403,8 @@ File: `routes/dosen.php`
 <?php
 
 use App\Http\Controllers\Api_Dosen\KurikulumController;
-use App\Http\Controllers\Api_Dosen\NilaiController;
+use App\Http\Controllers\Api_Dosen\PenilaianDosenController;
+use App\Http\Controllers\Api_Dosen\PenilaianKaprodiController;
 use App\Http\Controllers\Api_Dosen\PerwalianController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\DosenController;
@@ -816,41 +414,56 @@ Route::prefix('api')
     ->middleware(['sanctum.spa', 'auth:dosen_web', 'sanctum.cookie', 'log.activity'])
     ->group(function () {
 
-        // ─── 1. PROFIL (3) ───
+        // Auth
         Route::post('/dosen/logout', [AuthController::class, 'logout']);
+
+        // Profil (2 endpoints)
         Route::get('/dosen/me', [DosenController::class, 'me']);
-        Route::get('/dosen', [DosenController::class, 'index']);
-        Route::get('/dosen/detail', [DosenController::class, 'show']);
         Route::put('/dosen/profile/update', [DosenController::class, 'profileUpdate']);
 
-        // ─── 2. KURIKULUM (2) ───
-        Route::prefix('/dosen/kurikulum')->group(function () {
-            Route::get('/', [KurikulumController::class, 'index']);
-            Route::get('/detail', [KurikulumController::class, 'show']);
+        // Data Dosen (3 endpoints)
+        Route::get('/dosen', [DosenController::class, 'index']);
+        Route::get('/dosen/detail', [DosenController::class, 'show']);
+        Route::put('/dosen', [DosenController::class, 'update']);
+
+        // Kurikulum (3 endpoints)
+        Route::get('/dosen/kurikulum', [KurikulumController::class, 'getKurikulum']);
+        Route::get('/dosen/kurikulum/kelas', [KurikulumController::class, 'getKelasDosen']);
+        Route::get('/dosen/kurikulum/detail', [KurikulumController::class, 'getDetailKelas']);
+
+        // Perwalian (6 endpoints)
+        Route::get('/dosen/perwalian/jumlah', [PerwalianController::class, 'jumlahPerwalian']);
+        Route::get('/dosen/perwalian/daftar', [PerwalianController::class, 'daftarPerwalian']);
+        Route::get('/dosen/perwalian/riwayat', [PerwalianController::class, 'riwayatPerwalian']);
+        Route::get('/dosen/perwalian/krs', [PerwalianController::class, 'showKrsDetail']);
+        Route::post('/dosen/perwalian/validasi', [PerwalianController::class, 'validasiKrs']);
+        Route::post('/dosen/perwalian/batal', [PerwalianController::class, 'batalPerwalian']);
+
+        // Penilaian Dosen (5 endpoints)
+        Route::prefix('/dosen/penilaian')->group(function () {
+            Route::get('/kelas', [PenilaianDosenController::class, 'getKelasPenilaian']);
+            Route::get('/mahasiswa', [PenilaianDosenController::class, 'getMahasiswaPenilaian']);
+            Route::get('/template', [PenilaianDosenController::class, 'getTemplate']);
+            Route::post('/input', [PenilaianDosenController::class, 'inputNilai']);
+            Route::put('/update', [PenilaianDosenController::class, 'updateNilai']);
         });
 
-        // ─── 3. PERWALIAN (6) ───
-        Route::prefix('/dosen/perwalian')->group(function () {
-            Route::get('/jumlah', [PerwalianController::class, 'jumlah']);
-            Route::get('/mahasiswa', [PerwalianController::class, 'mahasiswaBimbingan']);
-            Route::get('/mahasiswa/{code}', [PerwalianController::class, 'detailMahasiswa']);
-            Route::get('/mahasiswa/{code}/krs', [PerwalianController::class, 'krsMahasiswa']);
-            Route::post('/validasi-krs', [PerwalianController::class, 'validasiKrs']);
-            Route::get('/validasi', [PerwalianController::class, 'riwayatValidasi']);
-        });
+        // Kaprodi (5 endpoints, dengan middleware kaprodi)
+        Route::prefix('/dosen/kaprodi')
+            ->middleware('kaprodi')
+            ->group(function () {
+                Route::get('/penilaian/kelas', [PenilaianKaprodiController::class, 'getKelasPenilaian']);
+                Route::get('/penilaian/mahasiswa', [PenilaianKaprodiController::class, 'getMahasiswaPenilaian']);
+                Route::get('/penilaian/detail', [PenilaianKaprodiController::class, 'getDetailNilaiMahasiswa']);
+                Route::post('/penilaian/validasi', [PenilaianKaprodiController::class, 'validasi']);
+                Route::post('/penilaian/revisi', [PenilaianKaprodiController::class, 'revisi']);
+            });
 
-        // ─── 4. PENILAIAN (6) ───
-        Route::prefix('/dosen/nilai')->group(function () {
-            Route::get('/kelas', [NilaiController::class, 'kelas']);
-            Route::get('/kelas/{code_kelas}', [NilaiController::class, 'detailKelas']);
-            Route::get('/kelas/{code_kelas}/mahasiswa', [NilaiController::class, 'mahasiswaKelas']);
-            Route::post('/input', [NilaiController::class, 'inputNilai']);
-            Route::post('/input-batch', [NilaiController::class, 'inputNilaiBatch']);
-            Route::get('/rekap/{code_kelas}', [NilaiController::class, 'rekapKelas']);
-        });
-
+        // Fallback
         Route::fallback(fn() => response()->json([
-            'status' => false, 'message' => 'Endpoint tidak ditemukan.', 'error' => 'NOT_FOUND',
+            'status'  => false,
+            'message' => 'Endpoint tidak ditemukan.',
+            'error'   => 'NOT_FOUND',
         ], 404));
     });
 ```
@@ -859,72 +472,38 @@ Route::prefix('api')
 
 ## Catatan Penting
 
-### 1. `HasCode` — Tambahkan di 3 Model
+### 1. `khs_detail` Hanya Menyimpan `nilai_akhir`
 
-```php
-// app/Models/Kelas.php
-use App\Models\Traits\HasCode;
-class Kelas extends Model {
-    use HasCode;
-    // ...
-}
+Schema DB: `kode_khs_detail, kode_krs_detail, nilai_akhir, tidak_berhak, timestamps`.
+TIDAK ADA `nilai_harian`, `nilai_uts`, `nilai_uas`.
 
-// app/Models/KelasMahasiswa.php
-use App\Models\Traits\HasCode;
-class KelasMahasiswa extends Model {
-    use HasCode;
-    // ...
-}
+### 2. `assessor_id` → `users.id`
 
-// app/Models/Mengajar.php
-use App\Models\Traits\HasCode;
-class Mengajar extends Model {
-    use HasCode;
-    // ...
-}
-```
+FK `student_scores.assessor_id` mengacu ke `users.id` (tabel admin/staff). Dosen menggunakan kolom baru `dosen_kode_dosen` yang mengacu ke `dosen.kode_dosen`.
 
-### 2. `assessor_id` Tidak Diisi untuk Dosen
+### 3. Template System Sudah Ada
 
-Di `ServiceNilaiDosen.inputNilai()`, `assessor_id` sengaja tidak diisi karena FK `student_scores.assessor_id` mengacu ke `users.id` (tabel admin/staff), bukan ke `dosen.kode_dosen`. Jika diisi akan error foreign key constraint.
+`AssessmentTemplate` → `AssessmentNodeIndex` → `StudentScore` → `ScoreCalculationService`. Semua infrastructure sudah ada dan digunakan oleh flow penilaian.
 
-### 3. Enum `status_krs` — Mapping Wajib
+### 4. Middleware `kaprodi`
 
-Tabel `perwalian_krs_validasi` menggunakan enum `'A'` / `'N'`, bukan string `'approved'` / `'rejected'`. Mapping dilakukan di controller:
+Kaprodi = dosen yang `kode_dosen`-nya tercatat di `program_studi.kode_dosen_kaprodi`. Bukan role di tabel users, tapi relasi di program_studi.
 
-```php
-$statusMap = ['approved' => 'A', 'rejected' => 'N'];
-```
+### 5. Revisi Kaprodi
 
-### 4. Import `Crypt` Tidak Boleh Lupa
-
-Semua controller yang melakukan decrypt harus import:
-```php
-use Illuminate\Support\Facades\Crypt;
-use Illuminate\Contracts\Encryption\DecryptException;
-```
-
-### 5. Route `/dosen/me` Pindah ke `DosenController`
-
-Route `GET /api/dosen/me` dipindahkan dari `AuthController@me_dosen` ke `DosenController@me`. Pastikan tidak ada konflik dengan route lama.
-
-### 6. Validasi Akses — Hanya Data Milik Sendiri
-
-Semua endpoint perwalian dan penilaian memvalidasi bahwa dosen yang login adalah:
-- Pembimbing mahasiswa (perwalian)
-- Pengajar kelas (penilaian)
-
-Jika tidak, return 403.
+Ketika kaprodi merevisi, status kembali ke `proses`, `khs_detail` dihapus, dan dosen bisa input ulang. Catatan kaprodi tersimpan untuk referensi dosen.
 
 ---
 
 ## Ringkasan Akhir
 
-| Fitur | Endpoint | File Baru | File Diubah |
-|-------|----------|-----------|-------------|
-| Profil | 2 | - | `DosenController.php` |
-| Kurikulum | 2 | `Api_Dosen/KurikulumController.php` | - |
-| Perwalian | 6 | - | `Api_Dosen/PerwalianController.php`, `ServicePerwalian.php` |
-| Penilaian | 6 | `Api_Dosen/NilaiController.php`, `ServiceMengajar.php`, `ServiceNilaiDosen.php` | - |
-| Infra | - | - | `Kelas.php`, `KelasMahasiswa.php`, `Mengajar.php`, `routes/dosen.php` |
-| **Total** | **16 baru + 1 lama** | **4 file** | **7 file** |
+| Fitur           | Endpoint | File Baru                                                                  | File Diubah                                                                                                   | File Dihapus                                   |
+| --------------- | -------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| Profil          | 2        | -                                                                          | `DosenController.php`                                                                                         | -                                              |
+| Data Dosen      | 1        | -                                                                          | `DosenController.php`                                                                                         | -                                              |
+| Kurikulum       | 3        | -                                                                          | `KurikulumController.php`                                                                                     | -                                              |
+| Perwalian       | 6        | -                                                                          | `PerwalianController.php`, `ServicePerwalian.php`                                                             | -                                              |
+| Penilaian Dosen | 5        | `PenilaianDosenController.php`, `ServicePenilaianDosen.php`                | -                                                                                                             | `NilaiController.php`, `ServiceNilaiDosen.php` |
+| Kaprodi         | 5        | `PenilaianKaprodiController.php`, `ServicePenilaianKaprodi.php`            | -                                                                                                             | -                                              |
+| Infra           | -        | `PenilaianStatus.php`, `Fakultas.php`, `EnsureIsKaprodi.php`, 5 migrations | `StudentScore.php`, `ProgramStudi.php`, `Dosen.php`, `KhsDetail.php`, `routes/dosen.php`, `bootstrap/app.php` | -                                              |
+| **Total**       | **22**   | **10 file**                                                                | **8 file**                                                                                                    | **2 file**                                     |

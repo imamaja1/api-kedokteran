@@ -31,7 +31,7 @@ class TemplateIndexerService
             'path' => $currentPath,
             'level' => $level,
             'weight' => $node['weight'],
-            'is_input' => ($node['type'] === 'input'),
+            'is_input' => (($node['type'] ?? null) === 'input'),
             'type' => $node['type'] ?? 'category',
         ];
 
