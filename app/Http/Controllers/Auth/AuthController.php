@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\DosenLoginRequest;
 use App\Http\Requests\Auth\MhsLoginRequest;
+use App\Http\Requests\Auth\StaffLoginRequest;
 use App\Models\ActivityLog;
 use App\Models\Dosen;
 use App\Models\Mahasiswa;
@@ -86,7 +87,7 @@ class AuthController extends Controller
         ]);
     }
 
-    public function login_staff(Request $request): JsonResponse
+    public function login_staff(StaffLoginRequest $request): JsonResponse
     {
         $email = $request->email;
         $password = $request->password;
