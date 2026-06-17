@@ -18,11 +18,16 @@ Route::prefix('api/mhs')
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/profile', [MahasiswaController::class, 'profil']);
         Route::put('/profile/update', [MahasiswaController::class, 'profil_update']);
+        Route::put('/profile/foto', [MahasiswaController::class, 'foto_profil_update']);
         Route::get('semester', [MahasiswaController::class, 'semester']);
         // kurikulum
         Route::get('kurikulum', [ApiMhsKurikulumController::class, 'kurikulum']);
         // krs
         Route::get('krs', [ApiMhsKrsController::class, 'krs']);
+        Route::post('krs', [ApiMhsKrsController::class, 'create']);
+        Route::post('krs/detail', [ApiMhsKrsController::class, 'addDetail']);
+        Route::delete('krs/detail', [ApiMhsKrsController::class, 'removeDetail']);
+        Route::get('krs/sks-info', [ApiMhsKrsController::class, 'sksInfo']);
         // khs
         Route::get('khs', [ApiMhsKhsController::class, 'khs']);
         // petikan

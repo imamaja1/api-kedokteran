@@ -19,6 +19,7 @@ Route::prefix('api')
         // ─── Profil (2 endpoints) ─────────────────────────────────────────
         Route::get('/dosen/me', [DosenController::class, 'me']);
         Route::put('/dosen/profile/update', [DosenController::class, 'profileUpdate']);
+        Route::put('/dosen/profile/foto', [DosenController::class, 'fotoProfilUpdate']);
 
         // ─── Data Dosen ───────────────────────────────────────────────────
         Route::get('/dosen', [DosenController::class, 'index']);

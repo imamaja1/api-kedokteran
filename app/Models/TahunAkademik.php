@@ -21,6 +21,11 @@ class TahunAkademik extends Model
         'tanggal_berakhir' => 'date',
     ];
 
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'A');
+    }
+
     public function krs()
     {
         return $this->hasMany(Krs::class, 'kode_tahun_akademik', 'kode_tahun_akademik');

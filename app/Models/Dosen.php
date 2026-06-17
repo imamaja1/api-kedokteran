@@ -20,7 +20,7 @@ class Dosen extends Authenticatable
     protected $fillable = [
         'kode_dosen', 'nama_dosen', 'field_studi', 'alumni', 'nik', 'no_telp',
         'status_dosen', 'homebase', 'alamat_email', 'sandi_pengguna',
-        'status_login', 'aktif', 'signature', 'chatid',
+        'status_login', 'aktif', 'signature', 'chatid', 'foto',
     ];
 
     protected $hidden = ['sandi_pengguna'];

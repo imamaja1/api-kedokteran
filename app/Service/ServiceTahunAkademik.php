@@ -157,6 +157,33 @@ class ServiceTahunAkademik
         ]);
     }
 
+    public function getActiveTA(): JsonResponse
+    {
+        $data = TahunAkademik::active()->first();
+
+        if (! $data) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Tidak ada tahun akademik aktif',
+                'data' => null,
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Tahun akademik aktif',
+            'data' => [
+                'kode_tahun_akademik' => $data->kode_tahun_akademik,
+                'tahun_akademik' => $data->tahun_akademik,
+                'semester' => $data->semester,
+                'tanggal_mulai' => $data->tanggal_mulai?->format('Y-m-d'),
+                'tanggal_berakhir' => $data->tanggal_berakhir?->format('Y-m-d'),
+                'status' => $data->status,
+                'status_kpat' => $data->status_kpat,
+            ],
+        ]);
+    }
+
     public function deleteTahunAkademik(string $id): JsonResponse
     {
         $tahunAkademik = TahunAkademik::find($id);

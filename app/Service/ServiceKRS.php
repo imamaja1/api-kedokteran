@@ -4,7 +4,14 @@ namespace App\Service;
 
 use App\Http\Responses\ApiResponse;
 use App\Models\Krs;
+use App\Models\KrsDetail;
 use App\Models\Mahasiswa;
+use App\Models\Matakuliah;
+use App\Models\Pembayaran;
+use App\Models\Perwalian;
+use App\Models\TahunAkademik;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 
 class ServiceKRS
 {
@@ -154,5 +161,169 @@ class ServiceKRS
         ];
 
         return ApiResponse::success($data, 'Detail KRS berhasil diambil.');
+    }
+
+    public function createKRS(string $nim): JsonResponse
+    {
+        $activeTA = TahunAkademik::active()->first();
+        if (! $activeTA) {
+            return ApiResponse::error('Tidak ada tahun akademik aktif.', 404);
+        }
+
+        $bayar = Pembayaran::where('nim', $nim)
+            ->where('kode_tahun_akademik', $activeTA->kode_tahun_akademik)
+            ->where('status', 'lunas')
+            ->first();
+
+        if (! $bayar) {
+            return ApiResponse::error('Pembayaran belum lunas. Silakan lunasi pembayaran terlebih dahulu.', 422);
+        }
+
+        $perwalian = Perwalian::where('nim', $nim)->first();
+        if (! $perwalian) {
+            return ApiResponse::error('Anda belum memiliki dosen wali. Silakan hubungi bagian akademik.', 422);
+        }
+
+        $existingKrs = Krs::where('nim', $nim)
+            ->where('kode_tahun_akademik', $activeTA->kode_tahun_akademik)
+            ->first();
+
+        if ($existingKrs) {
+            return ApiResponse::error('KRS untuk semester ini sudah ada.', 422);
+        }
+
+        $krs = Krs::create([
+            'nim' => $nim,
+            'kode_tahun_akademik' => $activeTA->kode_tahun_akademik,
+            'semester' => $activeTA->semester,
+        ]);
+
+        return ApiResponse::success([
+            'kode_krs' => $krs->kode_krs,
+            'nim' => $krs->nim,
+            'kode_tahun_akademik' => $krs->kode_tahun_akademik,
+            'semester' => $krs->semester,
+        ], 'KRS berhasil dibuat.', 201);
+    }
+
+    public function addKrsDetail(string $nim, array $data): JsonResponse
+    {
+        $krs = Krs::where('kode_krs', $data['kode_krs'])
+            ->where('nim', $nim)
+            ->first();
+
+        if (! $krs) {
+            return ApiResponse::notFound('KRS tidak ditemukan atau bukan milik Anda.');
+        }
+
+        $matakuliah = Matakuliah::find($data['id_matakuliah']);
+        if (! $matakuliah) {
+            return ApiResponse::notFound('Matakuliah tidak ditemukan.');
+        }
+
+        $existingDetail = KrsDetail::where('kode_krs', $krs->kode_krs)
+            ->where('id_matakuliah', $data['id_matakuliah'])
+            ->first();
+
+        if ($existingDetail) {
+            return ApiResponse::error('Matakuliah sudah ada di KRS.', 422);
+        }
+
+        $bayar = Pembayaran::where('nim', $nim)
+            ->where('kode_tahun_akademik', $krs->kode_tahun_akademik)
+            ->where('status', 'lunas')
+            ->first();
+
+        $limit = $bayar->sks_override ?? 24;
+
+        $currentSks = KrsDetail::where('kode_krs', $krs->kode_krs)
+            ->join('matakuliah', 'krs_detail.id_matakuliah', '=', 'matakuliah.id_matakuliah')
+            ->sum(DB::raw('matakuliah.sks_teori + matakuliah.sks_praktik'));
+
+        $newSks = ($matakuliah->sks_teori ?? 0) + ($matakuliah->sks_praktik ?? 0);
+
+        if (($currentSks + $newSks) > $limit) {
+            $reason = $bayar && $bayar->sks_override
+                ? " (Override SKS: {$limit}, alasan: {$bayar->sks_override_reason})"
+                : '';
+            return ApiResponse::error("Melebihi batas SKS ({$limit} SKS). Terpakai: {$currentSks}, Minta: {$newSks}{$reason}", 422);
+        }
+
+        $detail = KrsDetail::create([
+            'kode_krs' => $krs->kode_krs,
+            'id_matakuliah' => $data['id_matakuliah'],
+            'status' => 'A',
+        ]);
+
+        return ApiResponse::success([
+            'kode_krs_detail' => $detail->kode_krs_detail,
+            'kode_krs' => $detail->kode_krs,
+            'id_matakuliah' => $detail->id_matakuliah,
+            'kode_matakuliah' => $matakuliah->kode_matakuliah,
+            'nama_matakuliah' => $matakuliah->nama_matakuliah,
+            'sks' => $newSks,
+        ], 'Matakuliah berhasil ditambahkan ke KRS.', 201);
+    }
+
+    public function removeKrsDetail(string $nim, string $kodeKrsDetail): JsonResponse
+    {
+        $detail = KrsDetail::where('kode_krs_detail', $kodeKrsDetail)
+            ->whereHas('krs', function ($q) use ($nim) {
+                $q->where('nim', $nim);
+            })
+            ->first();
+
+        if (! $detail) {
+            return ApiResponse::notFound('Detail KRS tidak ditemukan atau bukan milik Anda.');
+        }
+
+        $khsDetail = \App\Models\KhsDetail::where('kode_krs_detail', $detail->kode_krs_detail)->first();
+        if ($khsDetail) {
+            return ApiResponse::error('Matakuliah sudah dinilai dan tidak dapat dihapus.', 422);
+        }
+
+        $detail->delete();
+
+        return ApiResponse::success(null, 'Matakuliah berhasil dihapus dari KRS.');
+    }
+
+    public function getSksInfo(string $nim): JsonResponse
+    {
+        $activeTA = TahunAkademik::active()->first();
+        if (! $activeTA) {
+            return ApiResponse::error('Tidak ada tahun akademik aktif.', 404);
+        }
+
+        $krs = Krs::where('nim', $nim)
+            ->where('kode_tahun_akademik', $activeTA->kode_tahun_akademik)
+            ->first();
+
+        $bayar = Pembayaran::where('nim', $nim)
+            ->where('kode_tahun_akademik', $activeTA->kode_tahun_akademik)
+            ->where('status', 'lunas')
+            ->first();
+
+        $limit = $bayar->sks_override ?? 24;
+        $terpakai = 0;
+
+        if ($krs) {
+            $terpakai = KrsDetail::where('kode_krs', $krs->kode_krs)
+                ->join('matakuliah', 'krs_detail.id_matakuliah', '=', 'matakuliah.id_matakuliah')
+                ->sum(DB::raw('matakuliah.sks_teori + matakuliah.sks_praktik'));
+        }
+
+        return ApiResponse::success([
+            'nim' => $nim,
+            'kode_tahun_akademik' => $activeTA->kode_tahun_akademik,
+            'tahun_akademik' => $activeTA->tahun_akademik,
+            'semester' => $activeTA->semester,
+            'sks_limit' => $limit,
+            'sks_terpakai' => $terpakai,
+            'sks_tersisa' => $limit - $terpakai,
+            'sks_override' => $bayar && $bayar->sks_override ? true : false,
+            'sks_override_reason' => $bayar?->sks_override_reason,
+            'sks_override_by' => $bayar?->overrideBy?->name,
+            'pembayaran_lunas' => $bayar ? true : false,
+        ], 'Info SKS berhasil diambil.');
     }
 }

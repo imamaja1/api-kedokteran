@@ -67,6 +67,11 @@ class TahunAkademikController extends Controller
         return $this->service->updateTahunAkademik($id, $validasi);
     }
 
+    public function active(): JsonResponse
+    {
+        return $this->service->getActiveTA();
+    }
+
     public function destroy(string $code): JsonResponse
     {
         $id = Crypt::decryptString($code);

@@ -7,6 +7,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class DosenController extends Controller
 {
@@ -185,6 +186,35 @@ class DosenController extends Controller
                 'status_dosen' => $dosen->fresh()->status_dosen,
                 'aktif' => $dosen->fresh()->aktif,
                 'nama_program_studi' => optional($dosen->fresh()->programStudi)->nama_program_studi,
+            ],
+        ]);
+    }
+
+    public function fotoProfilUpdate(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'foto' => ['required', 'image', 'mimes:jpeg,jpg,png', 'max:2048'],
+        ]);
+
+        $user = Auth::guard('dosen_web')->user();
+
+        // Hapus foto lama jika ada
+        if ($user->foto && Storage::disk('public')->exists($user->foto)) {
+            Storage::disk('public')->delete($user->foto);
+        }
+
+        // Simpan foto baru ke storage/app/public/fotos/dosen/
+        $path = $request->file('foto')->store('fotos/dosen', 'public');
+
+        // Update DB
+        $user->update(['foto' => $path]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Foto profil berhasil diupdate.',
+            'data' => [
+                'foto' => $path,
+                'foto_url' => Storage::disk('public')->url($path),
             ],
         ]);
     }

@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api_Staff\AkademikController;
+use App\Http\Controllers\Api_Staff\PembayaranController;
+use App\Http\Controllers\Api_Staff\PenempatanController;
 use App\Http\Controllers\Api_Staff\AssessmentScoreController;
 use App\Http\Controllers\Api_Staff\AssessmentTemplateController;
 use App\Http\Controllers\Api_Staff\DefaultController;
@@ -32,6 +34,26 @@ Route::prefix("api/staff")
 
         Route::get("dosen", [DosenController::class, "search"]);
         Route::get("mahasiswa", [MahasiswaController::class, "search"]);
+
+        // Tahun Akademik Active
+        Route::get("tahun-akademik/active", [TahunAkademikController::class, "active"]);
+
+        // Pembayaran
+        Route::prefix("pembayaran")->middleware(["throttle:60,1"])->group(function () {
+            Route::get("/", [PembayaranController::class, "index"]);
+            Route::get("/show", [PembayaranController::class, "show"]);
+            Route::post("/", [PembayaranController::class, "store"]);
+            Route::put("/", [PembayaranController::class, "update"]);
+            Route::get("/sks-limit", [PembayaranController::class, "getSksLimit"]);
+            Route::put("/sks-override", [PembayaranController::class, "setSksOverride"]);
+        });
+
+        // Penempatan Kelas
+        Route::prefix("penempatan")->middleware(["throttle:60,1"])->group(function () {
+            Route::get("/", [PenempatanController::class, "index"]);
+            Route::post("/", [PenempatanController::class, "store"]);
+            Route::delete("/{id}", [PenempatanController::class, "destroy"]);
+        });
 
         // Akademik
         Route::prefix("akademik")
@@ -211,13 +233,6 @@ Route::prefix("api/staff")
                         "forceDelete",
                     ]);
                 });
-            });
-
-        // Kurikulum
-        Route::prefix("blok-kurikulum")
-            ->middleware(["throttle:60,1"])
-            ->group(function () {
-                Route::prefix("masterdata")->group(function () {});
             });
 
         // ─── Assessment System ────────────────────────────────────────

@@ -26,16 +26,24 @@ class ServicePenilaianDosen
 
     public function getKelasPenilaian(int $kodeDosen): JsonResponse
     {
-        $kelasList = Mengajar::where('kode_dosen', $kodeDosen)
+        $activeTA = \App\Models\TahunAkademik::active()->first();
+
+        $query = Mengajar::where('kode_dosen', $kodeDosen)
             ->with([
                 'kelas:kelas_id,nama_kelas_id,semester,kode_tahun_akademik,kode_program_studi,id_matakuliah',
                 'kelas.namaKelas:nama_kelas_id,nama_kelas',
                 'kelas.matakuliah:id_matakuliah,kode_matakuliah,nama_matakuliah,sks_teori,sks_praktik,block',
                 'kelas.tahunAkademik:kode_tahun_akademik,tahun_akademik,semester',
                 'kelas.programStudi:kode_program_studi,nama_program_studi',
-            ])
-            ->orderBy('kelas_id', 'desc')
-            ->get();
+            ]);
+
+        if ($activeTA) {
+            $query->whereHas('kelas', function ($q) use ($activeTA) {
+                $q->where('kode_tahun_akademik', $activeTA->kode_tahun_akademik);
+            });
+        }
+
+        $kelasList = $query->orderBy('kelas_id', 'desc')->get();
 
         $data = $kelasList->map(function ($item) {
             $kelas = $item->kelas;

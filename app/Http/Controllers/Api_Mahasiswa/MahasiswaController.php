@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class MahasiswaController extends Controller
 {
@@ -103,18 +104,32 @@ class MahasiswaController extends Controller
             'message' => 'Data mahasiswa berhasil diupdate.',
         ]);
     }
-    public function foto_profil_update(Request $request){
-        $user = Auth::guard('mahasiswa_web')->user();
-
+    public function foto_profil_update(Request $request): JsonResponse
+    {
         $validated = $request->validate([
-            'foto' => ['nullable', 'image', 'max:2048'],
+            'foto' => ['required', 'image', 'mimes:jpeg,jpg,png', 'max:2048'],
         ]);
 
-        $user->update($validated);
+        $user = Auth::guard('mahasiswa_web')->user();
+
+        // Hapus foto lama jika ada
+        if ($user->foto && Storage::disk('public')->exists($user->foto)) {
+            Storage::disk('public')->delete($user->foto);
+        }
+
+        // Simpan foto baru ke storage/app/public/fotos/mahasiswa/
+        $path = $request->file('foto')->store('fotos/mahasiswa', 'public');
+
+        // Update DB
+        $user->update(['foto' => $path]);
 
         return response()->json([
             'status' => true,
-            'message' => 'Foto Profil berhasil diupdate.',
+            'message' => 'Foto profil berhasil diupdate.',
+            'data' => [
+                'foto' => $path,
+                'foto_url' => Storage::disk('public')->url($path),
+            ],
         ]);
     }
 }

@@ -33,14 +33,20 @@ class ServicePenilaianKaprodi
             return ApiResponse::error('Anda bukan Kaprodi untuk program studi manapun.', 403);
         }
 
-        $kelasList = Kelas::where('kode_program_studi', $programStudi->kode_program_studi)
+        $activeTA = \App\Models\TahunAkademik::active()->first();
+
+        $query = Kelas::where('kode_program_studi', $programStudi->kode_program_studi)
             ->with([
                 'namaKelas:nama_kelas_id,nama_kelas',
                 'matakuliah:id_matakuliah,kode_matakuliah,nama_matakuliah',
                 'tahunAkademik:kode_tahun_akademik,tahun_akademik,semester',
-            ])
-            ->orderBy('kelas_id', 'desc')
-            ->get();
+            ]);
+
+        if ($activeTA) {
+            $query->where('kode_tahun_akademik', $activeTA->kode_tahun_akademik);
+        }
+
+        $kelasList = $query->orderBy('kelas_id', 'desc')->get();
 
         $data = $kelasList->map(function ($kelas) use ($programStudi) {
             $totalMhs = KelasMahasiswa::where('kelas_id', $kelas->kelas_id)->count();
