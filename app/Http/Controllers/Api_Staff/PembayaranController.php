@@ -41,6 +41,7 @@ class PembayaranController extends Controller
             'nim' => ['required', 'string', 'max:11'],
             'kode_tahun_akademik' => ['required', 'integer'],
             'status' => ['nullable', 'in:lunas,belum'],
+            'status_mahasiswa' => ['nullable', 'in:aktif,cuti'],
             'tanggal_bayar' => ['nullable', 'date'],
             'keterangan' => ['nullable', 'string', 'max:255'],
         ]);
@@ -53,6 +54,7 @@ class PembayaranController extends Controller
         $validasi = $request->validate([
             'code' => ['required', 'string'],
             'status' => ['nullable', 'in:lunas,belum'],
+            'status_mahasiswa' => ['nullable', 'in:aktif,cuti'],
             'tanggal_bayar' => ['nullable', 'date'],
             'keterangan' => ['nullable', 'string', 'max:255'],
         ]);

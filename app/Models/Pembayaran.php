@@ -11,7 +11,7 @@ class Pembayaran extends Model
     protected $table = 'pembayaran';
 
     protected $fillable = [
-        'nim', 'kode_tahun_akademik', 'status', 'tanggal_bayar', 'keterangan',
+        'nim', 'kode_tahun_akademik', 'status', 'tanggal_bayar', 'keterangan', 'status_mahasiswa',
         'sks_override', 'sks_override_reason', 'sks_override_by', 'sks_override_at',
     ];
 

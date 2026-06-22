@@ -13,6 +13,7 @@ use App\Http\Controllers\Api_Staff\MahasiswaController;
 use App\Http\Controllers\Api_Staff\MatakuliahController;
 use App\Http\Controllers\Api_Staff\NamaKurikulumController;
 use App\Http\Controllers\Api_Staff\ProgramStudiController;
+use App\Http\Controllers\Api_Staff\SksRuleController;
 use App\Http\Controllers\Api_Staff\TahunAkademikController;
 use App\Http\Controllers\Auth\AuthController;
 use Illuminate\Support\Facades\Route;
@@ -301,6 +302,17 @@ Route::prefix("api/staff")
                         "destroy",
                     ]);
                 });
+            });
+
+        // ─── SKS Rule ──────────────────────────────────────────────────
+        Route::prefix("sks-rule")
+            ->middleware(["throttle:60,1"])
+            ->group(function () {
+                Route::get("/", [SksRuleController::class, "index"]);
+                Route::post("/", [SksRuleController::class, "store"]);
+                Route::get("/show", [SksRuleController::class, "show"]);
+                Route::put("/update", [SksRuleController::class, "update"]);
+                Route::delete("/{code}", [SksRuleController::class, "destroy"]);
             });
 
         // fallback dalam group — return 404 bukan 401
