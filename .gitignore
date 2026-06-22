@@ -25,3 +25,5 @@ Thumbs.db
 /doc
 /database/api_documentation.sql
 /code-update
+/.qoder
+/testing

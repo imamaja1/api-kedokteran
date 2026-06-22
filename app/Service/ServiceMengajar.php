@@ -13,7 +13,7 @@ class ServiceMengajar
     {
         $paginator = Mengajar::where('kode_dosen', $kode_dosen)
             ->with([
-                'kelas:mengajar_id,kelas_id,nama_kelas_id,semester,kode_tahun_akademik,kode_program_studi,id_matakuliah',
+                'kelas:kelas_id,nama_kelas_id,semester,kode_tahun_akademik,kode_program_studi,id_matakuliah',
                 'kelas.namaKelas:nama_kelas_id,nama_kelas',
                 'kelas.matakuliah:id_matakuliah,kode_matakuliah,nama_matakuliah,sks_teori,sks_praktik,block',
                 'kelas.tahunAkademik:kode_tahun_akademik,tahun_akademik,semester',

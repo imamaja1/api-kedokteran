@@ -4,10 +4,14 @@ namespace App\Service;
 
 use App\Http\Responses\ApiResponse;
 use App\Models\ActivityLog;
+use App\Models\Krs;
 use App\Models\Mahasiswa;
 use App\Models\Pembayaran;
+use App\Models\PerwalianKrsValidasi;
 use App\Models\TahunAkademik;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Crypt;
 
 class ServicePembayaran
 {
@@ -32,6 +36,7 @@ class ServicePembayaran
         $paginator->getCollection()->transform(function ($item) {
             return [
                 'id' => $item->id,
+                'code' => $item->toCode(),
                 'nim' => $item->nim,
                 'nama_mahasiswa' => $item->mahasiswa?->nama_mahasiswa,
                 'kode_tahun_akademik' => $item->kode_tahun_akademik,
@@ -52,7 +57,11 @@ class ServicePembayaran
 
     public function show(string $code): JsonResponse
     {
-        $id = \Crypt::decryptString($code);
+        try {
+            $id = Crypt::decryptString($code);
+        } catch (DecryptException) {
+            return ApiResponse::error('Kode tidak valid.', 422);
+        }
 
         $item = Pembayaran::with(['mahasiswa:nim,nama_mahasiswa', 'tahunAkademik:kode_tahun_akademik,tahun_akademik,semester'])
             ->find($id);
@@ -63,6 +72,7 @@ class ServicePembayaran
 
         return ApiResponse::success([
             'id' => $item->id,
+            'code' => $item->toCode(),
             'nim' => $item->nim,
             'nama_mahasiswa' => $item->mahasiswa?->nama_mahasiswa,
             'kode_tahun_akademik' => $item->kode_tahun_akademik,
@@ -106,8 +116,12 @@ class ServicePembayaran
             'keterangan' => $data['keterangan'] ?? null,
         ]);
 
+        // Auto-create KRS + PerwalianKrsValidasi jika belum ada
+        $this->autoCreateKrs($data['nim'], $ta);
+
         return ApiResponse::success([
             'id' => $pembayaran->id,
+            'code' => $pembayaran->toCode(),
             'nim' => $pembayaran->nim,
             'kode_tahun_akademik' => $pembayaran->kode_tahun_akademik,
             'status' => $pembayaran->status,
@@ -118,12 +132,18 @@ class ServicePembayaran
 
     public function update(array $data): JsonResponse
     {
-        $id = \Crypt::decryptString($data['code']);
+        try {
+            $id = Crypt::decryptString($data['code']);
+        } catch (DecryptException) {
+            return ApiResponse::error('Kode tidak valid.', 422);
+        }
 
         $pembayaran = Pembayaran::find($id);
         if (! $pembayaran) {
             return ApiResponse::notFound('Pembayaran tidak ditemukan.');
         }
+
+        $oldStatus = $pembayaran->status;
 
         $pembayaran->update([
             'status' => $data['status'] ?? $pembayaran->status,
@@ -131,8 +151,17 @@ class ServicePembayaran
             'keterangan' => $data['keterangan'] ?? $pembayaran->keterangan,
         ]);
 
+        // Jika status berubah dari belum → lunas dan KRS belum ada, auto-create
+        if ($oldStatus === 'belum' && $pembayaran->status === 'lunas') {
+            $ta = TahunAkademik::find($pembayaran->kode_tahun_akademik);
+            if ($ta) {
+                $this->autoCreateKrs($pembayaran->nim, $ta);
+            }
+        }
+
         return ApiResponse::success([
             'id' => $pembayaran->id,
+            'code' => $pembayaran->toCode(),
             'nim' => $pembayaran->nim,
             'kode_tahun_akademik' => $pembayaran->kode_tahun_akademik,
             'status' => $pembayaran->status,
@@ -209,5 +238,38 @@ class ServicePembayaran
             'sks_override_reason' => $pembayaran->sks_override_reason,
             'sks_override_at' => $pembayaran->sks_override_at?->toIso8601String(),
         ], 'SKS override berhasil diatur.');
+    }
+
+    /**
+     * Auto-create KRS + PerwalianKrsValidasi jika belum ada.
+     */
+    private function autoCreateKrs(string $nim, TahunAkademik $ta): void
+    {
+        // Cek apakah KRS sudah ada untuk TA ini
+        $existingKrs = Krs::where('nim', $nim)
+            ->where('kode_tahun_akademik', $ta->kode_tahun_akademik)
+            ->exists();
+
+        if ($existingKrs) {
+            return;
+        }
+
+        // Hitung semester mahasiswa
+        $serviceSemester = new ServiceSemester();
+        $semester = $serviceSemester->hitung($nim, $ta);
+
+        // Auto-create KRS
+        Krs::create([
+            'nim' => $nim,
+            'kode_tahun_akademik' => $ta->kode_tahun_akademik,
+            'semester' => $semester,
+        ]);
+
+        // Auto-create PerwalianKrsValidasi (status 'N = belum divalidasi)
+        PerwalianKrsValidasi::create([
+            'nim' => $nim,
+            'kode_dosen_validator' => null,
+            'status_krs' => 'N',
+        ]);
     }
 }

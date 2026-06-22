@@ -32,7 +32,7 @@ class DosenController extends Controller
 
         return response()->json([
             'status' => true,
-            'message' => 'Profil dosen retrieved successfully.',
+            'message' => 'Profil dosen berhasil diambil.',
             'data' => [
                 'code' => $user->toCode(),
                 'nik' => $user->nik,
@@ -42,6 +42,7 @@ class DosenController extends Controller
                 'status_dosen' => $user->status_dosen,
                 'nama_program_studi' => optional($user->programStudi)->nama_program_studi,
                 'status' => $roleStatus,
+                'foto_url' => $user->foto ? $request->getSchemeAndHttpHost().'/storage/'.$user->foto : null,
             ],
         ]);
     }
@@ -106,7 +107,7 @@ class DosenController extends Controller
 
         return response()->json([
             'status' => true,
-            'message' => 'Data dosen retrieved successfully.',
+            'message' => 'Data dosen berhasil diambil.',
             'data' => $dosen->items(),
             'pagination' => [
                 'current_page' => $dosen->currentPage(),
@@ -122,7 +123,16 @@ class DosenController extends Controller
     public function show(Request $request): JsonResponse
     {
         $code = $request->query('code');
-        abort_if(! $code, 422, 'Parameter code wajib diisi.');
+
+        if (! $code) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Parameter code wajib diisi.',
+                'errors' => [
+                    'code' => ['Parameter code wajib diisi.']
+                ]
+            ], 422);
+        }
 
         $dosen = Dosen::findByCode($code);
 
@@ -132,7 +142,7 @@ class DosenController extends Controller
 
         return response()->json([
             'status' => true,
-            'message' => 'Data dosen retrieved successfully.',
+            'message' => 'Data dosen berhasil diambil.',
             'data' => [
                 'code' => $dosen->toCode(),
                 'nama_dosen' => $dosen->nama_dosen,

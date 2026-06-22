@@ -120,4 +120,17 @@ return Application::configure(basePath: dirname(__DIR__))
                 ], 419);
             }
         });
+
+        // Catch-all — Semua exception yang belum ditangani di atas
+        // Mengubah HTML error page menjadi JSON response untuk route api/*
+        $exceptions->render(function (\Throwable $e, Request $request) {
+            if ($request->is('api/*')) {
+                $message = config('app.debug') ? $e->getMessage() : 'Terjadi kesalahan internal server.';
+                return response()->json([
+                    'status' => false,
+                    'message' => $message,
+                    'error' => 'SERVER_ERROR',
+                ], 500);
+            }
+        });
     })->create();

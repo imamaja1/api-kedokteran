@@ -12,28 +12,21 @@ class KrsController extends Controller
 {
     public function krs(Request $request): JsonResponse
     {
-        $request->validate([
-            'semester' => 'sometimes|nullable|integer',
+        $validasi = $request->validate([
+            'semester' => ['nullable', 'integer', 'in:1,2,3,4,5,6,7,8,9,10,11,12,13,14'],
         ]);
-        $semester = $request->query('semester');
 
         $nim = Auth::guard('mahasiswa_web')->user()->nim;
+        $semester = $validasi['semester'] ?? null;
 
         return (new ServiceKRS)->getKRSMhs($nim, $semester);
-    }
-
-    public function create(Request $request): JsonResponse
-    {
-        $nim = Auth::guard('mahasiswa_web')->user()->nim;
-
-        return (new ServiceKRS)->createKRS($nim);
     }
 
     public function addDetail(Request $request): JsonResponse
     {
         $validasi = $request->validate([
-            'kode_krs' => ['required', 'integer'],
-            'id_matakuliah' => ['required', 'integer'],
+            'matakuliah' => ['required', 'array', 'min:1'],
+            'matakuliah.*' => ['required', 'integer'],
         ]);
 
         $nim = Auth::guard('mahasiswa_web')->user()->nim;
@@ -44,12 +37,36 @@ class KrsController extends Controller
     public function removeDetail(Request $request): JsonResponse
     {
         $validasi = $request->validate([
-            'kode_krs_detail' => ['required', 'integer'],
+            'code_krs_detail' => ['required', 'string'],
         ]);
 
         $nim = Auth::guard('mahasiswa_web')->user()->nim;
 
-        return (new ServiceKRS)->removeKrsDetail($nim, (string) $validasi['kode_krs_detail']);
+        return (new ServiceKRS)->removeKrsDetail($nim, $validasi['code_krs_detail']);
+    }
+
+    public function krsUpdate(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'semester' => ['required', 'integer', 'in:1,2,3,4,5,6,7,8,9,10,11,12,13,14'],
+        ]);
+
+        $nim = Auth::guard('mahasiswa_web')->user()->nim;
+
+        return (new ServiceKRS)->getKrsForEdit($nim, (int) $validated['semester']);
+    }
+
+    public function replaceDetail(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'semester' => ['required', 'integer', 'in:1,2,3,4,5,6,7,8,9,10,11,12,13,14'],
+            'matakuliah' => ['required', 'array'],
+            'matakuliah.*' => ['required', 'integer'],
+        ]);
+
+        $nim = Auth::guard('mahasiswa_web')->user()->nim;
+
+        return (new ServiceKRS)->replaceKrsDetail($nim, (int) $validated['semester'], $validated['matakuliah']);
     }
 
     public function sksInfo(): JsonResponse

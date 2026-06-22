@@ -58,72 +58,80 @@ class ServicePenempatan
 
     public function store(array $data): JsonResponse
     {
-        $krsDetail = KrsDetail::with(['krs', 'matakuliah'])
-            ->where('kode_krs_detail', $data['kode_krs_detail'])
-            ->first();
+        try {
+            $krsDetail = KrsDetail::with(['krs', 'matakuliah'])
+                ->where('kode_krs_detail', $data['kode_krs_detail'])
+                ->first();
 
-        if (! $krsDetail) {
-            return ApiResponse::notFound('Detail KRS tidak ditemukan.');
-        }
+            if (! $krsDetail) {
+                return ApiResponse::notFound('Detail KRS tidak ditemukan.');
+            }
 
-        $kelas = Kelas::with('matakuliah')
-            ->where('kelas_id', $data['kelas_id'])
-            ->first();
+            $kelas = Kelas::with('matakuliah')
+                ->where('kelas_id', $data['kelas_id'])
+                ->first();
 
-        if (! $kelas) {
-            return ApiResponse::notFound('Kelas tidak ditemukan.');
-        }
+            if (! $kelas) {
+                return ApiResponse::notFound('Kelas tidak ditemukan.');
+            }
 
-        if ($krsDetail->id_matakuliah !== $kelas->id_matakuliah) {
-            return ApiResponse::error('Matakuliah di KRS tidak sesuai dengan matakuliah kelas.', 422);
-        }
+            if ($krsDetail->id_matakuliah !== $kelas->id_matakuliah) {
+                return ApiResponse::error('Matakuliah di KRS tidak sesuai dengan matakuliah kelas.', 422);
+            }
 
-        $existingSameMatakuliah = KelasMahasiswa::whereHas('krsDetail.krs', function ($q) use ($krsDetail) {
-            $q->where('nim', $krsDetail->krs->nim);
-        })
-            ->whereHas('kelas', function ($q) use ($kelas) {
-                $q->where('id_matakuliah', $kelas->id_matakuliah);
+            $existingSameMatakuliah = KelasMahasiswa::whereHas('krsDetail.krs', function ($q) use ($krsDetail) {
+                $q->where('nim', $krsDetail->krs?->nim);
             })
-            ->first();
+                ->whereHas('kelas', function ($q) use ($kelas) {
+                    $q->where('id_matakuliah', $kelas->id_matakuliah);
+                })
+                ->first();
 
-        if ($existingSameMatakuliah) {
-            return ApiResponse::error('Mahasiswa sudah ditempatkan di kelas lain untuk matakuliah yang sama.', 422);
+            if ($existingSameMatakuliah) {
+                return ApiResponse::error('Mahasiswa sudah ditempatkan di kelas lain untuk matakuliah yang sama.', 422);
+            }
+
+            $existingSameDetail = KelasMahasiswa::where('kode_krs_detail', $data['kode_krs_detail'])
+                ->where('kelas_id', $data['kelas_id'])
+                ->first();
+
+            if ($existingSameDetail) {
+                return ApiResponse::error('Mahasiswa sudah ditempatkan di kelas ini.', 422);
+            }
+
+            $penempatan = KelasMahasiswa::create([
+                'kode_krs_detail' => $data['kode_krs_detail'],
+                'kelas_id' => $data['kelas_id'],
+            ]);
+
+            return ApiResponse::success([
+                'kelas_mahasiswa_id' => $penempatan->kelas_mahasiswa_id,
+                'kode_krs_detail' => $penempatan->kode_krs_detail,
+                'kelas_id' => $penempatan->kelas_id,
+                'nim' => $krsDetail->krs?->nim,
+                'nama_mahasiswa' => $krsDetail->krs?->mahasiswa?->nama_mahasiswa,
+                'kode_matakuliah' => $kelas->matakuliah?->kode_matakuliah,
+                'nama_kelas' => $kelas->namaKelas?->nama_kelas,
+            ], 'Mahasiswa berhasil ditempatkan di kelas.', 201);
+        } catch (\Throwable $e) {
+            return ApiResponse::error('Gagal menyimpan penempatan: '.$e->getMessage(), 422);
         }
-
-        $existingSameDetail = KelasMahasiswa::where('kode_krs_detail', $data['kode_krs_detail'])
-            ->where('kelas_id', $data['kelas_id'])
-            ->first();
-
-        if ($existingSameDetail) {
-            return ApiResponse::error('Mahasiswa sudah ditempatkan di kelas ini.', 422);
-        }
-
-        $penempatan = KelasMahasiswa::create([
-            'kode_krs_detail' => $data['kode_krs_detail'],
-            'kelas_id' => $data['kelas_id'],
-        ]);
-
-        return ApiResponse::success([
-            'kelas_mahasiswa_id' => $penempatan->kelas_mahasiswa_id,
-            'kode_krs_detail' => $penempatan->kode_krs_detail,
-            'kelas_id' => $penempatan->kelas_id,
-            'nim' => $krsDetail->krs->nim,
-            'nama_mahasiswa' => $krsDetail->krs->mahasiswa?->nama_mahasiswa,
-            'kode_matakuliah' => $kelas->matakuliah?->kode_matakuliah,
-            'nama_kelas' => $kelas->namaKelas?->nama_kelas,
-        ], 'Mahasiswa berhasil ditempatkan di kelas.', 201);
     }
 
     public function destroy(int $id): JsonResponse
     {
-        $penempatan = KelasMahasiswa::find($id);
+        try {
+            $penempatan = KelasMahasiswa::find($id);
 
-        if (! $penempatan) {
-            return ApiResponse::notFound('Penempatan tidak ditemukan.');
+            if (! $penempatan) {
+                return ApiResponse::notFound('Penempatan tidak ditemukan.');
+            }
+
+            $penempatan->delete();
+
+            return ApiResponse::success(null, 'Penempatan berhasil dihapus.');
+        } catch (\Throwable $e) {
+            return ApiResponse::error('Gagal menghapus penempatan: '.$e->getMessage(), 422);
         }
-
-        $penempatan->delete();
-
-        return ApiResponse::success(null, 'Penempatan berhasil dihapus.');
     }
 }

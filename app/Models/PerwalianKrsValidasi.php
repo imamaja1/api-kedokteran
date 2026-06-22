@@ -20,6 +20,7 @@ class PerwalianKrsValidasi extends Model
         'nim',
         'kode_dosen_validator',
         'status_krs',
+        'catatan',
     ];
 
     public function mahasiswa()

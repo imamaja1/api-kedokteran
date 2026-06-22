@@ -22,6 +22,9 @@ class PerwalianController extends Controller
     private function getKodeDosen(): int
     {
         $user = Auth::guard('dosen_web')->user();
+        if (! $user) {
+            abort(401, 'Unauthorized. Silakan login terlebih dahulu.');
+        }
         return $user->kode_dosen;
     }
 
@@ -80,6 +83,7 @@ class PerwalianController extends Controller
         $validated = $request->validate([
             'code_mahasiswa' => 'required|string',
             'status_krs' => 'required|string|in:A,N',
+            'catatan' => 'nullable|string|max:500',
         ]);
 
         $mahasiswa = Mahasiswa::findByCode($validated['code_mahasiswa']);
@@ -91,9 +95,30 @@ class PerwalianController extends Controller
             'nim' => $mahasiswa->nim,
             'kode_dosen_validator' => $this->getKodeDosen(),
             'status_krs' => $validated['status_krs'],
+            'catatan' => $validated['catatan'] ?? null,
         ];
 
         return $this->servicePerwalian->storeValidasiKrs($payload);
+    }
+
+    public function revisi(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'code_validasi_krs' => 'required|string',
+            'catatan' => 'nullable|string|max:500',
+        ]);
+
+        $validasi = \App\Models\PerwalianKrsValidasi::findByCode($validated['code_validasi_krs']);
+        if (! $validasi) {
+            return response()->json(['status' => false, 'message' => 'Validasi KRS tidak ditemukan.'], 404);
+        }
+
+        $payload = [
+            'kode_perwalian_krs_validasi' => $validasi->kode_perwalian_krs_validasi,
+            'catatan' => $validated['catatan'] ?? null,
+        ];
+
+        return $this->servicePerwalian->revisiValidasiKrs($payload);
     }
 
     public function batalPerwalian(Request $request): JsonResponse

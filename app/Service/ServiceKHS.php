@@ -46,7 +46,7 @@ class ServiceKHS
                     $q->select('krs_detail.kode_krs_detail', 'krs_detail.kode_krs', 'krs_detail.id_matakuliah')
                         ->with([
                             'matakuliah:id_matakuliah,kode_matakuliah,nama_matakuliah,sks_teori,sks_praktik,block',
-                            'khsDetail:kode_khs_detail,kode_krs_detail,nilai_akhir',  // ✅ Fixed: no table prefix in eager load
+                            'khsDetail:kode_khs_detail,kode_krs_detail,nilai_akhir,grade,score',
                         ]);
                 },
             ])
@@ -60,6 +60,33 @@ class ServiceKHS
         }
 
         // Format data
+        $totalSks = 0;
+        $totalWeightedScore = 0;
+
+        $khsData = $krs->krsDetail->map(function ($detail, $idx) use (&$totalSks, &$totalWeightedScore) {
+            $sks = ($detail->matakuliah->sks_teori ?? 0) + ($detail->matakuliah->sks_praktik ?? 0);
+
+            if ($detail->khsDetail?->score !== null) {
+                $totalSks += $sks;
+                $totalWeightedScore += $sks * $detail->khsDetail->score;
+            }
+
+            return [
+                'id' => $idx + 1,
+                'code' => $detail->khsDetail ? $detail->khsDetail->toCode() : null,
+                'kode_matakuliah' => $detail->matakuliah->kode_matakuliah,
+                'nama_matakuliah' => $detail->matakuliah->nama_matakuliah,
+                'sks_teori' => $detail->matakuliah->sks_teori,
+                'sks_praktik' => $detail->matakuliah->sks_praktik,
+                'block' => (bool) $detail->matakuliah->block,
+                'nilai_akhir' => $detail->khsDetail?->nilai_akhir,
+                'grade' => $detail->khsDetail?->grade,
+                'score' => $detail->khsDetail?->score,
+            ];
+        })->values()->toArray();
+
+        $ipkSemester = $totalSks > 0 ? round($totalWeightedScore / $totalSks, 2) : null;
+
         $data = [
             'mahasiswa' => [
                 [
@@ -74,18 +101,11 @@ class ServiceKHS
                     'semester' => $semester,
                 ],
             ],
-            'khs' => $krs->krsDetail->map(function ($detail, $idx) {
-                return [
-                    'id' => $idx + 1,
-                    'code' => $detail->khsDetail ? $detail->khsDetail->toCode() : null,
-                    'kode_matakuliah' => $detail->matakuliah->kode_matakuliah,
-                    'nama_matakuliah' => $detail->matakuliah->nama_matakuliah,
-                    'sks_teori' => $detail->matakuliah->sks_teori,
-                    'sks_praktik' => $detail->matakuliah->sks_praktik,
-                    'block' => (bool) $detail->matakuliah->block,
-                    'nilai_akhir' => $detail->khsDetail?->nilai_akhir,
-                ];
-            })->values()->toArray(),
+            'khs' => $khsData,
+            'ringkasan' => [
+                'total_sks' => $totalSks,
+                'ipk_semester' => $ipkSemester,
+            ],
         ];
 
         return ApiResponse::success($data, 'KHS Mahasiswa berhasil diambil.');
@@ -128,7 +148,7 @@ class ServiceKHS
                     $q->select('krs_detail.kode_krs_detail', 'krs_detail.kode_krs', 'krs_detail.id_matakuliah')
                         ->with([
                             'matakuliah:id_matakuliah,kode_matakuliah,nama_matakuliah,sks_teori,sks_praktik,block',
-                            'khsDetail:kode_khs_detail,kode_krs_detail,nilai_akhir',
+                            'khsDetail:kode_khs_detail,kode_krs_detail,nilai_akhir,grade,score',
                         ]);
                 },
             ])
@@ -156,6 +176,8 @@ class ServiceKHS
                 'sks_praktik' => $detail->matakuliah->sks_praktik,
                 'block' => (bool) $detail->matakuliah->block,
                 'nilai_akhir' => $detail->khsDetail?->nilai_akhir,
+                'grade' => $detail->khsDetail?->grade,
+                'score' => $detail->khsDetail?->score,
             ])->values()->toArray(),
         ];
 

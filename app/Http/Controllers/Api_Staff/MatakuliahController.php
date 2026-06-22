@@ -70,10 +70,10 @@ class MatakuliahController extends Controller
             'code' => ['required', 'string'],
             'kode_matakuliah' => ['required', 'string', 'max:20', 'alpha_num'],
             'nama_matakuliah' => ['required', 'string', 'max:255'],
-            'jenis' => ['required', 'boolean'],
+            'jenis' => ['required', 'in:0,1'],
             'sks_teori' => ['required', 'integer', 'min:0'],
             'sks_praktik' => ['required', 'integer', 'min:0'],
-            'block' => ['required', 'boolean'],
+            'block' => ['required', 'in:0,1'],
             'kode_program_studi' => ['required', 'integer', 'exists:program_studi,kode_program_studi'],
         ]);
 

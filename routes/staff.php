@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api_Staff\AkademikController;
 use App\Http\Controllers\Api_Staff\PembayaranController;
 use App\Http\Controllers\Api_Staff\PenempatanController;
+use App\Http\Controllers\Api_Staff\AssessmentGradeController;
 use App\Http\Controllers\Api_Staff\AssessmentScoreController;
 use App\Http\Controllers\Api_Staff\AssessmentTemplateController;
 use App\Http\Controllers\Api_Staff\DefaultController;
@@ -276,6 +277,30 @@ Route::prefix("api/staff")
                     AssessmentScoreController::class,
                     "getScoreBreakdown",
                 ]);
+
+                // Grade
+                Route::prefix("grade")->group(function () {
+                    Route::get("/", [
+                        AssessmentGradeController::class,
+                        "index",
+                    ]);
+                    Route::post("/", [
+                        AssessmentGradeController::class,
+                        "store",
+                    ]);
+                    Route::get("/show", [
+                        AssessmentGradeController::class,
+                        "show",
+                    ]);
+                    Route::put("/update", [
+                        AssessmentGradeController::class,
+                        "update",
+                    ]);
+                    Route::delete("/{code}", [
+                        AssessmentGradeController::class,
+                        "destroy",
+                    ]);
+                });
             });
 
         // fallback dalam group — return 404 bukan 401

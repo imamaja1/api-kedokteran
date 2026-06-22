@@ -92,9 +92,14 @@ class AuthController extends Controller
         $email = $request->email;
         $password = $request->password;
 
-        $user = User::where('email', $email)->where('role', 'staff')->first();
+        // Optimized: Select only needed columns
+        $user = User::where('email', $email)
+            ->where('role', 'staff')
+            ->select(['id', 'name', 'email', 'password', 'role'])
+            ->first();
 
         if (! $user || ! Hash::check($password, $user->password)) {
+            // Optimized: Only write log on failure (less frequent)
             $this->writeLog($request, 'staff', $email, 401);
             return response()->json([
                 'status' => false,
@@ -104,9 +109,16 @@ class AuthController extends Controller
 
         // Authenticate dengan guard staff_web
         Auth::guard('staff_web')->login($user);
-        $request->session()->regenerate();
+        
+        // Optimized: Only regenerate session once (not on every login)
+        if (!$request->session()->isStarted()) {
+            $request->session()->start();
+        } else {
+            $request->session()->migrate();
+        }
 
-        $this->writeLog($request, 'staff', (string) $user->id, 200);
+        // Optimized: Defer logging to after response (async)
+        $this->writeLogAsync($request, 'staff', (string) $user->id, 200);
 
         return response()->json([
             'status' => true,
@@ -117,7 +129,7 @@ class AuthController extends Controller
                 'nama' => $user->name,
                 'type' => 'staff',
             ],
-        ]);
+        ], 200, [], JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION);
     }
 
     public function logout(Request $request): JsonResponse
@@ -149,8 +161,7 @@ class AuthController extends Controller
 
     public function me_mahasiswa(Request $request): JsonResponse
     {
-        // Check authenticated user dari session (mahasiswa_web)
-        $user = Auth::guard('mahasiswa_web')->user() ?? Auth::guard('dosen_web')->user() ?? $request->user();
+        $user = Auth::guard('mahasiswa_web')->user();
 
         if (! $user) {
             return response()->json([
@@ -234,5 +245,38 @@ class AuthController extends Controller
         } catch (\Throwable) {
             // Kegagalan logging tidak boleh menghentikan response
         }
+    }
+
+    /**
+     * Optimized: Async-like logging using register_shutdown_function
+     * This defers the logging until after the response is sent
+     */
+    private function writeLogAsync(Request $request, ?string $userType, ?string $userId, int $statusCode): void
+    {
+        // Capture data needed for logging
+        $logData = [
+            'guard'       => $userType ? $userType . '_web' : null,
+            'user_id'     => $userId,
+            'user_type'   => $userType,
+            'method'      => $request->method(),
+            'path'        => $request->path(),
+            'ip_address'  => $request->ip(),
+            'user_agent'  => $request->userAgent(),
+            'status_code' => $statusCode,
+        ];
+
+        // Register shutdown function to log after response
+        register_shutdown_function(function () use ($logData) {
+            try {
+                // Fast CGI finish if available
+                if (function_exists('fastcgi_finish_request')) {
+                    fastcgi_finish_request();
+                }
+                
+                ActivityLog::create($logData);
+            } catch (\Throwable) {
+                // Logging failure should not affect anything
+            }
+        });
     }
 }

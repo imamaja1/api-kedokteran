@@ -11,6 +11,7 @@ use App\Models\Mengajar;
 use App\Models\PenilaianStatus;
 use App\Models\StudentScore;
 use App\Models\ValidationStudentScore;
+use App\Service\Assessment\AssessmentTreeBuilderService;
 use App\Service\Assessment\ScoreCalculationService;
 use App\Service\Assessment\TreeTraversalService;
 use Illuminate\Database\Eloquent\Collection;
@@ -22,6 +23,7 @@ class ServicePenilaianDosen
     public function __construct(
         private readonly TreeTraversalService $treeService,
         private readonly ScoreCalculationService $scoreCalculationService,
+        private readonly AssessmentTreeBuilderService $treeBuilderService,
     ) {}
 
     public function getKelasPenilaian(int $kodeDosen): JsonResponse
@@ -328,7 +330,7 @@ class ServicePenilaianDosen
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return ApiResponse::serverError('Terjadi kesalahan: '.$e->getMessage());
+            return ApiResponse::serverError('Terjadi kesalahan saat input nilai.');
         }
     }
 
@@ -392,13 +394,17 @@ class ServicePenilaianDosen
                         continue;
                     }
 
-                    StudentScore::where('template_id', $template->id)
-                        ->where('nim', $mahasiswa->nim)
-                        ->where('node_key', $nodeKey)
-                        ->update([
+                    StudentScore::updateOrCreate(
+                        [
+                            'template_id' => $template->id,
+                            'nim' => $mahasiswa->nim,
+                            'node_key' => $nodeKey,
+                        ],
+                        [
                             'score' => $score,
                             'dosen_kode_dosen' => $kodeDosen,
-                        ]);
+                        ]
+                    );
                 }
 
                 if (isset($item['catatan'])) {
@@ -432,7 +438,7 @@ class ServicePenilaianDosen
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return ApiResponse::serverError('Terjadi kesalahan: '.$e->getMessage());
+            return ApiResponse::serverError('Terjadi kesalahan saat input nilai.');
         }
     }
 
@@ -476,83 +482,10 @@ class ServicePenilaianDosen
             'nim' => $mahasiswa->nim,
             'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
             'template_id' => $template->id,
-            'structure' => $this->buildTreeWithScores($template, $scores),
+            'structure' => $this->treeBuilderService->buildTreeWithScores($template, $scores),
         ];
 
         return ApiResponse::success($data, 'Detail nilai mahasiswa retrieved successfully.');
     }
 
-    private function buildTreeWithScores(AssessmentTemplate $template, Collection $scores): array
-    {
-        return $this->attachScoresToNode($template->structure, $scores);
-    }
-
-    private function attachScoresToNode(array $node, Collection $scores): array
-    {
-        $result = [
-            'key' => $node['key'],
-            'name' => $node['name'],
-            'weight' => $node['weight'],
-            'type' => $node['type'] ?? 'category',
-        ];
-
-        // Jika leaf node (input type), tambahkan score
-        if (($node['type'] ?? null) === 'input') {
-            $score = $scores->get($node['key']);
-            $result['score'] = $score?->score ?? null;
-            $result['dosen_kode_dosen'] = $score?->dosen_kode_dosen;
-        }
-
-        // Jika ada children, proses rekursif
-        if (! empty($node['children'])) {
-            $result['children'] = array_map(
-                fn ($child) => $this->attachScoresToNode($child, $scores),
-                $node['children']
-            );
-
-            // Hitung score kategori jika semua children sudah input
-            if (($node['type'] ?? null) !== 'input') {
-                $leafScores = $this->extractLeafScoresFromChildren($result['children']);
-                $calculatedScore = $this->calculateCategoryScore($result['children']);
-                $result['calculated_score'] = $calculatedScore;
-                $result['filled_count'] = count(array_filter($leafScores, fn ($s) => $s !== null));
-                $result['total_nodes'] = count($leafScores);
-            }
-        }
-
-        return $result;
-    }
-
-    private function extractLeafScoresFromChildren(array $children): array
-    {
-        $scores = [];
-
-        foreach ($children as $child) {
-            if (($child['type'] ?? null) === 'input') {
-                $scores[] = $child['score'] ?? null;
-            } elseif (! empty($child['children'])) {
-                $scores = array_merge($scores, $this->extractLeafScoresFromChildren($child['children']));
-            }
-        }
-
-        return $scores;
-    }
-
-    private function calculateCategoryScore(array $children): ?float
-    {
-        $totalScore = 0;
-        $totalWeight = 0;
-
-        foreach ($children as $child) {
-            if (isset($child['score']) && $child['score'] !== null) {
-                $totalScore += $child['score'] * ($child['weight'] / 100);
-                $totalWeight += $child['weight'];
-            } elseif (isset($child['calculated_score']) && $child['calculated_score'] !== null) {
-                $totalScore += $child['calculated_score'] * ($child['weight'] / 100);
-                $totalWeight += $child['weight'];
-            }
-        }
-
-        return $totalWeight > 0 ? round($totalScore, 1) : null;
-    }
 }

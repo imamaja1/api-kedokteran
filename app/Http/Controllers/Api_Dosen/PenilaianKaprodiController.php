@@ -17,6 +17,9 @@ class PenilaianKaprodiController extends Controller
     private function getKodeDosen(): int
     {
         $user = Auth::guard('dosen_web')->user();
+        if (! $user) {
+            abort(401, 'Unauthorized. Silakan login terlebih dahulu.');
+        }
         return $user->kode_dosen;
     }
 

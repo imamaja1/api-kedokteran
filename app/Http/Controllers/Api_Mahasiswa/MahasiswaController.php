@@ -23,13 +23,15 @@ class MahasiswaController extends Controller
         'Gorontalo', 'Sulawesi Barat', 'Maluku', 'Maluku Utara', 'Papua Barat', 'Papua',
     ];
 
-    public function me(): JsonResponse
+    public function me(Request $request): JsonResponse
     {
         $user = Auth::guard('mahasiswa_web')->user();
 
         return response()->json([
             'status' => true,
-            'data' => $user,
+            'data' => array_merge($user->makeHidden('foto')->toArray(), [
+                'foto_url' => $user->foto ? $request->getSchemeAndHttpHost().'/storage/'.$user->foto : null,
+            ]),
         ]);
     }
 
@@ -66,6 +68,7 @@ class MahasiswaController extends Controller
         $provinces = implode(',', self::PROVINCES);
 
         $validated = $request->validate([
+            'nik' => 'sometimes|nullable|string|max:16',
             'nisn' => 'sometimes|nullable|string|max:20',
             'nama_mahasiswa' => 'sometimes|string|max:125',
             'tempat_lahir' => 'sometimes|nullable|string|max:50',

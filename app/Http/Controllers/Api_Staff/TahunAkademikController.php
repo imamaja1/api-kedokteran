@@ -43,6 +43,8 @@ class TahunAkademikController extends Controller
             'semester' => ['required', 'in:1,2'],
             'tanggal_mulai' => ['required', 'date'],
             'tanggal_berakhir' => ['required', 'date', 'after:tanggal_mulai'],
+            'tanggal_buka_krs' => ['nullable', 'date'],
+            'tanggal_tutup_krs' => ['nullable', 'date', 'after_or_equal:tanggal_buka_krs'],
             'status' => ['required', 'in:A,N'],
             'status_kpat' => ['nullable', 'in:A,N'],
         ]);
@@ -58,6 +60,8 @@ class TahunAkademikController extends Controller
             'semester' => ['required', 'in:1,2'],
             'tanggal_mulai' => ['required', 'date'],
             'tanggal_berakhir' => ['required', 'date', 'after:tanggal_mulai'],
+            'tanggal_buka_krs' => ['nullable', 'date'],
+            'tanggal_tutup_krs' => ['nullable', 'date', 'after_or_equal:tanggal_buka_krs'],
             'status' => ['required', 'in:A,N'],
             'status_kpat' => ['nullable', 'in:A,N'],
         ]);

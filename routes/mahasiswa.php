@@ -24,10 +24,13 @@ Route::prefix('api/mhs')
         Route::get('kurikulum', [ApiMhsKurikulumController::class, 'kurikulum']);
         // krs
         Route::get('krs', [ApiMhsKrsController::class, 'krs']);
-        Route::post('krs', [ApiMhsKrsController::class, 'create']);
-        Route::post('krs/detail', [ApiMhsKrsController::class, 'addDetail']);
-        Route::delete('krs/detail', [ApiMhsKrsController::class, 'removeDetail']);
+        Route::get('krs/update', [ApiMhsKrsController::class, 'krsUpdate']);
+        Route::put('krs/update', [ApiMhsKrsController::class, 'replaceDetail']);
         Route::get('krs/sks-info', [ApiMhsKrsController::class, 'sksInfo']);
+        Route::middleware('throttle:30,1')->group(function () {
+            Route::post('krs/detail', [ApiMhsKrsController::class, 'addDetail']);
+            Route::delete('krs/detail', [ApiMhsKrsController::class, 'removeDetail']);
+        });
         // khs
         Route::get('khs', [ApiMhsKhsController::class, 'khs']);
         // petikan

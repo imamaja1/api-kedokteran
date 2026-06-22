@@ -35,6 +35,8 @@ class ServiceTahunAkademik
                 'tanggal_berakhir' => $item->tanggal_berakhir?->format('Y-m-d'),
                 'status' => $item->status,
                 'status_kpat' => $item->status_kpat,
+                'tanggal_buka_krs' => $item->tanggal_buka_krs?->format('Y-m-d'),
+                'tanggal_tutup_krs' => $item->tanggal_tutup_krs?->format('Y-m-d'),
             ];
         });
 
@@ -76,6 +78,8 @@ class ServiceTahunAkademik
                 'tanggal_berakhir' => $data->tanggal_berakhir?->format('Y-m-d'),
                 'status' => $data->status,
                 'status_kpat' => $data->status_kpat,
+                'tanggal_buka_krs' => $data->tanggal_buka_krs?->format('Y-m-d'),
+                'tanggal_tutup_krs' => $data->tanggal_tutup_krs?->format('Y-m-d'),
             ],
         ]);
     }
@@ -109,6 +113,8 @@ class ServiceTahunAkademik
                 'tanggal_berakhir' => $tahunAkademik->tanggal_berakhir?->format('Y-m-d'),
                 'status' => $tahunAkademik->status,
                 'status_kpat' => $tahunAkademik->status_kpat,
+                'tanggal_buka_krs' => $tahunAkademik->tanggal_buka_krs?->format('Y-m-d'),
+                'tanggal_tutup_krs' => $tahunAkademik->tanggal_tutup_krs?->format('Y-m-d'),
             ],
         ], 201);
     }
@@ -153,6 +159,8 @@ class ServiceTahunAkademik
                 'tanggal_berakhir' => $tahunAkademik->tanggal_berakhir?->format('Y-m-d'),
                 'status' => $tahunAkademik->status,
                 'status_kpat' => $tahunAkademik->status_kpat,
+                'tanggal_buka_krs' => $tahunAkademik->tanggal_buka_krs?->format('Y-m-d'),
+                'tanggal_tutup_krs' => $tahunAkademik->tanggal_tutup_krs?->format('Y-m-d'),
             ],
         ]);
     }
@@ -180,6 +188,8 @@ class ServiceTahunAkademik
                 'tanggal_berakhir' => $data->tanggal_berakhir?->format('Y-m-d'),
                 'status' => $data->status,
                 'status_kpat' => $data->status_kpat,
+                'tanggal_buka_krs' => $data->tanggal_buka_krs?->format('Y-m-d'),
+                'tanggal_tutup_krs' => $data->tanggal_tutup_krs?->format('Y-m-d'),
             ],
         ]);
     }
@@ -217,6 +227,8 @@ class ServiceTahunAkademik
                 'tanggal_berakhir' => $tahunAkademik->tanggal_berakhir?->format('Y-m-d'),
                 'status' => $tahunAkademik->status,
                 'status_kpat' => $tahunAkademik->status_kpat,
+                'tanggal_buka_krs' => $tahunAkademik->tanggal_buka_krs?->format('Y-m-d'),
+                'tanggal_tutup_krs' => $tahunAkademik->tanggal_tutup_krs?->format('Y-m-d'),
             ],
         ]);
     }

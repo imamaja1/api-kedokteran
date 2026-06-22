@@ -72,11 +72,24 @@ class ApiResponse
     }
 
     /**
-     * Validation error response
+     * Validation error response — errors diratakan menjadi array of strings
+     *agar konsisten dengan format $request->validate() dari Laravel.
+     *
+     * Format: { "status": false, "message": "...", "errors": { "field": ["pesan"] } }
      */
-    public static function validation($errors, $message = 'Validation failed')
+    public static function validation($errors, $message = 'Data tidak valid.')
     {
-        return self::error($message, 422, $errors);
+        // Normalisasi: pastikan setiap value adalah array
+        $normalized = [];
+        foreach ($errors as $field => $msgs) {
+            if (is_array($msgs)) {
+                $normalized[$field] = $msgs;
+            } else {
+                $normalized[$field] = [$msgs];
+            }
+        }
+
+        return self::error($message, 422, $normalized);
     }
 
     /**

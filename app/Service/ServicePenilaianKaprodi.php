@@ -12,8 +12,10 @@ use App\Models\PenilaianStatus;
 use App\Models\ProgramStudi;
 use App\Models\StudentScore;
 use App\Models\ValidationStudentScore;
+use App\Service\Assessment\AssessmentTreeBuilderService;
 use App\Service\Assessment\ScoreCalculationService;
 use App\Service\Assessment\TreeTraversalService;
+use App\Service\ServiceGrade;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +25,7 @@ class ServicePenilaianKaprodi
     public function __construct(
         private readonly TreeTraversalService $treeService,
         private readonly ScoreCalculationService $scoreCalculationService,
+        private readonly AssessmentTreeBuilderService $treeBuilderService,
     ) {}
 
     public function getKelasPenilaian(int $kodeDosen): JsonResponse
@@ -108,41 +111,56 @@ class ServicePenilaianKaprodi
             ])
             ->get();
 
-        $data = $kelasMahasiswa->map(function ($km) use ($template, $kelas) {
+        // Eager load validation, penilaian status, and student scores to avoid N+1
+        $nimList = $kelasMahasiswa->map(function ($km) {
+            return $km->krsDetail?->krs?->mahasiswa?->nim;
+        })->filter()->unique()->values()->toArray();
+
+        $validations = ValidationStudentScore::where('template_id', $template->id)
+            ->whereIn('nim', $nimList)
+            ->get()
+            ->keyBy('nim');
+
+        $penilaianStatuses = PenilaianStatus::where('kelas_id', $kelas->kelas_id)
+            ->whereIn('nim', $nimList)
+            ->get()
+            ->keyBy('nim');
+
+        $scoreCounts = StudentScore::where('template_id', $template->id)
+            ->whereIn('nim', $nimList)
+            ->whereNotNull('score')
+            ->groupBy('nim')
+            ->selectRaw('nim, COUNT(*) as count')
+            ->get()
+            ->pluck('count', 'nim');
+
+        $leafNodes = $template ? $this->treeService->getLeafNodes($template) : [];
+        $totalNodes = count($leafNodes);
+
+        $data = $kelasMahasiswa->map(function ($km) use ($template, $kelas, $validations, $penilaianStatuses, $scoreCounts, $totalNodes) {
             $krsDetail = $km->krsDetail;
             $khs = $krsDetail?->khsDetail;
             $krs = $krsDetail?->krs;
             $mahasiswa = $krs?->mahasiswa;
 
-            $validation = ValidationStudentScore::where('template_id', $template->id)
-                ->where('nim', $mahasiswa?->nim)
-                ->first();
+            if (! $mahasiswa) {
+                return null;
+            }
 
-            $penilaian = PenilaianStatus::where('kelas_id', $kelas->kelas_id)
-                ->where('nim', $mahasiswa?->nim)
-                ->first();
+            $validation = $validations->get($mahasiswa->nim);
+            $penilaian = $penilaianStatuses->get($mahasiswa->nim);
 
             $status = 'belum_input';
             if ($validation) {
                 $status = $validation->status;
             }
 
-            $sudahDiisi = 0;
-            $totalNodes = 0;
-            if ($validation && $template) {
-                $leafNodes = $this->treeService->getLeafNodes($template);
-                $totalNodes = count($leafNodes);
-
-                $sudahDiisi = StudentScore::where('template_id', $template->id)
-                    ->where('nim', $mahasiswa?->nim)
-                    ->whereNotNull('score')
-                    ->count();
-            }
+            $sudahDiisi = $scoreCounts->get($mahasiswa->nim, 0);
 
             return [
-                'code_mahasiswa' => $mahasiswa?->toCode(),
-                'nim' => $mahasiswa?->nim,
-                'nama_mahasiswa' => $mahasiswa?->nama_mahasiswa,
+                'code_mahasiswa' => $mahasiswa->toCode(),
+                'nim' => $mahasiswa->nim,
+                'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
                 'status_penilaian' => $status,
                 'nilai_akhir' => $khs?->nilai_akhir,
                 'catatan_dosen' => $penilaian?->catatan_dosen,
@@ -220,6 +238,10 @@ class ServicePenilaianKaprodi
 
             $nilaiAkhir = $this->scoreCalculationService->calculateFinalScore($template, $mahasiswa->nim);
 
+            // Konversi nilai_akhir → grade + score
+            $serviceGrade = new ServiceGrade();
+            $gradeData = $serviceGrade->konversi($nilaiAkhir, $kelas->kode_program_studi);
+
             $km = KelasMahasiswa::where('kelas_id', $kelas->kelas_id)
                 ->whereHas('krsDetail.krs', function ($q) use ($mahasiswa) {
                     $q->where('nim', $mahasiswa->nim);
@@ -234,12 +256,16 @@ class ServicePenilaianKaprodi
                 if ($khsDetail) {
                     $khsDetail->update([
                         'nilai_akhir' => $nilaiAkhir,
+                        'grade' => $gradeData['grade'] ?? null,
+                        'score' => $gradeData['score'] ?? null,
                         'tidak_berhak' => 'A',
                     ]);
                 } else {
                     KhsDetail::create([
                         'kode_krs_detail' => $krsDetail->kode_krs_detail,
                         'nilai_akhir' => $nilaiAkhir,
+                        'grade' => $gradeData['grade'] ?? null,
+                        'score' => $gradeData['score'] ?? null,
                         'tidak_berhak' => 'A',
                     ]);
                 }
@@ -258,7 +284,7 @@ class ServicePenilaianKaprodi
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return ApiResponse::serverError('Terjadi kesalahan: '.$e->getMessage());
+            return ApiResponse::serverError('Terjadi kesalahan saat memproses penilaian.');
         }
     }
 
@@ -302,88 +328,10 @@ class ServicePenilaianKaprodi
             'nim' => $mahasiswa->nim,
             'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
             'template_id' => $template->id,
-            'structure' => $this->buildTreeWithScores($template, $scores),
+            'structure' => $this->treeBuilderService->buildTreeWithScores($template, $scores),
         ];
 
         return ApiResponse::success($data, 'Detail nilai mahasiswa retrieved successfully.');
-    }
-
-    private function buildTreeWithScores(AssessmentTemplate $template, Collection $scores): array
-    {
-        return $this->attachScoresToNode($template->structure, $scores);
-    }
-
-    private function attachScoresToNode(array $node, Collection $scores): array
-    {
-        $result = [
-            'key' => $node['key'],
-            'name' => $node['name'],
-            'weight' => $node['weight'],
-            'type' => $node['type'] ?? 'category',
-        ];
-
-        // Jika leaf node (input type), tambahkan score
-        if (($node['type'] ?? null) === 'input') {
-            $score = $scores->get($node['key']);
-            $result['score'] = $score?->score ?? null;
-            $result['dosen_kode_dosen'] = $score?->dosen_kode_dosen;
-        }
-
-        // Jika ada children, proses rekursif
-        if (! empty($node['children'])) {
-            $result['children'] = array_map(
-                fn ($child) => $this->attachScoresToNode($child, $scores),
-                $node['children']
-            );
-
-            // Hitung score kategori jika semua children sudah input
-            if (($node['type'] ?? null) !== 'input') {
-                $leafScores = $this->extractLeafScoresFromChildren($result['children']);
-                $calculatedScore = $this->calculateCategoryScore($result['children']);
-                $result['calculated_score'] = $calculatedScore;
-                $result['filled_count'] = count(array_filter($leafScores, fn ($s) => $s !== null));
-                $result['total_nodes'] = count($leafScores);
-            }
-        }
-
-        return $result;
-    }
-
-    private function extractLeafScoresFromChildren(array $children): array
-    {
-        $scores = [];
-        foreach ($children as $child) {
-            if (($child['type'] ?? null) === 'input') {
-                $scores[] = $child['score'] ?? null;
-            } elseif (! empty($child['children'])) {
-                $scores = array_merge($scores, $this->extractLeafScoresFromChildren($child['children']));
-            }
-        }
-
-        return $scores;
-    }
-
-    private function calculateCategoryScore(array $children): ?float
-    {
-        $totalScore = 0;
-        $totalWeight = 0;
-
-        foreach ($children as $child) {
-            $childScore = null;
-
-            if (isset($child['score'])) {
-                $childScore = $child['score'];
-            } elseif (isset($child['calculated_score'])) {
-                $childScore = $child['calculated_score'];
-            }
-
-            if ($childScore !== null) {
-                $totalScore += $childScore * ($child['weight'] / 100);
-                $totalWeight += $child['weight'];
-            }
-        }
-
-        return $totalWeight > 0 ? round($totalScore, 1) : null;
     }
 
     public function revisiPenilaian(string $codeKelas, string $codeMhs, string $catatan, int $kodeDosen): JsonResponse
@@ -452,7 +400,16 @@ class ServicePenilaianKaprodi
             $krsDetail = $km?->krsDetail;
 
             if ($krsDetail) {
-                KhsDetail::where('kode_krs_detail', $krsDetail->kode_krs_detail)->delete();
+                $khsDetail = KhsDetail::where('kode_krs_detail', $krsDetail->kode_krs_detail)->first();
+
+                if ($khsDetail) {
+                    $khsDetail->update([
+                        'nilai_akhir' => null,
+                        'grade' => null,
+                        'score' => null,
+                        'tidak_berhak' => 'N',
+                    ]);
+                }
             }
 
             DB::commit();
@@ -467,7 +424,7 @@ class ServicePenilaianKaprodi
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return ApiResponse::serverError('Terjadi kesalahan: '.$e->getMessage());
+            return ApiResponse::serverError('Terjadi kesalahan saat memproses penilaian.');
         }
     }
 }

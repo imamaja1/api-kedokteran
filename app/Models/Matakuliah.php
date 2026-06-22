@@ -15,7 +15,7 @@ class Matakuliah extends Model
         'kode_matakuliah', 'nama_matakuliah', 'jenis',
         'sks_teori', 'sks_praktik',
         'kode_kompetensi', 'kode_program_studi',
-        'block',
+        'block', 'tipe',
     ];
 
     public function kurikulum()

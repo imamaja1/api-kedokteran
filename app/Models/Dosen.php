@@ -15,7 +15,9 @@ class Dosen extends Authenticatable
 
     protected $primaryKey = 'kode_dosen';
 
-    public $incrementing = false;
+    public $incrementing = true;
+
+    protected $keyType = 'int';
 
     protected $fillable = [
         'kode_dosen', 'nama_dosen', 'field_studi', 'alumni', 'nik', 'no_telp',

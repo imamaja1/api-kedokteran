@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Models\Traits\HasCode;
 use Illuminate\Database\Eloquent\Model;
 
 class Pembayaran extends Model
 {
+    use HasCode;
     protected $table = 'pembayaran';
 
     protected $fillable = [

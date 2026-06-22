@@ -47,6 +47,8 @@ class ServicePetikanNilai
                 return ApiResponse::notFound('Kurikulum untuk angkatan mahasiswa tidak ditemukan.');
             }
 
+            $kurikulumData = $this->buildKurikulumWithNilai($nim, $kurikulumAngkatan->kode_nama_kurikulum);
+
             $data = [
                 'mahasiswa' => [
                     'nim' => $mahasiswa->nim,
@@ -65,7 +67,8 @@ class ServicePetikanNilai
                     'nama_kurikulum' => $kurikulumAngkatan->namaKurikulum?->nama_kurikulum,
                     'code_nama_kurikulum' => $kurikulumAngkatan->namaKurikulum?->toCode(),
                 ],
-                'data_kurikulum' => $this->buildKurikulumWithNilai($nim, $kurikulumAngkatan->kode_nama_kurikulum),
+                'data_kurikulum' => $kurikulumData['data_kurikulum'],
+                'ringkasan' => $kurikulumData['ringkasan'],
             ];
 
             return ApiResponse::success($data, 'Petikan nilai retrieved successfully.');
@@ -107,6 +110,8 @@ class ServicePetikanNilai
                 return ApiResponse::notFound('Kurikulum untuk angkatan mahasiswa tidak ditemukan.');
             }
 
+            $kurikulumData = $this->buildKurikulumWithNilai($nim, $kurikulumAngkatan->kode_nama_kurikulum);
+
             $data = [
                 'mahasiswa' => [
                     'nim' => $mahasiswa->nim,
@@ -125,7 +130,8 @@ class ServicePetikanNilai
                     'nama_kurikulum' => $kurikulumAngkatan->namaKurikulum?->nama_kurikulum,
                     'code_nama_kurikulum' => $kurikulumAngkatan->namaKurikulum?->toCode(),
                 ],
-                'data_kurikulum' => $this->buildKurikulumWithNilai($nim, $kurikulumAngkatan->kode_nama_kurikulum),
+                'data_kurikulum' => $kurikulumData['data_kurikulum'],
+                'ringkasan' => $kurikulumData['ringkasan'],
             ];
 
             return ApiResponse::success($data, 'Transkrip nilai retrieved successfully.');
@@ -150,17 +156,39 @@ class ServicePetikanNilai
                     'krs_detail.id_matakuliah',
                     'krs.semester',
                     'khs_detail.nilai_akhir',
+                    'khs_detail.grade',
+                    'khs_detail.score',
                 )
                 ->orderBy('khs_detail.nilai_akhir', 'asc')
                 ->get()
                 ->groupBy('id_matakuliah');
 
             // Query 2: Ambil kurikulum matakuliah
-            return Kurikulum::where('kode_nama_kurikulum', $kode_nama_kurikulum)
+            $kurikulumItems = Kurikulum::where('kode_nama_kurikulum', $kode_nama_kurikulum)
                 ->with('matakuliah:id_matakuliah,kode_matakuliah,nama_matakuliah,sks_teori,sks_praktik,block')
                 ->select('semester', 'id_matakuliah', 'kode_nama_kurikulum')
                 ->orderBy('semester')
-                ->get()
+                ->get();
+
+            // Hitung IPK keseluruhan (menggunakan nilai tertinggi per matakuliah)
+            $totalSks = 0;
+            $totalWeightedScore = 0;
+
+            foreach ($nilaiMap as $idMatakuliah => $nilaiList) {
+                $tertinggi = $this->getNilaiTertinggi($nilaiList);
+                if ($tertinggi && $tertinggi['score'] !== null) {
+                    $kurikulumItem = $kurikulumItems->firstWhere('id_matakuliah', $idMatakuliah);
+                    if ($kurikulumItem) {
+                        $sks = ($kurikulumItem->matakuliah->sks_teori ?? 0) + ($kurikulumItem->matakuliah->sks_praktik ?? 0);
+                        $totalSks += $sks;
+                        $totalWeightedScore += $sks * $tertinggi['score'];
+                    }
+                }
+            }
+
+            $ipkKeseluruhan = $totalSks > 0 ? round($totalWeightedScore / $totalSks, 2) : null;
+
+            $dataKurikulum = $kurikulumItems
                 ->groupBy('semester')
                 ->map(function ($items, $sem) use ($nilaiMap) {
                     $total_sks = $items->sum(function ($item) {
@@ -171,21 +199,55 @@ class ServicePetikanNilai
                         'id' => $sem,
                         'semester' => $sem,
                         'total_sks' => $total_sks,
-                        'matakuliah' => $items->map(fn ($item) => [
-                            'kode_matakuliah' => $item->matakuliah->kode_matakuliah,
-                            'nama_matakuliah' => $item->matakuliah->nama_matakuliah,
-                            'sks_teori' => $item->matakuliah->sks_teori,
-                            'sks_praktik' => $item->matakuliah->sks_praktik,
-                            'block' => (bool) $item->matakuliah->block,
-                            'nilai' => $nilaiMap->get($item->id_matakuliah, collect())->map(fn ($n) => [
-                                'semester' => $n->semester,
-                                'nilai_akhir' => $n->nilai_akhir,
-                            ])->values()->toArray(),
-                        ])->values()->toArray(),
+                        'matakuliah' => $items->map(function ($item) use ($nilaiMap) {
+                            $nilaiList = $nilaiMap->get($item->id_matakuliah, collect());
+
+                            return [
+                                'kode_matakuliah' => $item->matakuliah->kode_matakuliah,
+                                'nama_matakuliah' => $item->matakuliah->nama_matakuliah,
+                                'sks_teori' => $item->matakuliah->sks_teori,
+                                'sks_praktik' => $item->matakuliah->sks_praktik,
+                                'block' => (bool) $item->matakuliah->block,
+                                'nilai' => $nilaiList->map(fn ($n) => [
+                                    'semester' => $n->semester,
+                                    'nilai_akhir' => $n->nilai_akhir,
+                                    'grade' => $n->grade,
+                                    'score' => $n->score,
+                                ])->values()->toArray(),
+                                'nilai_tertinggi' => $this->getNilaiTertinggi($nilaiList),
+                            ];
+                        })->values()->toArray(),
                     ];
                 })
                 ->values()
                 ->toArray();
+
+            return [
+                'data_kurikulum' => $dataKurikulum,
+                'ringkasan' => [
+                    'total_sks' => $totalSks,
+                    'ipk' => $ipkKeseluruhan,
+                ],
+            ];
         });
+    }
+
+    /**
+     * Ambil nilai tertinggi dari collection nilai
+     */
+    private function getNilaiTertinggi($nilaiCollection): ?array
+    {
+        if ($nilaiCollection->isEmpty()) {
+            return null;
+        }
+
+        $tertinggi = $nilaiCollection->sortByDesc('nilai_akhir')->first();
+
+        return [
+            'semester' => $tertinggi->semester,
+            'nilai_akhir' => $tertinggi->nilai_akhir,
+            'grade' => $tertinggi->grade,
+            'score' => $tertinggi->score,
+        ];
     }
 }

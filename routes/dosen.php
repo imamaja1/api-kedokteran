@@ -31,12 +31,13 @@ Route::prefix('api')
         Route::get('/dosen/kurikulum/kelas', [KurikulumController::class, 'getKelasDosen']);
         Route::get('/dosen/kurikulum/detail', [KurikulumController::class, 'getDetailKelas']);
 
-        // ─── Perwalian (6 endpoints) ──────────────────────────────────────
+        // ─── Perwalian (7 endpoints) ──────────────────────────────────────
         Route::get('/dosen/perwalian/jumlah', [PerwalianController::class, 'jumlahPerwalian']);
         Route::get('/dosen/perwalian/daftar', [PerwalianController::class, 'daftarPerwalian']);
         Route::get('/dosen/perwalian/riwayat', [PerwalianController::class, 'riwayatPerwalian']);
         Route::get('/dosen/perwalian/krs', [PerwalianController::class, 'showKrsDetail']);
         Route::post('/dosen/perwalian/validasi', [PerwalianController::class, 'validasiKrs']);
+        Route::post('/dosen/perwalian/revisi', [PerwalianController::class, 'revisi']);
         Route::post('/dosen/perwalian/batal', [PerwalianController::class, 'batalPerwalian']);
 
         // ─── Penilaian Dosen (6 endpoints) ────────────────────────────────

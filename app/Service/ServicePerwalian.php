@@ -4,9 +4,14 @@ namespace App\Service;
 
 use App\Http\Responses\ApiResponse;
 use App\Models\Dosen;
+use App\Models\KhsDetail;
+use App\Models\Krs;
+use App\Models\KrsDetail;
 use App\Models\Mahasiswa;
 use App\Models\Perwalian;
 use App\Models\PerwalianKrsValidasi;
+use App\Models\TahunAkademik;
+use Illuminate\Http\JsonResponse;
 
 class ServicePerwalian
 {
@@ -98,8 +103,10 @@ class ServicePerwalian
         }
 
         $records = Perwalian::with(['mahasiswa', 'dosen', 'dosenPerwakilan'])
-            ->where('kode_dosen', $kode_dosen)
-            ->orWhere('kode_dosen_perwakilan', $kode_dosen)
+            ->where(function ($q) use ($kode_dosen) {
+                $q->where('kode_dosen', $kode_dosen)
+                    ->orWhere('kode_dosen_perwakilan', $kode_dosen);
+            })
             ->get();
 
         if ($records->isEmpty()) {
@@ -241,8 +248,10 @@ class ServicePerwalian
         $kodeDosen = $dosenList->pluck('kode_dosen')->toArray();
 
         $records = Perwalian::with(['mahasiswa', 'dosen', 'dosenPerwakilan'])
-            ->whereIn('kode_dosen', $kodeDosen)
-            ->orWhereIn('kode_dosen_perwakilan', $kodeDosen)
+            ->where(function ($q) use ($kodeDosen) {
+                $q->whereIn('kode_dosen', $kodeDosen)
+                    ->orWhereIn('kode_dosen_perwakilan', $kodeDosen);
+            })
             ->get();
 
         if ($records->isEmpty()) {
@@ -378,18 +387,121 @@ class ServicePerwalian
             return ApiResponse::error('Dosen ini sudah melakukan validasi KRS untuk mahasiswa ini.', 409);
         }
 
+        $catatan = $payload['catatan'] ?? null;
+
         $validasi = PerwalianKrsValidasi::create([
             'nim' => $payload['nim'],
             'kode_dosen_validator' => $payload['kode_dosen_validator'],
             'status_krs' => $payload['status_krs'],
+            'catatan' => $catatan,
         ]);
+
+        // Jika status A, buat KhsDetail untuk setiap krs_detail
+        if ($payload['status_krs'] === 'A') {
+            $activeTA = TahunAkademik::active()->first();
+
+            if ($activeTA) {
+                $krs = Krs::where('nim', $payload['nim'])
+                    ->where('kode_tahun_akademik', $activeTA->kode_tahun_akademik)
+                    ->first();
+
+                if ($krs) {
+                    $krsDetails = KrsDetail::where('kode_krs', $krs->kode_krs)->get();
+
+                    $insertData = [];
+                    foreach ($krsDetails as $detail) {
+                        $insertData[] = [
+                            'kode_krs_detail' => $detail->kode_krs_detail,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+                    }
+
+                    if (! empty($insertData)) {
+                        KhsDetail::insert($insertData);
+                    }
+                }
+            }
+        }
 
         return ApiResponse::success([
             'code_perwalian_krs_validasi' => $validasi->toCode(),
             'nim' => $validasi->nim,
             'code_dosen_validator' => $validasi->dosenValidator?->toCode(),
             'status_krs' => $validasi->status_krs,
+            'catatan' => $validasi->catatan,
         ], 'Validasi KRS berhasil disimpan.', 201);
+    }
+
+    public function revisiValidasiKrs(array $payload): JsonResponse
+    {
+        $validasi = PerwalianKrsValidasi::find($payload['kode_perwalian_krs_validasi']);
+        if (! $validasi) {
+            return ApiResponse::notFound('Validasi KRS tidak ditemukan');
+        }
+
+        if ($validasi->status_krs !== 'A') {
+            return ApiResponse::error('Validasi KRS bukan status A, tidak bisa direvisi.', 422);
+        }
+
+        // Cek apakah sudah ada nilai
+        $activeTA = TahunAkademik::active()->first();
+        if ($activeTA) {
+            $krs = Krs::where('nim', $validasi->nim)
+                ->where('kode_tahun_akademik', $activeTA->kode_tahun_akademik)
+                ->first();
+
+            if ($krs) {
+                $krsDetails = KrsDetail::where('kode_krs', $krs->kode_krs)->get();
+                foreach ($krsDetails as $detail) {
+                    $khsDetail = KhsDetail::where('kode_krs_detail', $detail->kode_krs_detail)
+                        ->whereNotNull('nilai_akhir')
+                        ->first();
+
+                    if ($khsDetail) {
+                        return ApiResponse::error('KRS sudah memiliki nilai, tidak bisa direvisi.', 422);
+                    }
+                }
+            }
+        }
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+
+        try {
+            // Hapus KhsDetail terkait
+            $activeTA = TahunAkademik::active()->first();
+            if ($activeTA) {
+                $krs = Krs::where('nim', $validasi->nim)
+                    ->where('kode_tahun_akademik', $activeTA->kode_tahun_akademik)
+                    ->first();
+
+                if ($krs) {
+                    $krsDetails = KrsDetail::where('kode_krs', $krs->kode_krs)->get();
+                    foreach ($krsDetails as $detail) {
+                        KhsDetail::where('kode_krs_detail', $detail->kode_krs_detail)->delete();
+                    }
+                }
+            }
+
+            // Update status validasi
+            $validasi->update([
+                'status_krs' => 'N',
+                'catatan' => $payload['catatan'] ?? $validasi->catatan,
+            ]);
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            return ApiResponse::success([
+                'code_perwalian_krs_validasi' => $validasi->toCode(),
+                'nim' => $validasi->nim,
+                'status_krs' => 'N',
+                'catatan' => $validasi->catatan,
+            ], 'Revisi KRS berhasil. Mahasiswa dapat mengubah KRS kembali.');
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return ApiResponse::serverError('Gagal merevisi KRS.');
+        }
     }
 
     public function batalPerwalian(int $kode_perwalian, int $kode_dosen): JsonResponse
