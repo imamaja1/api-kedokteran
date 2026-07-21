@@ -188,7 +188,7 @@ class ServicePenilaianDosen
 
         $data = [
             'template_id' => $template->id,
-            'id_matakuliah' => $template->id_matakuliah,
+            'code_matakuliah' => $kelas->matakuliah?->toCode(),
             'kode_matakuliah' => $kelas->matakuliah?->kode_matakuliah,
             'nama_matakuliah' => $kelas->matakuliah?->nama_matakuliah,
             'structure' => $template->structure,

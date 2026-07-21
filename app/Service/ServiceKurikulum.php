@@ -217,6 +217,7 @@ class ServiceKurikulum
                         'semester' => $sem,
                         'total_sks' => $total_sks,
                         'matakuliah' => $items->map(fn ($item) => [
+                            'code_matakuliah' => $item->matakuliah?->toCode(),
                             'kode_matakuliah' => $item->matakuliah->kode_matakuliah,
                             'nama_matakuliah' => $item->matakuliah->nama_matakuliah,
                             'sks_teori' => $item->matakuliah->sks_teori,
