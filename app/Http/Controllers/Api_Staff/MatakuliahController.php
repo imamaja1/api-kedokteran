@@ -41,11 +41,6 @@ class MatakuliahController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $decrypted = $this->decryptField($request, 'kode_program_studi');
-        if ($decrypted !== null) {
-            return $decrypted;
-        }
-
         $validasi = $request->validate([
             'kode_matakuliah' => ['required', 'string', 'max:20', 'alpha_num'],
             'nama_matakuliah' => ['required', 'string', 'max:255'],
@@ -53,19 +48,24 @@ class MatakuliahController extends Controller
             'sks_teori' => ['required', 'integer', 'min:0'],
             'sks_praktik' => ['required', 'integer', 'min:0'],
             'block' => ['required', 'in:0,1'],
-            'kode_program_studi' => ['required', 'integer', 'exists:program_studi,kode_program_studi'],
+            'code_program_studi' => ['required', 'string'],
         ]);
+
+        try {
+            $validasi['kode_program_studi'] = (int) Crypt::decryptString($validasi['code_program_studi']);
+            unset($validasi['code_program_studi']);
+        } catch (DecryptException) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Format code_program_studi tidak valid',
+            ], 422);
+        }
 
         return $this->service->storeMatakuliah($validasi);
     }
 
     public function update(Request $request): JsonResponse
     {
-        $decrypted = $this->decryptField($request, 'kode_program_studi');
-        if ($decrypted !== null) {
-            return $decrypted;
-        }
-
         $validasi = $request->validate([
             'code' => ['required', 'string'],
             'kode_matakuliah' => ['required', 'string', 'max:20', 'alpha_num'],
@@ -74,10 +74,19 @@ class MatakuliahController extends Controller
             'sks_teori' => ['required', 'integer', 'min:0'],
             'sks_praktik' => ['required', 'integer', 'min:0'],
             'block' => ['required', 'in:0,1'],
-            'kode_program_studi' => ['required', 'integer', 'exists:program_studi,kode_program_studi'],
+            'code_program_studi' => ['required', 'string'],
         ]);
 
-        $id = Crypt::decryptString($validasi['code']);
+        try {
+            $id = Crypt::decryptString($validasi['code']);
+            $validasi['kode_program_studi'] = (int) Crypt::decryptString($validasi['code_program_studi']);
+            unset($validasi['code_program_studi']);
+        } catch (DecryptException) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Format code tidak valid',
+            ], 422);
+        }
 
         return $this->service->updateMatakuliah($id, $validasi);
     }
@@ -88,24 +97,3 @@ class MatakuliahController extends Controller
 
         return $this->service->deleteMatakuliah($id);
     }
-
-    private function decryptField(Request $request, string $field): ?JsonResponse
-    {
-        if (! $request->has($field)) {
-            return null;
-        }
-
-        try {
-            $request->merge([
-                $field => Crypt::decryptString($request->input($field)),
-            ]);
-        } catch (DecryptException) {
-            return response()->json([
-                'status' => false,
-                'message' => "Format {$field} tidak valid",
-            ], 422);
-        }
-
-        return null;
-    }
-}

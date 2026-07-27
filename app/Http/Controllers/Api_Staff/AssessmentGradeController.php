@@ -25,17 +25,22 @@ class AssessmentGradeController extends Controller
     {
         try {
             $validated = $request->validate([
-                'kode_program_studi' => 'nullable|integer',
+                'code_program_studi' => 'nullable|string',
                 'huruf' => 'nullable|string|max:2',
                 'per_page' => 'nullable|integer|min:1|max:100',
             ]);
+
+            if (isset($validated['code_program_studi'])) {
+                $validated['kode_program_studi'] = (int) Crypt::decryptString($validated['code_program_studi']);
+                unset($validated['code_program_studi']);
+            }
 
             $paginator = $this->service->index($validated);
 
             $paginator->getCollection()->transform(fn ($grade, $index) => [
                 'id' => $index + 1,
                 'code' => Crypt::encryptString((string) $grade->id),
-                'kode_program_studi' => $grade->kode_program_studi,
+                'code_program_studi' => $grade->programStudi?->toCode(),
                 'nama_program_studi' => $grade->programStudi?->nama_program_studi,
                 'nilai_min' => $grade->nilai_min,
                 'nilai_max' => $grade->nilai_max,
@@ -59,12 +64,15 @@ class AssessmentGradeController extends Controller
     {
         try {
             $validated = $request->validate([
-                'kode_program_studi' => 'required|integer|exists:program_studi,kode_program_studi',
+                'code_program_studi' => 'required|string',
                 'nilai_min' => 'required|numeric|min:0|max:100',
                 'nilai_max' => 'required|numeric|min:0|max:100|gte:nilai_min',
                 'huruf' => 'required|string|max:2',
                 'skor' => 'required|numeric|min:0|max:4',
             ]);
+
+            $validated['kode_program_studi'] = (int) Crypt::decryptString($validated['code_program_studi']);
+            unset($validated['code_program_studi']);
 
             if ($this->service->isOverlap($validated['kode_program_studi'], $validated['nilai_min'], $validated['nilai_max'])) {
                 return ApiResponse::validation(
@@ -77,7 +85,7 @@ class AssessmentGradeController extends Controller
 
             return ApiResponse::success([
                 'code' => Crypt::encryptString((string) $grade->id),
-                'kode_program_studi' => $grade->kode_program_studi,
+                'code_program_studi' => $grade->programStudi?->toCode(),
                 'nama_program_studi' => $grade->programStudi?->nama_program_studi,
                 'nilai_min' => $grade->nilai_min,
                 'nilai_max' => $grade->nilai_max,
@@ -86,6 +94,8 @@ class AssessmentGradeController extends Controller
                 'created_at' => $grade->created_at,
                 'updated_at' => $grade->updated_at,
             ], 'Grade berhasil dibuat.', 201);
+        } catch (DecryptException) {
+            return ApiResponse::validation(['code_program_studi' => ['Format kode program studi tidak valid.']]);
         } catch (QueryException $e) {
             if ($e->getCode() === '23000') {
                 return ApiResponse::validation(
@@ -120,7 +130,7 @@ class AssessmentGradeController extends Controller
 
             return ApiResponse::success([
                 'code' => Crypt::encryptString((string) $grade->id),
-                'kode_program_studi' => $grade->kode_program_studi,
+                'code_program_studi' => $grade->programStudi?->toCode(),
                 'nama_program_studi' => $grade->programStudi?->nama_program_studi,
                 'nilai_min' => $grade->nilai_min,
                 'nilai_max' => $grade->nilai_max,
@@ -145,7 +155,7 @@ class AssessmentGradeController extends Controller
         try {
             $validated = $request->validate([
                 'code' => ['required', 'string'],
-                'kode_program_studi' => 'nullable|integer|exists:program_studi,kode_program_studi',
+                'code_program_studi' => 'nullable|string',
                 'nilai_min' => 'nullable|numeric|min:0|max:100',
                 'nilai_max' => 'nullable|numeric|min:0|max:100|gte:nilai_min',
                 'huruf' => 'nullable|string|max:2',
@@ -154,6 +164,11 @@ class AssessmentGradeController extends Controller
 
             $id = (int) Crypt::decryptString($validated['code']);
             unset($validated['code']);
+
+            if (isset($validated['code_program_studi'])) {
+                $validated['kode_program_studi'] = (int) Crypt::decryptString($validated['code_program_studi']);
+                unset($validated['code_program_studi']);
+            }
 
             $grade = $this->service->show($id);
             if (! $grade) {
@@ -175,7 +190,7 @@ class AssessmentGradeController extends Controller
 
             return ApiResponse::success([
                 'code' => Crypt::encryptString((string) $grade->id),
-                'kode_program_studi' => $grade->kode_program_studi,
+                'code_program_studi' => $grade->programStudi?->toCode(),
                 'nama_program_studi' => $grade->programStudi?->nama_program_studi,
                 'nilai_min' => $grade->nilai_min,
                 'nilai_max' => $grade->nilai_max,

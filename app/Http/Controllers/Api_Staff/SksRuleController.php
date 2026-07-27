@@ -24,16 +24,21 @@ class SksRuleController extends Controller
     {
         try {
             $validated = $request->validate([
-                'kode_program_studi' => 'nullable|integer',
+                'code_program_studi' => 'nullable|string',
                 'per_page' => 'nullable|integer|min:1|max:100',
             ]);
+
+            if (isset($validated['code_program_studi'])) {
+                $validated['kode_program_studi'] = (int) Crypt::decryptString($validated['code_program_studi']);
+                unset($validated['code_program_studi']);
+            }
 
             $paginator = $this->service->index($validated);
 
             $paginator->getCollection()->transform(fn ($rule, $index) => [
                 'id' => $index + 1,
                 'code' => Crypt::encryptString((string) $rule->id),
-                'kode_program_studi' => $rule->kode_program_studi,
+                'code_program_studi' => $rule->programStudi?->toCode(),
                 'nama_program_studi' => $rule->programStudi?->nama_program_studi,
                 'ip_min' => $rule->ip_min,
                 'ip_max' => $rule->ip_max,
@@ -56,11 +61,14 @@ class SksRuleController extends Controller
     {
         try {
             $validated = $request->validate([
-                'kode_program_studi' => 'required|integer|exists:program_studi,kode_program_studi',
+                'code_program_studi' => 'required|string',
                 'ip_min' => 'required|numeric|min:0|max:4',
                 'ip_max' => 'required|numeric|min:0|max:4|gte:ip_min',
                 'sks_yang_dapat_diambil' => 'required|integer|min:1|max:32',
             ]);
+
+            $validated['kode_program_studi'] = (int) Crypt::decryptString($validated['code_program_studi']);
+            unset($validated['code_program_studi']);
 
             if ($this->service->isOverlap($validated['kode_program_studi'], $validated['ip_min'], $validated['ip_max'])) {
                 return ApiResponse::validation(
@@ -73,7 +81,7 @@ class SksRuleController extends Controller
 
             return ApiResponse::success([
                 'code' => Crypt::encryptString((string) $rule->id),
-                'kode_program_studi' => $rule->kode_program_studi,
+                'code_program_studi' => $rule->programStudi?->toCode(),
                 'nama_program_studi' => $rule->programStudi?->nama_program_studi,
                 'ip_min' => $rule->ip_min,
                 'ip_max' => $rule->ip_max,
@@ -81,6 +89,8 @@ class SksRuleController extends Controller
                 'created_at' => $rule->created_at,
                 'updated_at' => $rule->updated_at,
             ], 'SKS rule berhasil dibuat.', 201);
+        } catch (DecryptException) {
+            return ApiResponse::validation(['code_program_studi' => ['Format kode program studi tidak valid.']]);
         } catch (QueryException $e) {
             if ($e->getCode() === '23000') {
                 return ApiResponse::validation(
@@ -115,7 +125,7 @@ class SksRuleController extends Controller
 
             return ApiResponse::success([
                 'code' => Crypt::encryptString((string) $rule->id),
-                'kode_program_studi' => $rule->kode_program_studi,
+                'code_program_studi' => $rule->programStudi?->toCode(),
                 'nama_program_studi' => $rule->programStudi?->nama_program_studi,
                 'ip_min' => $rule->ip_min,
                 'ip_max' => $rule->ip_max,
@@ -139,7 +149,7 @@ class SksRuleController extends Controller
         try {
             $validated = $request->validate([
                 'code' => ['required', 'string'],
-                'kode_program_studi' => 'nullable|integer|exists:program_studi,kode_program_studi',
+                'code_program_studi' => 'nullable|string',
                 'ip_min' => 'nullable|numeric|min:0|max:4',
                 'ip_max' => 'nullable|numeric|min:0|max:4|gte:ip_min',
                 'sks_yang_dapat_diambil' => 'nullable|integer|min:1|max:32',
@@ -147,6 +157,11 @@ class SksRuleController extends Controller
 
             $id = (int) Crypt::decryptString($validated['code']);
             unset($validated['code']);
+
+            if (isset($validated['code_program_studi'])) {
+                $validated['kode_program_studi'] = (int) Crypt::decryptString($validated['code_program_studi']);
+                unset($validated['code_program_studi']);
+            }
 
             $rule = $this->service->show($id);
             if (! $rule) {
@@ -168,7 +183,7 @@ class SksRuleController extends Controller
 
             return ApiResponse::success([
                 'code' => Crypt::encryptString((string) $rule->id),
-                'kode_program_studi' => $rule->kode_program_studi,
+                'code_program_studi' => $rule->programStudi?->toCode(),
                 'nama_program_studi' => $rule->programStudi?->nama_program_studi,
                 'ip_min' => $rule->ip_min,
                 'ip_max' => $rule->ip_max,
