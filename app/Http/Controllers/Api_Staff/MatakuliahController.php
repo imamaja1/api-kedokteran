@@ -101,3 +101,4 @@ class MatakuliahController extends Controller
 
         return $this->service->deleteMatakuliah($id);
     }
+}
