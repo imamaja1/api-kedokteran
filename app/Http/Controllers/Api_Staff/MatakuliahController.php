@@ -17,15 +17,19 @@ class MatakuliahController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $request->validate([
+        $validated = $request->validate([
             'code_program_studi' => ['nullable', 'string'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
-        $kode_program_studi = $request->query('code_program_studi')
-            ? Crypt::decryptString($request->query('code_program_studi'))
+        $kode_program_studi = isset($validated['code_program_studi'])
+            ? Crypt::decryptString($validated['code_program_studi'])
             : null;
 
-        return $this->service->getAllMatakuliah($kode_program_studi);
+        return $this->service->getAllMatakuliah(
+            $kode_program_studi,
+            (int) ($validated['per_page'] ?? 20)
+        );
     }
 
     public function show(Request $request): JsonResponse

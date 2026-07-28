@@ -7,7 +7,7 @@ use Illuminate\Http\JsonResponse;
 
 class ServiceMatakuliah
 {
-    public function getAllMatakuliah(?string $kode_program_studi = null): JsonResponse
+    public function getAllMatakuliah(?string $kode_program_studi = null, int $per_page = 20): JsonResponse
     {
         $query = Matakuliah::select(
             'id_matakuliah',
@@ -22,7 +22,7 @@ class ServiceMatakuliah
             $query->where('kode_program_studi', $kode_program_studi);
         }
 
-        $paginator = $query->paginate(20);
+        $paginator = $query->paginate($per_page);
 
         $paginator->getCollection()->transform(function ($item, $index) {
             return [
