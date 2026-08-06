@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api_Dosen\KurikulumController;
 use App\Http\Controllers\Api_Dosen\PenilaianDosenController;
 use App\Http\Controllers\Api_Dosen\PenilaianKaprodiController;
+use App\Http\Controllers\Api_Dosen\AssessmentDosenController;
 use App\Http\Controllers\Api_Dosen\PerwalianController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\DosenController;
@@ -60,6 +61,15 @@ Route::prefix('api')
                 Route::post('/penilaian/validasi', [PenilaianKaprodiController::class, 'validasi']);
                 Route::post('/penilaian/revisi', [PenilaianKaprodiController::class, 'revisi']);
             });
+
+        // ─── AssessmentDosen (multi-level validation) ────────────────────
+        Route::prefix('/dosen/assessment-dosen')->group(function () {
+            Route::get('/my-nodes', [AssessmentDosenController::class, 'myNodes']);
+            Route::get('/mahasiswa', [AssessmentDosenController::class, 'mahasiswaByNode']);
+            Route::get('/detail', [AssessmentDosenController::class, 'detailMahasiswa']);
+            Route::post('/validasi', [AssessmentDosenController::class, 'validasi']);
+            Route::post('/revisi', [AssessmentDosenController::class, 'revisi']);
+        });
 
         // ─── Fallback ─────────────────────────────────────────────────────
         Route::fallback(fn () => response()->json([

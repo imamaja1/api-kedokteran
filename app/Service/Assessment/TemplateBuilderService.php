@@ -96,8 +96,12 @@ class TemplateBuilderService
      */
     private function ensureKeysExist(array $node, string $parentKey = ''): array
     {
+        // Generate path-based unique key: parent_name_childname
         if (empty($node['key']) && !empty($node['name'])) {
-            $node['key'] = $this->generateSlug($node['name']);
+            $baseSlug = $this->generateSlug($node['name']);
+            $node['key'] = $parentKey !== ''
+                ? $parentKey . '_' . $baseSlug
+                : $baseSlug;
         }
 
         if (empty($node['key']) && empty($node['name'])) {

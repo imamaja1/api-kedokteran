@@ -17,6 +17,9 @@ class ProgramStudi extends Model
         'kode_pengguna', 'kompetensi', 'kode_dosen_kaprodi',
     ];
 
+    protected $casts = [
+    ];
+
     public function dosen()
     {
         return $this->hasMany(Dosen::class, 'homebase', 'kode_program_studi');

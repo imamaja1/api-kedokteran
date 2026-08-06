@@ -4,6 +4,7 @@ use App\Http\Controllers\Api_Staff\AkademikController;
 use App\Http\Controllers\Api_Staff\PembayaranController;
 use App\Http\Controllers\Api_Staff\PenempatanController;
 use App\Http\Controllers\Api_Staff\AssessmentGradeController;
+use App\Http\Controllers\Api_Staff\AssessmentDosenController;
 use App\Http\Controllers\Api_Staff\AssessmentScoreController;
 use App\Http\Controllers\Api_Staff\AssessmentTemplateController;
 use App\Http\Controllers\Api_Staff\DefaultController;
@@ -301,6 +302,13 @@ Route::prefix("api/staff")
                         AssessmentGradeController::class,
                         "destroy",
                     ]);
+                });
+
+                // AssessmentDosen (multi-level validation setup)
+                Route::prefix("dosen")->group(function () {
+                    Route::post("/", [AssessmentDosenController::class, "store"]);
+                    Route::put("/assign", [AssessmentDosenController::class, "assignDosen"]);
+                    Route::get("/assignments", [AssessmentDosenController::class, "getAssignments"]);
                 });
             });
 

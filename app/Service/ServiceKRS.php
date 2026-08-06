@@ -352,6 +352,15 @@ class ServiceKRS
             return ApiResponse::error('KRS belum dibuat untuk tahun akademik aktif.', 422);
         }
 
+        $bayar = Pembayaran::where('nim', $nim)
+            ->where('kode_tahun_akademik', $krs->kode_tahun_akademik)
+            ->where('status', 'lunas')
+            ->first();
+
+        if (! $bayar) {
+            return ApiResponse::error('Pembayaran belum lunas. Silakan selesaikan pembayaran terlebih dahulu.', 422);
+        }
+
         $matakuliahIds = $data['matakuliah'];
         $matakuliahList = Matakuliah::whereIn('id_matakuliah', $matakuliahIds)->get();
 
@@ -371,12 +380,7 @@ class ServiceKRS
             return ApiResponse::error('Matakuliah sudah ada di KRS: ' . implode(', ', $duplicates), 422);
         }
 
-        $bayar = Pembayaran::where('nim', $nim)
-            ->where('kode_tahun_akademik', $krs->kode_tahun_akademik)
-            ->where('status', 'lunas')
-            ->first();
-
-        $limit = $bayar?->sks_override ?? 24;
+        $limit = $bayar->sks_override ?? 24;
 
         $currentSks = KrsDetail::where('kode_krs', $krs->kode_krs)
             ->join('matakuliah', 'krs_detail.id_matakuliah', '=', 'matakuliah.id_matakuliah')
@@ -479,6 +483,15 @@ class ServiceKRS
             return ApiResponse::notFound('KRS untuk semester ini tidak ditemukan.');
         }
 
+        $bayar = Pembayaran::where('nim', $nim)
+            ->where('kode_tahun_akademik', $krs->kode_tahun_akademik)
+            ->where('status', 'lunas')
+            ->first();
+
+        if (! $bayar) {
+            return ApiResponse::error('Pembayaran belum lunas. Silakan selesaikan pembayaran terlebih dahulu.', 422);
+        }
+
         $activeTA = TahunAkademik::active()->first();
         if (! $activeTA || ! $activeTA->isKrsOpen()) {
             return ApiResponse::error('Periode pengisian KRS belum dibuka atau sudah ditutup.', 422);
@@ -504,12 +517,7 @@ class ServiceKRS
             return ApiResponse::error('Terdapat matakuliah duplikat dalam permintaan.', 422);
         }
 
-        $bayar = Pembayaran::where('nim', $nim)
-            ->where('kode_tahun_akademik', $krs->kode_tahun_akademik)
-            ->where('status', 'lunas')
-            ->first();
-
-        $limit = $bayar?->sks_override ?? 24;
+        $limit = $bayar->sks_override ?? 24;
 
         $totalSks = $matakuliahList->sum(function ($mk) {
             return ($mk->sks_teori ?? 0) + ($mk->sks_praktik ?? 0);

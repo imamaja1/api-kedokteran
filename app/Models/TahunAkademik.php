@@ -14,14 +14,17 @@ class TahunAkademik extends Model
     protected $fillable = [
         'tahun_akademik', 'semester', 'tanggal_mulai', 'tanggal_berakhir',
         'tanggal_buka_krs', 'tanggal_tutup_krs',
+        'tanggal_buka_penilaian', 'tanggal_tutup_penilaian',
         'status', 'status_kpat', 'kode_pengguna', 'kode_institusi',
     ];
 
     protected $casts = [
-        'tanggal_mulai'    => 'date',
-        'tanggal_berakhir' => 'date',
-        'tanggal_buka_krs' => 'date',
-        'tanggal_tutup_krs' => 'date',
+        'tanggal_mulai'           => 'date',
+        'tanggal_berakhir'        => 'date',
+        'tanggal_buka_krs'        => 'date',
+        'tanggal_tutup_krs'       => 'date',
+        'tanggal_buka_penilaian'  => 'date',
+        'tanggal_tutup_penilaian' => 'date',
     ];
 
     public function scopeActive($query)
