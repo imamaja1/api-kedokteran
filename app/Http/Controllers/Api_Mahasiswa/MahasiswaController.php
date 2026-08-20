@@ -3,7 +3,8 @@
 namespace App\Http\Controllers\Api_Mahasiswa;
 
 use App\Http\Controllers\Controller;
-use App\Models\Krs;
+use App\Models\TahunAkademik;
+use App\Service\ServiceSemester;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -51,7 +52,18 @@ class MahasiswaController extends Controller
     public function semester(): JsonResponse
     {
         $nim = Auth::guard('mahasiswa_web')->user()->nim;
-        $semester = Krs::select('semester')->where('nim', $nim)->get();
+
+        $activeTA = TahunAkademik::active()->first();
+        if (! $activeTA) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Tidak ada tahun akademik aktif.',
+            ], 404);
+        }
+
+        $current = (new ServiceSemester)->hitung($nim, $activeTA);
+
+        $semester = collect(range(1, $current))->map(fn ($s) => ['semester' => $s])->toArray();
 
         return response()->json([
             'status' => true,
