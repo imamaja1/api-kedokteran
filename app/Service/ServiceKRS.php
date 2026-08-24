@@ -12,6 +12,7 @@ use App\Models\Matakuliah;
 use App\Models\Pembayaran;
 use App\Models\PerwalianKrsValidasi;
 use App\Models\TahunAkademik;
+use App\Service\ServiceSemester;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
@@ -146,7 +147,29 @@ class ServiceKRS
                 ->first();
 
             if (! $krs) {
-                return ApiResponse::notFound('Tidak ada KRS untuk semester ini.');
+                $activeTA = TahunAkademik::active()->first();
+                if (! $activeTA) {
+                    return ApiResponse::error('Tidak ada tahun akademik aktif.', 404);
+                }
+
+                $bayar = Pembayaran::where('nim', $nim)
+                    ->where('kode_tahun_akademik', $activeTA->kode_tahun_akademik)
+                    ->where('status', 'lunas')
+                    ->first();
+
+                if ($bayar) {
+                    $semesterMhs = (new ServiceSemester)->hitung($nim, $activeTA);
+                    $kurikulum = $this->getKurikulumForKrs($nim, $mahasiswa->program_studi_kode, $semesterMhs);
+
+                    return ApiResponse::success([
+                        'mahasiswa' => $mhsInfo,
+                        'krs' => null,
+                        'kurikulum' => $kurikulum,
+                        'message' => 'Anda sudah melakukan pembayaran, silakan melakukan pengisian KRS terlebih dahulu.',
+                    ], 'KRS belum dibuat.', 200);
+                }
+
+                return ApiResponse::notFound('Tidak ada KRS untuk semester ini. Pastikan pembayaran sudah dilakukan.');
             }
 
             return $this->buildKrsResponse($mhsInfo, $krs, $nim, $mahasiswa->program_studi_kode);
@@ -165,6 +188,23 @@ class ServiceKRS
             ->first();
 
         if (! $krs) {
+            $bayar = Pembayaran::where('nim', $nim)
+                ->where('kode_tahun_akademik', $activeTA->kode_tahun_akademik)
+                ->where('status', 'lunas')
+                ->first();
+
+            if ($bayar) {
+                $semesterMhs = (new ServiceSemester)->hitung($nim, $activeTA);
+                $kurikulum = $this->getKurikulumForKrs($nim, $mahasiswa->program_studi_kode, $semesterMhs);
+
+                return ApiResponse::success([
+                    'mahasiswa' => $mhsInfo,
+                    'krs' => null,
+                    'kurikulum' => $kurikulum,
+                    'message' => 'Anda sudah melakukan pembayaran, silakan melakukan pengisian KRS terlebih dahulu.',
+                ], 'KRS belum dibuat.', 200);
+            }
+
             return ApiResponse::notFound('KRS belum tersedia. Pastikan pembayaran sudah dilakukan.');
         }
 
