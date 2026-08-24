@@ -147,6 +147,20 @@ class ApiConnectionSeeder extends Seeder
                 'created_at' => Carbon::parse('2026-04-29 23:55:09'),
                 'updated_at' => Carbon::parse('2026-04-30 00:09:30'),
             ],
+            [
+                'id' => 10,
+                'name' => 'Keuangan',
+                'description' => 'Update keuangan',
+                'base_url' => 'https://ukt.ubg.ac.id/api/v1/pembayaran/status',
+                'username' => null,
+                'password' => null,
+                'cookie' => null,
+                'extra_headers' => null,
+                'cookie_expires_at' => null,
+                'is_active' => 1,
+                'created_at' => Carbon::parse('2026-08-24 00:00:00'),
+                'updated_at' => Carbon::parse('2026-08-24 00:00:00'),
+            ],
         ];
 
         foreach ($connections as $connection) {

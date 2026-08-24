@@ -12,6 +12,7 @@ use App\Models\Matakuliah;
 use App\Models\Pembayaran;
 use App\Models\PerwalianKrsValidasi;
 use App\Models\TahunAkademik;
+use App\Service\ServiceKeuangan;
 use App\Service\ServiceSemester;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -152,10 +153,15 @@ class ServiceKRS
                     return ApiResponse::error('Tidak ada tahun akademik aktif.', 404);
                 }
 
+                // Cek local dulu, lalu sync dari external jika belum lunas
                 $bayar = Pembayaran::where('nim', $nim)
                     ->where('kode_tahun_akademik', $activeTA->kode_tahun_akademik)
                     ->where('status', 'lunas')
                     ->first();
+
+                if (! $bayar) {
+                    $bayar = (new ServiceKeuangan)->syncPembayaranFromExternal($nim, $activeTA);
+                }
 
                 if ($bayar) {
                     $semesterMhs = (new ServiceSemester)->hitung($nim, $activeTA);
@@ -188,10 +194,15 @@ class ServiceKRS
             ->first();
 
         if (! $krs) {
+            // Cek local dulu, lalu sync dari external jika belum lunas
             $bayar = Pembayaran::where('nim', $nim)
                 ->where('kode_tahun_akademik', $activeTA->kode_tahun_akademik)
                 ->where('status', 'lunas')
                 ->first();
+
+            if (! $bayar) {
+                $bayar = (new ServiceKeuangan)->syncPembayaranFromExternal($nim, $activeTA);
+            }
 
             if ($bayar) {
                 $semesterMhs = (new ServiceSemester)->hitung($nim, $activeTA);
