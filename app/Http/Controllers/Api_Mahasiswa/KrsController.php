@@ -26,7 +26,7 @@ class KrsController extends Controller
     {
         $validasi = $request->validate([
             'matakuliah' => ['required', 'array', 'min:1'],
-            'matakuliah.*' => ['required', 'integer'],
+            'matakuliah.*' => ['required', 'string'],
         ]);
 
         $nim = Auth::guard('mahasiswa_web')->user()->nim;
@@ -61,7 +61,7 @@ class KrsController extends Controller
         $validated = $request->validate([
             'semester' => ['required', 'integer', 'in:1,2,3,4,5,6,7,8,9,10,11,12,13,14'],
             'matakuliah' => ['required', 'array'],
-            'matakuliah.*' => ['required', 'integer'],
+            'matakuliah.*' => ['required', 'string'],
         ]);
 
         $nim = Auth::guard('mahasiswa_web')->user()->nim;

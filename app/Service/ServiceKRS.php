@@ -14,7 +14,9 @@ use App\Models\PerwalianKrsValidasi;
 use App\Models\TahunAkademik;
 use App\Service\ServiceKeuangan;
 use App\Service\ServiceSemester;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 
 class ServiceKRS
@@ -102,6 +104,7 @@ class ServiceKRS
                 'semester' => $sem,
                 'total_sks' => $totalSks,
                 'matakuliah' => $items->map(fn ($item) => [
+                    'code_matakuliah' => $item->matakuliah?->toCode(),
                     'kode_matakuliah' => $item->matakuliah->kode_matakuliah,
                     'nama_matakuliah' => $item->matakuliah->nama_matakuliah,
                     'sks_teori' => $item->matakuliah->sks_teori,
@@ -412,7 +415,16 @@ class ServiceKRS
             return ApiResponse::error('Pembayaran belum lunas. Silakan selesaikan pembayaran terlebih dahulu.', 422);
         }
 
-        $matakuliahIds = $data['matakuliah'];
+        $codes = $data['matakuliah'];
+        $matakuliahIds = [];
+        foreach ($codes as $code) {
+            try {
+                $matakuliahIds[] = (int) Crypt::decryptString($code);
+            } catch (DecryptException) {
+                return ApiResponse::error('Format code matakuliah tidak valid: ' . $code, 422);
+            }
+        }
+
         $matakuliahList = Matakuliah::whereIn('id_matakuliah', $matakuliahIds)->get();
 
         if ($matakuliahList->count() !== count($matakuliahIds)) {
@@ -524,7 +536,7 @@ class ServiceKRS
     /**
      * Atomic bulk replace: delete all krs_detail, insert new ones.
      */
-    public function replaceKrsDetail(string $nim, int $semester, array $matakuliahIds): JsonResponse
+    public function replaceKrsDetail(string $nim, int $semester, array $codes): JsonResponse
     {
         $krs = Krs::where('nim', $nim)
             ->where('semester', $semester)
@@ -554,6 +566,15 @@ class ServiceKRS
 
         if ($isLocked) {
             return ApiResponse::error('KRS sudah divalidasi, tidak bisa diubah.', 422);
+        }
+
+        $matakuliahIds = [];
+        foreach ($codes as $code) {
+            try {
+                $matakuliahIds[] = (int) Crypt::decryptString($code);
+            } catch (DecryptException) {
+                return ApiResponse::error('Format code matakuliah tidak valid: ' . $code, 422);
+            }
         }
 
         $matakuliahList = Matakuliah::whereIn('id_matakuliah', $matakuliahIds)->get();
