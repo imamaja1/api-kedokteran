@@ -184,6 +184,44 @@ test('POST /api/staff/akademik/perwalian requires code and code_dosen', function
     $response->assertStatus(422);
 });
 
+test('POST /api/staff/akademik/perwalian requires encrypted string code_dosen', function () {
+    $response = staffPost('/api/staff/akademik/perwalian', [
+        'code' => TestDataHelper::encryptCode('20230100001'),
+        'code_dosen' => 42,
+    ]);
+
+    $response->assertStatus(422)
+        ->assertJsonStructure(['errors' => ['code_dosen']]);
+});
+
+test('GET /api/staff/akademik/perwalian rejects encrypted non-integer code_dosen', function () {
+    $response = staffGet('/api/staff/akademik/perwalian', [
+        'code_dosen' => TestDataHelper::encryptCode('not-an-integer'),
+    ]);
+
+    $response->assertStatus(422)
+        ->assertJsonPath('errors.code_dosen.0', 'Format code_dosen tidak valid');
+});
+
+test('POST /api/staff/akademik/perwalian accepts encrypted dosen codes', function () {
+    $response = staffPost('/api/staff/akademik/perwalian', [
+        'code' => TestDataHelper::encryptCode('20230100001'),
+        'code_dosen' => TestDataHelper::encryptCode(42),
+        'code_dosen_perwakilan' => TestDataHelper::encryptCode(43),
+    ]);
+
+    $response->assertStatus(404);
+});
+
+test('PUT /api/staff/akademik/perwalian accepts encrypted dosen codes', function () {
+    $response = staffPut('/api/staff/akademik/perwalian/'.TestDataHelper::encryptCode(1), [
+        'kode_dosen' => TestDataHelper::encryptCode(42),
+        'kode_dosen_perwakilan' => TestDataHelper::encryptCode(43),
+    ]);
+
+    $response->assertStatus(404);
+});
+
 test('GET /api/staff/akademik/perwalian/dosen returns 422 without params', function () {
     $response = staffGet('/api/staff/akademik/perwalian/dosen');
 

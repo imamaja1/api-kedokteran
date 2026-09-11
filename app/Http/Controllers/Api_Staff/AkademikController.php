@@ -130,8 +130,8 @@ class AkademikController extends Controller
     {
         $validated = $request->validate([
             'code' => ['required', 'string'],
-            'code_dosen' => ['required', 'integer'],
-            'code_dosen_perwakilan' => ['nullable', 'integer'],
+            'code_dosen' => ['required', 'string'],
+            'code_dosen_perwakilan' => ['nullable', 'string'],
         ]);
 
         try {
@@ -140,10 +140,26 @@ class AkademikController extends Controller
             return ApiResponse::validation(['code' => 'Format code tidak valid']);
         }
 
+        $kodeDosen = $this->decryptIntegerCode($validated['code_dosen'], 'code_dosen');
+        if ($kodeDosen instanceof JsonResponse) {
+            return $kodeDosen;
+        }
+
+        $kodeDosenPerwakilan = null;
+        if (isset($validated['code_dosen_perwakilan'])) {
+            $kodeDosenPerwakilan = $this->decryptIntegerCode(
+                $validated['code_dosen_perwakilan'],
+                'code_dosen_perwakilan',
+            );
+            if ($kodeDosenPerwakilan instanceof JsonResponse) {
+                return $kodeDosenPerwakilan;
+            }
+        }
+
         return $this->perwalianService->storePerwalian([
             'nim' => $nim,
-            'kode_dosen' => $validated['code_dosen'],
-            'kode_dosen_perwakilan' => $validated['code_dosen_perwakilan'] ?? null,
+            'kode_dosen' => $kodeDosen,
+            'kode_dosen_perwakilan' => $kodeDosenPerwakilan,
         ]);
     }
 
@@ -152,7 +168,7 @@ class AkademikController extends Controller
         $validated = $request->validate([
             'code' => ['nullable', 'string'], // encrypted nim
             'code_dosen' => ['nullable', 'string'], // encrypted kode_dosen
-            'per_page' => ['nullable', 'integer'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
         $nim = null;
@@ -167,11 +183,12 @@ class AkademikController extends Controller
         }
 
         if (isset($validated['code_dosen'])) {
-            try {
-                $kode_dosen = (int) Crypt::decryptString($validated['code_dosen']);
-            } catch (DecryptException) {
-                return ApiResponse::validation(['code_dosen' => 'Format code_dosen tidak valid']);
+            $kodeDosen = $this->decryptIntegerCode($validated['code_dosen'], 'code_dosen');
+            if ($kodeDosen instanceof JsonResponse) {
+                return $kodeDosen;
             }
+
+            $kode_dosen = $kodeDosen;
         }
 
         $perPage = $validated['per_page'] ?? 20;
@@ -230,8 +247,8 @@ class AkademikController extends Controller
     public function updatePerwalian(Request $request, string $code): JsonResponse
     {
         $validated = $request->validate([
-            'kode_dosen' => ['nullable', 'integer'],
-            'kode_dosen_perwakilan' => ['nullable', 'integer'],
+            'kode_dosen' => ['nullable', 'string'],
+            'kode_dosen_perwakilan' => ['nullable', 'string'],
             'nim' => ['nullable', 'string'],
         ]);
 
@@ -249,6 +266,38 @@ class AkademikController extends Controller
             }
         }
 
+        foreach (['kode_dosen', 'kode_dosen_perwakilan'] as $field) {
+            if (! isset($validated[$field])) {
+                continue;
+            }
+
+            $decoded = $this->decryptIntegerCode($validated[$field], $field);
+            if ($decoded instanceof JsonResponse) {
+                return $decoded;
+            }
+
+            $validated[$field] = $decoded;
+        }
+
         return $this->perwalianService->updatePerwalian((int) $kode_perwalian, array_filter($validated, fn ($value) => $value !== null));
+    }
+
+    private function decryptIntegerCode(string $code, string $field): int|JsonResponse
+    {
+        try {
+            $decoded = Crypt::decryptString($code);
+        } catch (DecryptException) {
+            return ApiResponse::validation([$field => "Format {$field} tidak valid"]);
+        }
+
+        $value = filter_var($decoded, FILTER_VALIDATE_INT, [
+            'options' => ['min_range' => 1],
+        ]);
+
+        if ($value === false) {
+            return ApiResponse::validation([$field => "Format {$field} tidak valid"]);
+        }
+
+        return $value;
     }
 }
