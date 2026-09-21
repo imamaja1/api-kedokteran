@@ -646,6 +646,53 @@ class ServiceKRS
         }
     }
 
+    /**
+     * List semua matakuliah yang diambil mahasiswa pada tahun akademik tertentu.
+     * Dilihat dari krs.kode_tahun_akademik.
+     */
+    public function getMatakuliahByTahunAkademik(string $tahunAkademik): JsonResponse
+    {
+        $ta = TahunAkademik::where('tahun_akademik', $tahunAkademik)->first();
+
+        if (! $ta) {
+            return ApiResponse::notFound('Tahun akademik tidak ditemukan.');
+        }
+
+        $krsList = Krs::where('kode_tahun_akademik', $ta->kode_tahun_akademik)
+            ->with([
+                'mahasiswa:nim,nama_mahasiswa,program_studi_kode',
+                'mahasiswa.programStudi:kode_program_studi,nama_program_studi',
+                'krsDetail' => function ($q) {
+                    $q->select('krs_detail.kode_krs_detail', 'krs_detail.kode_krs', 'krs_detail.id_matakuliah', 'status')
+                        ->with('matakuliah:id_matakuliah,kode_matakuliah,nama_matakuliah,sks_teori,sks_praktik,block');
+                },
+            ])
+            ->orderBy('semester')
+            ->get();
+
+        if ($krsList->isEmpty()) {
+            return ApiResponse::success([], 'Belum ada matakuliah yang diambil pada tahun akademik ini.');
+        }
+
+        $data = $krsList->map(fn ($krs) => [
+            'nim' => $krs->nim,
+            'nama_mahasiswa' => $krs->mahasiswa?->nama_mahasiswa,
+            'nama_program_studi' => $krs->mahasiswa?->programStudi?->nama_program_studi,
+            'semester' => $krs->semester,
+            'tahun_akademik' => $ta->tahun_akademik,
+            'matakuliah' => $krs->krsDetail->map(fn ($detail) => [
+                'code' => $detail->toCode(),
+                'kode_matakuliah' => $detail->matakuliah?->kode_matakuliah,
+                'nama_matakuliah' => $detail->matakuliah?->nama_matakuliah,
+                'sks_teori' => $detail->matakuliah?->sks_teori,
+                'sks_praktik' => $detail->matakuliah?->sks_praktik,
+                'block' => (bool) $detail->matakuliah?->block,
+            ])->values()->toArray(),
+        ])->values()->toArray();
+
+        return ApiResponse::success($data, 'Matakuliah yang diambil mahasiswa berhasil diambil.');
+    }
+
     public function getSksInfo(string $nim): JsonResponse
     {
         $activeTA = TahunAkademik::active()->first();

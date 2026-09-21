@@ -10,7 +10,7 @@ class KelasMahasiswa extends Model
     use HasCode;
     protected $table = 'kelas_mahasiswa';
     protected $primaryKey = 'kelas_mahasiswa_id';
-    public $incrementing = false;
+    public $incrementing = true;
     public $timestamps = false;
 
     protected $fillable = ['kelas_mahasiswa_id', 'kode_krs_detail', 'kelas_id'];

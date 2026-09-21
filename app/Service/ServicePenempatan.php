@@ -23,7 +23,7 @@ class ServicePenempatan
                 ]);
             },
             'krsDetail' => function ($q) {
-                $q->with('krs:nim,kode_tahun_akademik')
+                $q->with('krs:kode_krs,nim,kode_tahun_akademik')
                     ->with('krs.mahasiswa:nim,nama_mahasiswa');
             },
         ]);
@@ -56,10 +56,48 @@ class ServicePenempatan
         return ApiResponse::success($data, 'Data penempatan kelas berhasil diambil.');
     }
 
+    public function belumKelas(array $filters = []): JsonResponse
+    {
+        $query = KrsDetail::with([
+            'krs:kode_krs,nim,kode_tahun_akademik,semester',
+            'krs.mahasiswa:nim,nama_mahasiswa',
+            'krs.tahunAkademik:kode_tahun_akademik,tahun_akademik,semester',
+            'matakuliah:id_matakuliah,kode_matakuliah,nama_matakuliah,sks_teori,sks_praktik,block',
+        ])->doesntHave('kelasMahasiswa');
+
+        if (! empty($filters['tahun_akademik'])) {
+            $query->whereHas('krs', function ($q) use ($filters) {
+                $q->whereHas('tahunAkademik', function ($q2) use ($filters) {
+                    $q2->where('tahun_akademik', $filters['tahun_akademik']);
+                });
+            });
+        }
+
+        if (! empty($filters['id_matakuliah'])) {
+            $query->where('id_matakuliah', $filters['id_matakuliah']);
+        }
+
+        $data = $query->orderByDesc('kode_krs_detail')->get()
+            ->map(fn ($item) => [
+                'code_krs_detail' => $item->toCode(),
+                'kode_krs_detail' => $item->kode_krs_detail,
+                'nim' => $item->krs?->nim,
+                'nama_mahasiswa' => $item->krs?->mahasiswa?->nama_mahasiswa,
+                'semester' => $item->krs?->semester,
+                'tahun_akademik' => $item->krs?->tahunAkademik?->tahun_akademik,
+                'kode_matakuliah' => $item->matakuliah?->kode_matakuliah,
+                'nama_matakuliah' => $item->matakuliah?->nama_matakuliah,
+                'sks_teori' => $item->matakuliah?->sks_teori,
+                'sks_praktik' => $item->matakuliah?->sks_praktik,
+            ])->values()->toArray();
+
+        return ApiResponse::success($data, 'Matakuliah yang belum masuk kelas berhasil diambil.');
+    }
+
     public function store(array $data): JsonResponse
     {
         try {
-            $krsDetail = KrsDetail::with(['krs', 'matakuliah'])
+            $krsDetail = KrsDetail::with(['krs.mahasiswa', 'matakuliah'])
                 ->where('kode_krs_detail', $data['kode_krs_detail'])
                 ->first();
 
@@ -67,7 +105,7 @@ class ServicePenempatan
                 return ApiResponse::notFound('Detail KRS tidak ditemukan.');
             }
 
-            $kelas = Kelas::with('matakuliah')
+            $kelas = Kelas::with(['matakuliah', 'namaKelas'])
                 ->where('kelas_id', $data['kelas_id'])
                 ->first();
 

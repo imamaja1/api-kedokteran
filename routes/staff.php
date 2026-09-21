@@ -10,6 +10,7 @@ use App\Http\Controllers\Api_Staff\AssessmentTemplateController;
 use App\Http\Controllers\Api_Staff\DefaultController;
 use App\Http\Controllers\Api_Staff\DosenController;
 use App\Http\Controllers\Api_Staff\KurikulumAngkatanController;
+use App\Http\Controllers\Api_Staff\KelasController;
 use App\Http\Controllers\Api_Staff\MahasiswaController;
 use App\Http\Controllers\Api_Staff\MatakuliahController;
 use App\Http\Controllers\Api_Staff\NamaKurikulumController;
@@ -54,8 +55,21 @@ Route::prefix("api/staff")
         // Penempatan Kelas
         Route::prefix("penempatan")->middleware(["throttle:60,1"])->group(function () {
             Route::get("/", [PenempatanController::class, "index"]);
+            Route::get("belum-kelas", [PenempatanController::class, "belumKelas"]);
             Route::post("/", [PenempatanController::class, "store"]);
             Route::delete("/{id}", [PenempatanController::class, "destroy"]);
+        });
+
+        // Kelas
+        Route::prefix("kelas")->middleware(["throttle:60,1"])->group(function () {
+            Route::get("matakuliah-konfigurasi", [KelasController::class, "matakuliahKonfigurasi"]);
+            Route::get("/", [KelasController::class, "index"]);
+            Route::post("/", [KelasController::class, "store"]);
+            Route::get("show", [KelasController::class, "show"]);
+            Route::get("mahasiswa-belum-kelas", [KelasController::class, "mahasiswaBelumKelas"]);
+            Route::post("dosen", [KelasController::class, "storeDosen"]);
+            Route::delete("dosen", [KelasController::class, "destroyDosen"]);
+            Route::delete("/", [KelasController::class, "destroy"]);
         });
 
         // Akademik
@@ -78,6 +92,10 @@ Route::prefix("api/staff")
                 Route::get("krs-detail", [
                     AkademikController::class,
                     "krs_detail",
+                ]);
+                Route::get("krs-matakuliah-tahun-akademik", [
+                    AkademikController::class,
+                    "krs_matakuliah_tahun_akademik",
                 ]);
                 Route::get("khs", [AkademikController::class, "khs"]);
                 Route::get("khs-detail", [

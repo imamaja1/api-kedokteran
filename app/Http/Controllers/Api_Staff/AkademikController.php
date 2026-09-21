@@ -81,6 +81,15 @@ class AkademikController extends Controller
         return $this->krsService->getKRSDetail($kode_krs);
     }
 
+    public function krs_matakuliah_tahun_akademik(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'tahun_akademik' => ['required', 'string'],
+        ]);
+
+        return $this->krsService->getMatakuliahByTahunAkademik($validated['tahun_akademik']);
+    }
+
     public function khs(Request $request): JsonResponse
     {
         $validated = $request->validate([

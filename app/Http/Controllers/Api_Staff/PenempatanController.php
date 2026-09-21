@@ -26,6 +26,24 @@ class PenempatanController extends Controller
         return $this->service->index($validasi);
     }
 
+    public function belumKelas(Request $request): JsonResponse
+    {
+        $validasi = $request->validate([
+            'tahun_akademik' => ['nullable', 'string'],
+            'code_matakuliah' => ['nullable', 'string'],
+        ]);
+
+        if (! empty($validasi['code_matakuliah'])) {
+            try {
+                $validasi['id_matakuliah'] = (int) Crypt::decryptString($validasi['code_matakuliah']);
+            } catch (DecryptException) {
+                return ApiResponse::validation(['code_matakuliah' => 'Format code matakuliah tidak valid.']);
+            }
+        }
+
+        return $this->service->belumKelas($validasi);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $validasi = $request->validate([

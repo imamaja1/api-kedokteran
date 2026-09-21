@@ -31,4 +31,9 @@ class KrsDetail extends Model
     {
         return $this->hasOne(KhsDetail::class, 'kode_krs_detail', 'kode_krs_detail');
     }
+
+    public function kelasMahasiswa()
+    {
+        return $this->hasOne(KelasMahasiswa::class, 'kode_krs_detail', 'kode_krs_detail');
+    }
 }
