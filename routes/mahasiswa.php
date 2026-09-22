@@ -24,6 +24,7 @@ Route::prefix('api/mhs')
         Route::get('kurikulum', [ApiMhsKurikulumController::class, 'kurikulum']);
         // krs
         Route::get('krs', [ApiMhsKrsController::class, 'krs']);
+        Route::get('krs/centang', [ApiMhsKrsController::class, 'centangKrs']);
         Route::get('krs/update', [ApiMhsKrsController::class, 'krsUpdate']);
         Route::put('krs/update', [ApiMhsKrsController::class, 'replaceDetail']);
         Route::get('krs/sks-info', [ApiMhsKrsController::class, 'sksInfo']);

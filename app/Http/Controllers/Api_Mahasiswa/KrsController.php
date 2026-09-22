@@ -22,6 +22,13 @@ class KrsController extends Controller
         return (new ServiceKRS)->getKRSMhs($nim, $semester);
     }
 
+    public function centangKrs(): JsonResponse
+    {
+        $nim = Auth::guard('mahasiswa_web')->user()->nim;
+
+        return (new ServiceKRS)->centangKrs($nim);
+    }
+
     public function addDetail(Request $request): JsonResponse
     {
         $validasi = $request->validate([

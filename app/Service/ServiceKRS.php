@@ -226,6 +226,83 @@ class ServiceKRS
     }
 
     /**
+     * "Centang"/buat KRS untuk tahun akademik aktif.
+     * Membuat baris KRS (+ PerwalianKrsValidasi) bila belum ada, lalu
+     * mengembalikan KRS + kurikulum yang difilter ganjil/genap sesuai semester.
+     */
+    public function centangKrs(string $nim): JsonResponse
+    {
+        $mahasiswa = Mahasiswa::where('nim', $nim)
+            ->select('nim', 'nama_mahasiswa', 'program_studi_kode')
+            ->with('programStudi:kode_program_studi,nama_program_studi')
+            ->first();
+
+        if (! $mahasiswa) {
+            return ApiResponse::notFound('Mahasiswa tidak ditemukan');
+        }
+
+        $activeTA = TahunAkademik::active()->first();
+        if (! $activeTA) {
+            return ApiResponse::error('Tidak ada tahun akademik aktif.', 404);
+        }
+
+        $this->autoCreateKrs($nim, $activeTA);
+
+        $mhsInfo = [
+            'nim' => $mahasiswa->nim,
+            'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
+            'nama_program_studi' => $mahasiswa->programStudi?->nama_program_studi,
+        ];
+
+        $krs = Krs::where('nim', $nim)
+            ->where('kode_tahun_akademik', $activeTA->kode_tahun_akademik)
+            ->select('kode_krs', 'nim', 'semester', 'kode_tahun_akademik')
+            ->with([
+                'tahunAkademik:kode_tahun_akademik,tahun_akademik,semester',
+                'krsDetail' => function ($q) {
+                    $q->select('krs_detail.kode_krs_detail', 'krs_detail.kode_krs', 'krs_detail.id_matakuliah', 'status')
+                        ->with('matakuliah:id_matakuliah,kode_matakuliah,nama_matakuliah,sks_teori,sks_praktik,block');
+                },
+            ])
+            ->first();
+
+        return $this->buildKrsResponse($mhsInfo, $krs, $nim, $mahasiswa->program_studi_kode);
+    }
+
+    /**
+     * Buat baris KRS + PerwalianKrsValidasi untuk tahun akademik tertentu
+     * bila belum ada. Idempotent — aman dipanggil berulang.
+     */
+    public function autoCreateKrs(string $nim, TahunAkademik $ta): Krs
+    {
+        $existing = Krs::where('nim', $nim)
+            ->where('kode_tahun_akademik', $ta->kode_tahun_akademik)
+            ->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
+        $semester = (new ServiceSemester)->hitung($nim, $ta);
+
+        $krs = Krs::create([
+            'nim' => $nim,
+            'kode_tahun_akademik' => $ta->kode_tahun_akademik,
+            'semester' => $semester,
+        ]);
+
+        if (! PerwalianKrsValidasi::where('nim', $nim)->exists()) {
+            PerwalianKrsValidasi::create([
+                'nim' => $nim,
+                'kode_dosen_validator' => null,
+                'status_krs' => 'N',
+            ]);
+        }
+
+        return $krs;
+    }
+
+    /**
      * Build status-aware KRS response.
      * - Status 'A' (locked) → KRS + detail only
      * - Status 'N' (editable) → KRS + detail + filtered kurikulum
