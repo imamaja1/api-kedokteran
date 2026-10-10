@@ -20,6 +20,7 @@ use App\Http\Controllers\Api_Staff\TahunAkademikController;
 use App\Http\Controllers\Api_Staff\RuanganController;
 use App\Http\Controllers\Api_Staff\HariController;
 use App\Http\Controllers\Api_Staff\JadwalKelasController;
+use App\Http\Controllers\Api_Staff\AuditFeederController;
 use App\Http\Controllers\Auth\AuthController;
 use Illuminate\Support\Facades\Route;
 
@@ -374,6 +375,15 @@ Route::prefix("api/staff")
             Route::put("/{code}", [JadwalKelasController::class, "update"]);
             Route::delete("/{code}", [JadwalKelasController::class, "destroy"]);
             Route::post("/{code}/copy", [JadwalKelasController::class, "copy"]);
+        });
+
+        // ─── Audit Feeder PDDIKTI (5 GET Endpoints) ───────────────────────────
+        Route::prefix("feeder")->group(function () {
+            Route::get("status", [AuditFeederController::class, "status"]);
+            Route::get("pull/kelas/{code}", [AuditFeederController::class, "pullKelas"]);
+            Route::get("audit/kelas/{code}", [AuditFeederController::class, "auditKelas"]);
+            Route::get("pull/mahasiswa/{nim}", [AuditFeederController::class, "pullMahasiswa"]);
+            Route::get("audit/mahasiswa/{nim}", [AuditFeederController::class, "auditMahasiswa"]);
         });
 
         // fallback dalam group — return 404 bukan 401

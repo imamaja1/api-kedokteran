@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\ApiEndpointController;
 use App\Http\Controllers\Admin\ApiSectionController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DosenController;
+use App\Http\Controllers\Admin\FeederConfigController;
 use App\Http\Controllers\Admin\KelasController;
 use App\Http\Controllers\Admin\KrsKhsController;
 use App\Http\Controllers\Admin\KurikulumController;
@@ -35,6 +36,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin,staff'])
     Route::resource('endpoints', ApiEndpointController::class)->except(['show']);
     Route::resource('users', UserController::class)->except(['show']);
     Route::resource('connections', ApiConnectionController::class)->except(['show']);
+    Route::get('feeder-config', [FeederConfigController::class, 'index'])->name('feeder-config.index');
+    Route::post('feeder-config', [FeederConfigController::class, 'update'])->name('feeder-config.update');
+    Route::post('feeder-config/test', [FeederConfigController::class, 'testConnection'])->name('feeder-config.test');
 
     // Mahasiswa — custom param 'nim' as route key
     Route::resource('mahasiswa', MahasiswaController::class)

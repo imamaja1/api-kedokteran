@@ -84,6 +84,43 @@
         .method-badge-PUT { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
         .method-badge-PATCH { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
         .method-badge-DELETE { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+
+        /* ─── 3-Panel Resizable Gutter Styles (PRD F-01..F-12) ─── */
+        .panel-gutter {
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            position: relative;
+        }
+        .panel-gutter::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: -4px;
+            right: -4px;
+            z-index: 30;
+        }
+        .panel-gutter:hover,
+        .panel-gutter.is-dragging {
+            background-color: rgba(99, 102, 241, 0.35) !important;
+        }
+        .panel-gutter:hover .gutter-handle,
+        .panel-gutter.is-dragging .gutter-handle {
+            background-color: #c3c0ff !important;
+            box-shadow: 0 0 8px rgba(195, 192, 255, 0.6);
+        }
+        body.is-resizing {
+            user-select: none !important;
+            -webkit-user-select: none !important;
+            cursor: col-resize !important;
+        }
+        body.is-resizing iframe,
+        body.is-resizing input,
+        body.is-resizing textarea,
+        body.is-resizing select {
+            pointer-events: none !important;
+        }
     </style>
 </head>
 
@@ -116,8 +153,8 @@
 
 
 
-        {{-- Mobile View Mode Switcher (Docs vs Tester on screen < 1200px) --}}
-        <div class="flex xl:hidden items-center bg-surface-container-low p-1 rounded-lg border border-[#222d45]">
+        {{-- Mobile View Mode Switcher (Docs vs Tester on screen < 1024px) --}}
+        <div class="flex lg:hidden items-center bg-surface-container-low p-1 rounded-lg border border-[#222d45]">
             <button id="tab-btn-docs" onclick="switchMobilePane('docs')" class="px-3 py-1 rounded font-body-sm text-[12px] font-semibold bg-primary-container text-on-primary-container">
                 Dokumentasi
             </button>
@@ -128,6 +165,20 @@
 
         {{-- Right Actions --}}
         <div class="flex items-center gap-2">
+            {{-- Panel Layout Controls (Desktop >= 1024px) --}}
+            <button id="btn-reset-layout" onclick="resetPanelLayout()" 
+                class="hidden lg:flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface text-body-sm font-medium border border-[#222d45] hover:border-outline transition-colors"
+                title="Reset tata letak ketiga panel ke ukuran awal (F-07)">
+                <span class="material-symbols-outlined text-[16px] text-secondary">restart_alt</span>
+                <span class="hidden xl:inline text-xs">Reset Layout</span>
+            </button>
+            <button id="btn-toggle-tester" onclick="toggleTesterPanel()" 
+                class="hidden lg:flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface text-body-sm font-medium border border-[#222d45] hover:border-outline transition-colors"
+                title="Tutup / Buka panel Live API Tester (F-11, Alt+T)">
+                <span id="btn-toggle-tester-icon" class="material-symbols-outlined text-[16px] text-tertiary">right_panel_close</span>
+                <span id="btn-toggle-tester-label" class="hidden xl:inline text-xs">Tester</span>
+            </button>
+
             @auth
             <span class="hidden sm:flex items-center gap-1.5 text-body-sm text-on-surface-variant font-medium px-2">
                 <span class="material-symbols-outlined text-[18px] text-primary">account_circle</span>
@@ -156,10 +207,10 @@
 
     {{-- ─── 3-COLUMN WORKSPACE CONTAINER ─── --}}
     <main class="pt-14 h-screen bg-background overflow-hidden">
-        <div class="h-[calc(100vh-3.5rem)] flex flex-row overflow-hidden w-full select-none">
+        <div class="h-[calc(100vh-3.5rem)] flex flex-row overflow-hidden w-full select-none" id="workspace-container">
 
-            {{-- ==================== KOLOM 1: ENDPOINT EXPLORER (280px) ==================== --}}
-            <aside id="col-sidebar" class="w-[290px] shrink-0 flex flex-col bg-surface-container-lowest border-r border-[#222d45] select-text transition-transform duration-200 z-40 fixed lg:static inset-y-14 left-0 -translate-x-full lg:translate-x-0 shadow-2xl lg:shadow-none">
+            {{-- ==================== KOLOM 1: ENDPOINT EXPLORER (285px default) ==================== --}}
+            <aside id="col-sidebar" style="width: 285px;" class="shrink-0 flex flex-col bg-surface-container-lowest border-r border-[#222d45] select-text transition-transform duration-200 z-40 fixed lg:static inset-y-14 left-0 -translate-x-full lg:translate-x-0 shadow-2xl lg:shadow-none">
                 
                 {{-- Explorer Header & Filter Bar --}}
                 <div class="p-3 border-b border-[#222d45] flex flex-col gap-2.5 bg-surface-container-low/60">
@@ -256,8 +307,22 @@
             {{-- Backdrop for mobile sidebar --}}
             <div id="sidebar-backdrop" onclick="toggleMobileSidebar()" class="fixed inset-0 bg-black/60 z-30 hidden lg:hidden"></div>
 
+            {{-- ─── Gutter 1: Pemisah Kolom Kiri dan Tengah (PRD F-01) ─── --}}
+            <div id="gutter-left"
+                role="separator"
+                tabindex="0"
+                aria-orientation="vertical"
+                aria-label="Pemisah panel seksi dan endpoint"
+                aria-valuenow="285"
+                aria-valuemin="200"
+                aria-valuemax="480"
+                class="panel-gutter hidden lg:flex items-center justify-center w-1.5 shrink-0 bg-surface-container-low hover:bg-primary-container active:bg-primary cursor-col-resize z-20 transition-colors border-x border-[#222d45] focus:outline-none focus:ring-1 focus:ring-primary group"
+                title="Tarik untuk mengubah lebar panel navigasi (Klik 2x untuk reset)">
+                <div class="gutter-handle w-0.5 h-8 rounded-full bg-outline/40 transition-colors"></div>
+            </div>
+
             {{-- ==================== KOLOM 2: DOKUMENTASI SPESIFIKASI (Fluid flex-1) ==================== --}}
-            <main id="col-specs" class="flex-1 flex flex-col min-w-0 bg-surface border-r border-[#222d45] overflow-y-auto select-text">
+            <main id="col-specs" class="flex-1 flex flex-col min-w-0 lg:min-w-[420px] bg-surface overflow-y-auto select-text">
                 
                 {{-- Sticky Ribbon Header for Active Endpoint --}}
                 <div class="sticky top-0 z-20 bg-surface/95 backdrop-blur px-4 sm:px-6 py-3 border-b border-[#222d45] flex items-center justify-between flex-wrap gap-2">
@@ -421,8 +486,22 @@
                 </div>
             </main>
 
-            {{-- ==================== KOLOM 3: LIVE API TESTER & CONSOLE (480px) ==================== --}}
-            <aside id="col-tester" class="w-[490px] shrink-0 flex flex-col bg-surface-container-lowest overflow-hidden select-text border-l border-[#222d45] hidden xl:flex">
+            {{-- ─── Gutter 2: Pemisah Kolom Tengah dan Kanan (PRD F-01) ─── --}}
+            <div id="gutter-right"
+                role="separator"
+                tabindex="0"
+                aria-orientation="vertical"
+                aria-label="Pemisah panel live API tester"
+                aria-valuenow="485"
+                aria-valuemin="320"
+                aria-valuemax="900"
+                class="panel-gutter hidden lg:flex items-center justify-center w-1.5 shrink-0 bg-surface-container-low hover:bg-primary-container active:bg-primary cursor-col-resize z-20 transition-colors border-x border-[#222d45] focus:outline-none focus:ring-1 focus:ring-primary group"
+                title="Tarik untuk mengubah lebar panel live tester (Klik 2x untuk reset)">
+                <div class="gutter-handle w-0.5 h-8 rounded-full bg-outline/40 transition-colors"></div>
+            </div>
+
+            {{-- ==================== KOLOM 3: LIVE API TESTER & CONSOLE (485px default) ==================== --}}
+            <aside id="col-tester" style="width: 485px;" class="shrink-0 flex flex-col bg-surface-container-lowest overflow-hidden select-text border-l border-[#222d45] hidden lg:flex">
                 
                 {{-- Console Ribbon Header --}}
                 <div class="px-4 py-3 border-b border-[#222d45] bg-surface-container-low/70 flex items-center justify-between">
@@ -453,18 +532,26 @@
                     {{-- Request Configuration Tabs --}}
                     <div class="flex items-center justify-between pt-1">
                         <div class="flex items-center gap-1 font-body-sm">
-                            <button id="req-tab-body" onclick="switchReqTab('body')" class="px-2.5 py-1 rounded bg-surface-container-high text-on-surface font-semibold text-[11px] border-b-2 border-primary">Body (JSON)</button>
+                            <button id="req-tab-params" onclick="switchReqTab('params')" class="px-2.5 py-1 rounded bg-surface-container-high text-on-surface font-semibold text-[11px] border-b-2 border-primary">Params</button>
+                            <button id="req-tab-body" onclick="switchReqTab('body')" class="px-2.5 py-1 rounded text-outline hover:text-on-surface text-[11px]">Body</button>
                             <button id="req-tab-headers" onclick="switchReqTab('headers')" class="px-2.5 py-1 rounded text-outline hover:text-on-surface text-[11px]">Headers</button>
                             <button id="req-tab-cookies" onclick="switchReqTab('cookies')" class="px-2.5 py-1 rounded text-outline hover:text-on-surface text-[11px]">Cookies Debug</button>
                         </div>
-                        <span class="font-code-sm text-[10px] text-outline" id="req-type-indicator">RAW • application/json</span>
+                        <span class="font-code-sm text-[10px] text-outline" id="req-type-indicator">URL • Query & Path Params</span>
                     </div>
                 </div>
 
-                {{-- Interactive Editable Body & Headers Pane --}}
+                {{-- Interactive Editable Params, Body & Headers Pane --}}
                 <div class="h-44 border-b border-[#222d45] bg-[#070e1e] flex flex-col relative font-code-sm text-[12px]">
-                    {{-- Body Editor Pane --}}
-                    <div id="pane-req-body" class="flex flex-1 overflow-hidden p-2">
+                    {{-- Params Editor Pane (Untuk GET: Path & Query params) --}}
+                    <div id="pane-req-params" class="flex flex-1 overflow-hidden p-2">
+                        <textarea id="tester-params-input" 
+                            class="w-full h-full bg-transparent resize-none font-code-sm text-[12px] text-on-surface leading-5 focus:outline-none placeholder:text-outline-variant" 
+                            placeholder='{"nim": "25080110006"}'></textarea>
+                    </div>
+
+                    {{-- Body Editor Pane (Untuk selain GET: JSON Payload) --}}
+                    <div id="pane-req-body" class="flex flex-1 overflow-hidden p-2 hidden">
                         <textarea id="tester-body-input" 
                             class="w-full h-full bg-transparent resize-none font-code-sm text-[12px] text-on-surface leading-5 focus:outline-none placeholder:text-outline-variant" 
                             placeholder='{"key": "value"}'></textarea>
@@ -496,7 +583,7 @@
 
                     {{-- Editor Status Footer --}}
                     <div class="px-3 py-1 bg-surface-container-lowest/90 border-t border-[#1a233a] flex items-center justify-between text-[11px] text-outline">
-                        <span id="tester-editor-hint">JSON Body disiapkan</span>
+                        <span id="tester-editor-hint">Params URL / Query String</span>
                         <span id="tester-char-count">Chars: 0</span>
                     </div>
                 </div>
@@ -666,10 +753,23 @@
             }
             hTbody.innerHTML = hRows;
 
-            // Body Schema & Table
+            // Body / Params Schema & Table Heading
+            const bodyHeading = document.getElementById('spec-body-heading');
+            const bodyTypeBadge = document.getElementById('spec-body-type-badge');
+            const bodyRawLabel = document.getElementById('spec-body-raw-label');
             const bodyRawEl = document.getElementById('spec-body-raw');
             const bodyTableWrap = document.getElementById('spec-body-table-wrap');
             const bodyTbody = document.getElementById('spec-body-tbody');
+
+            if (ep.method === 'GET') {
+                if (bodyHeading) bodyHeading.textContent = 'Request Parameters (Query & Path)';
+                if (bodyTypeBadge) bodyTypeBadge.textContent = 'URL Parameters';
+                if (bodyRawLabel) bodyRawLabel.textContent = 'Parameters Schema';
+            } else {
+                if (bodyHeading) bodyHeading.textContent = 'Request Body (JSON Schema)';
+                if (bodyTypeBadge) bodyTypeBadge.textContent = 'application/json';
+                if (bodyRawLabel) bodyRawLabel.textContent = 'Payload Schema';
+            }
 
             if (ep.body && ep.body !== '-') {
                 bodyRawEl.textContent = ep.body;
@@ -688,7 +788,9 @@
                     bodyTableWrap.classList.add('hidden');
                 }
             } else {
-                bodyRawEl.textContent = '// Endpoint ini tidak memerlukan request body.';
+                bodyRawEl.textContent = ep.method === 'GET' 
+                    ? '// Endpoint ini tidak memerlukan parameter URL.' 
+                    : '// Endpoint ini tidak memerlukan request body.';
                 bodyTableWrap.classList.add('hidden');
             }
 
@@ -713,10 +815,10 @@
         function syncTester(ep) {
             const methodSel = document.getElementById('tester-method');
             const urlInput = document.getElementById('tester-url');
+            const paramsInput = document.getElementById('tester-params-input');
             const bodyInput = document.getElementById('tester-body-input');
 
             methodSel.value = ep.method;
-            onTesterMethodChange();
 
             // Construct full URL
             let fullUrl = ep.url;
@@ -725,7 +827,8 @@
             }
             urlInput.value = fullUrl;
 
-            // Construct Sample Clean Body
+            // Construct Sample Clean Data
+            let cleanSampleStr = '';
             if (ep.body && ep.body !== '-') {
                 try {
                     const parsed = JSON.parse(ep.body);
@@ -737,12 +840,21 @@
                             cleanObj[k] = v;
                         }
                     }
-                    bodyInput.value = JSON.stringify(cleanObj, null, 2);
+                    cleanSampleStr = JSON.stringify(cleanObj, null, 2);
                 } catch {
-                    bodyInput.value = ep.body;
+                    cleanSampleStr = ep.body;
                 }
+            }
+
+            // Pisahkan tampilan: GET -> Params tab, Selain GET -> Body tab
+            if (ep.method === 'GET') {
+                if (paramsInput) paramsInput.value = cleanSampleStr;
+                if (bodyInput) bodyInput.value = '';
+                switchReqTab('params');
             } else {
-                bodyInput.value = '';
+                if (bodyInput) bodyInput.value = cleanSampleStr;
+                if (paramsInput) paramsInput.value = '';
+                switchReqTab('body');
             }
 
             updateCharCount();
@@ -886,8 +998,9 @@
         async function sendTesterRequest() {
             const method = document.getElementById('tester-method').value;
             const url = document.getElementById('tester-url').value.trim();
-            const rawBody = document.getElementById('tester-body-input').value.trim();
-            const rawHeaders = document.getElementById('tester-headers-input').value.trim();
+            const rawParams = document.getElementById('tester-params-input')?.value.trim() || '';
+            const rawBody = document.getElementById('tester-body-input')?.value.trim() || '';
+            const rawHeaders = document.getElementById('tester-headers-input')?.value.trim() || '';
 
             if (!url) {
                 alert('URL endpoint tidak boleh kosong.');
@@ -914,17 +1027,51 @@
                 headers['X-XSRF-TOKEN'] = decodeURIComponent(xsrfToken);
             }
 
-            // Prepare body or query
             let finalUrl = url;
             let body = undefined;
-            if (method === 'GET' && rawBody) {
+
+            // 1. Process Params (Path substitution + Query String)
+            const paramSource = rawParams || (method === 'GET' ? rawBody : '');
+            if (paramSource) {
                 try {
-                    const parsedParams = JSON.parse(rawBody);
-                    const qs = new URLSearchParams(parsedParams).toString();
-                    if (qs) finalUrl += (url.includes('?') ? '&' : '?') + qs;
-                } catch {}
-            } else if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && rawBody) {
-                body = rawBody;
+                    const parsedParams = JSON.parse(paramSource);
+                    const remainingParams = {};
+                    for (const [k, v] of Object.entries(parsedParams)) {
+                        const regex = new RegExp(`(\\{${k}\\}|:${k}|<${k}>|<encrypted_${k}>)`, 'gi');
+                        if (regex.test(finalUrl)) {
+                            finalUrl = finalUrl.replace(regex, encodeURIComponent(v));
+                        } else {
+                            remainingParams[k] = v;
+                        }
+                    }
+
+                    if (method === 'GET') {
+                        const qs = new URLSearchParams(remainingParams).toString();
+                        if (qs) finalUrl += (finalUrl.includes('?') ? '&' : '?') + qs;
+                    }
+                } catch {
+                    // Non-JSON params fallback
+                }
+            }
+
+            // 2. Process Body (Payload for non-GET)
+            if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && rawBody) {
+                try {
+                    const parsedBody = JSON.parse(rawBody);
+                    // Also substitute any remaining path placeholders in URL if matched
+                    const cleanBody = {};
+                    for (const [k, v] of Object.entries(parsedBody)) {
+                        const regex = new RegExp(`(\\{${k}\\}|:${k}|<${k}>|<encrypted_${k}>)`, 'gi');
+                        if (regex.test(finalUrl)) {
+                            finalUrl = finalUrl.replace(regex, encodeURIComponent(v));
+                        } else {
+                            cleanBody[k] = v;
+                        }
+                    }
+                    body = Object.keys(cleanBody).length > 0 ? JSON.stringify(cleanBody, null, 2) : rawBody;
+                } catch {
+                    body = rawBody;
+                }
             }
 
             // UI: Loading state
@@ -1013,11 +1160,10 @@
 
         function onTesterMethodChange() {
             const m = document.getElementById('tester-method').value;
-            const hint = document.getElementById('tester-editor-hint');
             if (m === 'GET') {
-                hint.textContent = 'GET Params (JSON auto-converted to Query String)';
+                switchReqTab('params');
             } else {
-                hint.textContent = 'JSON Payload Body';
+                switchReqTab('body');
             }
         }
 
@@ -1025,23 +1171,29 @@
             if (ACTIVE_ENDPOINT_ID) {
                 syncTester(ENDPOINTS_MAP[ACTIVE_ENDPOINT_ID]);
             } else {
-                document.getElementById('tester-body-input').value = '';
+                const p = document.getElementById('tester-params-input');
+                const b = document.getElementById('tester-body-input');
+                if (p) p.value = '';
+                if (b) b.value = '';
             }
             updateCharCount();
         }
 
         function updateCharCount() {
-            const len = document.getElementById('tester-body-input')?.value.length || 0;
+            const isParamsVisible = !document.getElementById('pane-req-params')?.classList.contains('hidden');
+            const inputEl = isParamsVisible 
+                ? document.getElementById('tester-params-input')
+                : document.getElementById('tester-body-input');
+            const len = inputEl?.value.length || 0;
             const el = document.getElementById('tester-char-count');
             if (el) el.textContent = `Chars: ${len}`;
         }
+        document.getElementById('tester-params-input')?.addEventListener('input', updateCharCount);
         document.getElementById('tester-body-input')?.addEventListener('input', updateCharCount);
-
-
 
         // ─── TABS & PANES SWITCHING ───
         function switchReqTab(tab) {
-            ['body', 'headers', 'cookies'].forEach(t => {
+            ['params', 'body', 'headers', 'cookies'].forEach(t => {
                 document.getElementById(`pane-req-${t}`)?.classList.add('hidden');
                 document.getElementById(`req-tab-${t}`)?.classList.remove('bg-surface-container-high', 'text-on-surface', 'border-b-2', 'border-primary');
                 document.getElementById(`req-tab-${t}`)?.classList.add('text-outline');
@@ -1053,6 +1205,25 @@
                 btn.classList.remove('text-outline');
             }
             if (tab === 'cookies') refreshDebugCookies();
+
+            const m = document.getElementById('tester-method')?.value || 'GET';
+            const hint = document.getElementById('tester-editor-hint');
+            const typeIndicator = document.getElementById('req-type-indicator');
+
+            if (tab === 'params') {
+                if (hint) hint.textContent = 'Params URL / Query String';
+                if (typeIndicator) typeIndicator.textContent = 'URL • Query & Path Params';
+            } else if (tab === 'body') {
+                if (hint) hint.textContent = m === 'GET' ? 'Info: Method GET tidak menggunakan body payload' : 'JSON Payload Body';
+                if (typeIndicator) typeIndicator.textContent = 'RAW • application/json';
+            } else if (tab === 'headers') {
+                if (hint) hint.textContent = 'JSON Request Headers';
+                if (typeIndicator) typeIndicator.textContent = 'HTTP Headers';
+            } else if (tab === 'cookies') {
+                if (hint) hint.textContent = 'Sanctum & XSRF Cookies';
+                if (typeIndicator) typeIndicator.textContent = 'Cookie Inspector';
+            }
+            updateCharCount();
         }
 
         function switchResTab(tab) {
@@ -1219,6 +1390,314 @@
             return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
 
+        // ─── 3-PANEL RESIZABLE LAYOUT MANAGER (PRD F-01 s/d F-12) ───
+        const PANEL_LAYOUT = {
+            STORAGE_KEY: 'siska_docs_panel_layout_v1',
+            SIDEBAR: {
+                DEFAULT: 285,
+                MIN: 200,
+                MAX: 480
+            },
+            SPECS: {
+                MIN: 420
+            },
+            TESTER: {
+                DEFAULT: 485,
+                MIN: 320,
+                MAX: 900
+            },
+            GUTTER_WIDTH: 6,
+            STEP_NORMAL: 10,
+            STEP_LARGE: 50
+        };
+
+        let currentSidebarWidth = PANEL_LAYOUT.SIDEBAR.DEFAULT;
+        let currentTesterWidth = PANEL_LAYOUT.TESTER.DEFAULT;
+        let isTesterCollapsed = false;
+
+        function loadSavedLayout() {
+            try {
+                const raw = localStorage.getItem(PANEL_LAYOUT.STORAGE_KEY);
+                if (!raw) return null;
+                const data = JSON.parse(raw);
+                if (data && data.version === 1) {
+                    return data;
+                }
+            } catch (err) {
+                console.warn('Gagal membaca layout dari localStorage:', err);
+            }
+            return null;
+        }
+
+        function saveLayout() {
+            try {
+                const data = {
+                    version: 1,
+                    sidebarWidth: Math.round(currentSidebarWidth),
+                    testerWidth: Math.round(currentTesterWidth),
+                    isTesterCollapsed: Boolean(isTesterCollapsed)
+                };
+                localStorage.setItem(PANEL_LAYOUT.STORAGE_KEY, JSON.stringify(data));
+            } catch (err) {
+                console.warn('Gagal menyimpan layout ke localStorage:', err);
+            }
+        }
+
+        function getContainerWidth() {
+            const container = document.getElementById('workspace-container');
+            return container ? container.clientWidth : window.innerWidth;
+        }
+
+        function calculateMaxSidebarWidth() {
+            const containerWidth = getContainerWidth();
+            const activeTesterWidth = isTesterCollapsed ? 0 : currentTesterWidth;
+            const gutters = isTesterCollapsed ? PANEL_LAYOUT.GUTTER_WIDTH : (PANEL_LAYOUT.GUTTER_WIDTH * 2);
+            const available = containerWidth - activeTesterWidth - PANEL_LAYOUT.SPECS.MIN - gutters;
+            return Math.max(PANEL_LAYOUT.SIDEBAR.MIN, Math.min(PANEL_LAYOUT.SIDEBAR.MAX, available));
+        }
+
+        function calculateMaxTesterWidth() {
+            const containerWidth = getContainerWidth();
+            const gutters = PANEL_LAYOUT.GUTTER_WIDTH * 2;
+            const available = containerWidth - currentSidebarWidth - PANEL_LAYOUT.SPECS.MIN - gutters;
+            return Math.max(PANEL_LAYOUT.TESTER.MIN, Math.min(PANEL_LAYOUT.TESTER.MAX, available));
+        }
+
+        function applySidebarWidth(targetWidth, persist = false) {
+            const colSidebar = document.getElementById('col-sidebar');
+            const gutterLeft = document.getElementById('gutter-left');
+            if (!colSidebar || window.innerWidth < 1024) return;
+
+            const maxAllowed = calculateMaxSidebarWidth();
+            const clamped = Math.max(PANEL_LAYOUT.SIDEBAR.MIN, Math.min(targetWidth, maxAllowed));
+            currentSidebarWidth = clamped;
+
+            colSidebar.style.width = `${clamped}px`;
+            if (gutterLeft) {
+                gutterLeft.setAttribute('aria-valuenow', String(Math.round(clamped)));
+                gutterLeft.setAttribute('aria-valuemax', String(Math.round(maxAllowed)));
+            }
+
+            if (persist) saveLayout();
+        }
+
+        function applyTesterWidth(targetWidth, persist = false) {
+            const colTester = document.getElementById('col-tester');
+            const gutterRight = document.getElementById('gutter-right');
+            if (!colTester || isTesterCollapsed || window.innerWidth < 1024) return;
+
+            const maxAllowed = calculateMaxTesterWidth();
+            const clamped = Math.max(PANEL_LAYOUT.TESTER.MIN, Math.min(targetWidth, maxAllowed));
+            currentTesterWidth = clamped;
+
+            colTester.style.width = `${clamped}px`;
+            if (gutterRight) {
+                gutterRight.setAttribute('aria-valuenow', String(Math.round(clamped)));
+                gutterRight.setAttribute('aria-valuemax', String(Math.round(maxAllowed)));
+            }
+
+            if (persist) saveLayout();
+        }
+
+        function toggleTesterPanel(open) {
+            if (window.innerWidth < 1024) {
+                const colTester = document.getElementById('col-tester');
+                const isCurrentlyVisible = colTester && !colTester.classList.contains('hidden');
+                const targetOpen = (open !== undefined) ? open : !isCurrentlyVisible;
+                switchMobilePane(targetOpen ? 'tester' : 'docs');
+                return;
+            }
+
+            const colTester = document.getElementById('col-tester');
+            const gutterRight = document.getElementById('gutter-right');
+            const toggleIcon = document.getElementById('btn-toggle-tester-icon');
+            const toggleBtn = document.getElementById('btn-toggle-tester');
+
+            if (open === undefined) {
+                isTesterCollapsed = !isTesterCollapsed;
+            } else {
+                isTesterCollapsed = !open;
+            }
+
+            if (isTesterCollapsed) {
+                colTester?.classList.add('hidden');
+                colTester?.classList.remove('flex');
+                gutterRight?.classList.add('hidden');
+                gutterRight?.classList.remove('flex');
+                if (toggleIcon) toggleIcon.textContent = 'vertical_split';
+                if (toggleBtn) toggleBtn.setAttribute('title', 'Buka panel Live API Tester (Alt + T)');
+            } else {
+                colTester?.classList.remove('hidden');
+                colTester?.classList.add('flex');
+                gutterRight?.classList.remove('hidden');
+                gutterRight?.classList.add('flex');
+                if (toggleIcon) toggleIcon.textContent = 'right_panel_close';
+                if (toggleBtn) toggleBtn.setAttribute('title', 'Tutup panel Live API Tester (Alt + T)');
+                applyTesterWidth(currentTesterWidth);
+            }
+
+            saveLayout();
+        }
+
+        function resetPanelLayout() {
+            currentSidebarWidth = PANEL_LAYOUT.SIDEBAR.DEFAULT;
+            currentTesterWidth = PANEL_LAYOUT.TESTER.DEFAULT;
+            isTesterCollapsed = false;
+
+            const colTester = document.getElementById('col-tester');
+            const gutterRight = document.getElementById('gutter-right');
+            const toggleIcon = document.getElementById('btn-toggle-tester-icon');
+            const toggleBtn = document.getElementById('btn-toggle-tester');
+
+            colTester?.classList.remove('hidden');
+            colTester?.classList.add('flex');
+            gutterRight?.classList.remove('hidden');
+            gutterRight?.classList.add('flex');
+            if (toggleIcon) toggleIcon.textContent = 'right_panel_close';
+            if (toggleBtn) toggleBtn.setAttribute('title', 'Tutup panel Live API Tester (Alt + T)');
+
+            applySidebarWidth(PANEL_LAYOUT.SIDEBAR.DEFAULT);
+            applyTesterWidth(PANEL_LAYOUT.TESTER.DEFAULT);
+
+            saveLayout();
+        }
+
+        function initPanelLayout() {
+            const saved = loadSavedLayout();
+            if (saved) {
+                currentSidebarWidth = saved.sidebarWidth || PANEL_LAYOUT.SIDEBAR.DEFAULT;
+                currentTesterWidth = saved.testerWidth || PANEL_LAYOUT.TESTER.DEFAULT;
+                isTesterCollapsed = Boolean(saved.isTesterCollapsed);
+            }
+
+            if (window.innerWidth >= 1024) {
+                applySidebarWidth(currentSidebarWidth);
+                if (isTesterCollapsed) {
+                    toggleTesterPanel(false);
+                } else {
+                    applyTesterWidth(currentTesterWidth);
+                }
+            }
+
+            const gutterLeft = document.getElementById('gutter-left');
+            const gutterRight = document.getElementById('gutter-right');
+            const container = document.getElementById('workspace-container');
+
+            function setupGutter(gutter, type) {
+                if (!gutter || !container) return;
+
+                let dragging = false;
+
+                gutter.addEventListener('pointerdown', function(e) {
+                    if (window.innerWidth < 1024) return;
+                    if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+                    dragging = true;
+                    gutter.setPointerCapture(e.pointerId);
+                    document.body.classList.add('is-resizing');
+                    gutter.classList.add('is-dragging');
+                    e.preventDefault();
+                });
+
+                gutter.addEventListener('pointermove', function(e) {
+                    if (!dragging || window.innerWidth < 1024) return;
+                    const containerRect = container.getBoundingClientRect();
+
+                    if (type === 'left') {
+                        const target = e.clientX - containerRect.left;
+                        applySidebarWidth(target);
+                    } else if (type === 'right') {
+                        const target = containerRect.right - e.clientX;
+                        applyTesterWidth(target);
+                    }
+                });
+
+                function endDrag(e) {
+                    if (!dragging) return;
+                    dragging = false;
+                    try {
+                        gutter.releasePointerCapture(e.pointerId);
+                    } catch (_) {}
+                    document.body.classList.remove('is-resizing');
+                    gutter.classList.remove('is-dragging');
+                    saveLayout();
+                }
+
+                gutter.addEventListener('pointerup', endDrag);
+                gutter.addEventListener('pointercancel', endDrag);
+
+                // Double click to reset per panel (PRD F-06)
+                gutter.addEventListener('dblclick', function() {
+                    if (type === 'left') {
+                        applySidebarWidth(PANEL_LAYOUT.SIDEBAR.DEFAULT, true);
+                    } else {
+                        applyTesterWidth(PANEL_LAYOUT.TESTER.DEFAULT, true);
+                    }
+                });
+
+                // Keyboard operation (PRD F-08)
+                gutter.addEventListener('keydown', function(e) {
+                    const step = e.shiftKey ? PANEL_LAYOUT.STEP_LARGE : PANEL_LAYOUT.STEP_NORMAL;
+                    if (type === 'left') {
+                        if (e.key === 'ArrowLeft') {
+                            e.preventDefault();
+                            applySidebarWidth(currentSidebarWidth - step, true);
+                        } else if (e.key === 'ArrowRight') {
+                            e.preventDefault();
+                            applySidebarWidth(currentSidebarWidth + step, true);
+                        } else if (e.key === 'Home') {
+                            e.preventDefault();
+                            applySidebarWidth(PANEL_LAYOUT.SIDEBAR.MIN, true);
+                        } else if (e.key === 'End') {
+                            e.preventDefault();
+                            applySidebarWidth(PANEL_LAYOUT.SIDEBAR.MAX, true);
+                        } else if (e.key === 'Enter') {
+                            e.preventDefault();
+                            applySidebarWidth(PANEL_LAYOUT.SIDEBAR.DEFAULT, true);
+                        }
+                    } else if (type === 'right') {
+                        if (e.key === 'ArrowLeft') {
+                            e.preventDefault();
+                            applyTesterWidth(currentTesterWidth + step, true);
+                        } else if (e.key === 'ArrowRight') {
+                            e.preventDefault();
+                            applyTesterWidth(currentTesterWidth - step, true);
+                        } else if (e.key === 'Home') {
+                            e.preventDefault();
+                            applyTesterWidth(PANEL_LAYOUT.TESTER.MAX, true);
+                        } else if (e.key === 'End') {
+                            e.preventDefault();
+                            applyTesterWidth(PANEL_LAYOUT.TESTER.MIN, true);
+                        } else if (e.key === 'Enter') {
+                            e.preventDefault();
+                            applyTesterWidth(PANEL_LAYOUT.TESTER.DEFAULT, true);
+                        }
+                    }
+                });
+            }
+
+            setupGutter(gutterLeft, 'left');
+            setupGutter(gutterRight, 'right');
+
+            // Responsive window resize listener (PRD F-10)
+            window.addEventListener('resize', function() {
+                if (window.innerWidth >= 1024) {
+                    const colSpecs = document.getElementById('col-specs');
+                    const colTester = document.getElementById('col-tester');
+                    colSpecs?.classList.remove('hidden');
+                    colTester?.classList.remove('w-full');
+                    applySidebarWidth(currentSidebarWidth);
+                    if (isTesterCollapsed) {
+                        colTester?.classList.add('hidden');
+                    } else {
+                        colTester?.classList.remove('hidden');
+                        colTester?.classList.add('flex');
+                        applyTesterWidth(currentTesterWidth);
+                    }
+                }
+            });
+        }
+
         // ─── KEYBOARD SHORTCUTS ───
         window.addEventListener('keydown', function(e) {
             // Shortcut "/" to search
@@ -1231,10 +1710,17 @@
                 e.preventDefault();
                 sendTesterRequest();
             }
+            // Shortcut Alt + T to toggle tester panel
+            if (e.altKey && (e.key === 't' || e.key === 'T')) {
+                e.preventDefault();
+                toggleTesterPanel();
+            }
         });
 
         // ─── INITIALIZATION ON LOAD ───
         document.addEventListener('DOMContentLoaded', function() {
+            initPanelLayout();
+
             // Select first endpoint by default
             if (ALL_ENDPOINTS_LIST.length > 0) {
                 // If URL has query params ?method=...&url=...

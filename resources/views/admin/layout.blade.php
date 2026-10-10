@@ -313,6 +313,10 @@
                 class="{{ request()->routeIs('admin.connections.*') ? 'active' : '' }}">
                 <i class="bi bi-plug-fill"></i> <span class="nav-link-text">Api Connections</span>
             </a>
+            <a href="{{ route('admin.feeder-config.index') }}"
+                class="{{ request()->routeIs('admin.feeder-config.*') ? 'active' : '' }}">
+                <i class="bi bi-hdd-network-fill"></i> <span class="nav-link-text">Konfigurasi Feeder</span>
+            </a>
             <a href="{{ route('admin.tahun-akademik.index') }}"
                 class="{{ request()->routeIs('admin.tahun-akademik.*') ? 'active' : '' }}">
                 <i class="bi bi-calendar-fill"></i> <span class="nav-link-text">Tahun Akademik</span>
