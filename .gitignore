@@ -27,3 +27,6 @@ Thumbs.db
 /code-update
 /.qoder
 /testing
+testing/
+/.agents
+skills-lock.json
