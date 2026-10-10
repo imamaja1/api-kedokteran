@@ -46,4 +46,9 @@ class Kelas extends Model
     {
         return $this->belongsTo(TahunAkademik::class, 'kode_tahun_akademik', 'kode_tahun_akademik');
     }
+
+    public function jadwalKelas()
+    {
+        return $this->hasMany(JadwalKelas::class, 'kelas_id', 'kelas_id');
+    }
 }

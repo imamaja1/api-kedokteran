@@ -5,6 +5,7 @@ use App\Http\Controllers\Api_Mahasiswa\KrsController as ApiMhsKrsController;
 use App\Http\Controllers\Api_Mahasiswa\KurikulumController as ApiMhsKurikulumController;
 use App\Http\Controllers\Api_Mahasiswa\MahasiswaController;
 use App\Http\Controllers\Api_Mahasiswa\PetikanNIlaiController as ApiMhsPetikanNilaiController;
+use App\Http\Controllers\Api_Mahasiswa\JadwalController as ApiMhsJadwalController;
 use App\Http\Controllers\Auth\AuthController;
 use Illuminate\Support\Facades\Route;
 
@@ -36,6 +37,8 @@ Route::prefix('api/mhs')
         Route::get('khs', [ApiMhsKhsController::class, 'khs']);
         // petikan
         Route::get('petikan-nilai', [ApiMhsPetikanNilaiController::class, 'petikan_nilai']);
+        // jadwal kuliah
+        Route::get('jadwal', [ApiMhsJadwalController::class, 'index']);
 
         // fallback dalam group — return 404 bukan 401
         Route::fallback(fn () => response()->json([

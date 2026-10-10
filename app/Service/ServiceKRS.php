@@ -137,7 +137,7 @@ class ServiceKRS
         $eagerLoad = [
             'tahunAkademik:kode_tahun_akademik,tahun_akademik,semester',
             'krsDetail' => function ($q) {
-                $q->select('krs_detail.kode_krs_detail', 'krs_detail.kode_krs', 'krs_detail.id_matakuliah', 'status')
+                $q->select('krs_detail.kode_krs_detail', 'krs_detail.kode_krs', 'krs_detail.id_matakuliah', 'krs_detail.status')
                     ->with('matakuliah:id_matakuliah,kode_matakuliah,nama_matakuliah,sks_teori,sks_praktik,block');
             },
         ];
@@ -260,7 +260,7 @@ class ServiceKRS
             ->with([
                 'tahunAkademik:kode_tahun_akademik,tahun_akademik,semester',
                 'krsDetail' => function ($q) {
-                    $q->select('krs_detail.kode_krs_detail', 'krs_detail.kode_krs', 'krs_detail.id_matakuliah', 'status')
+                    $q->select('krs_detail.kode_krs_detail', 'krs_detail.kode_krs', 'krs_detail.id_matakuliah', 'krs_detail.status')
                         ->with('matakuliah:id_matakuliah,kode_matakuliah,nama_matakuliah,sks_teori,sks_praktik,block');
                 },
             ])
@@ -357,7 +357,7 @@ class ServiceKRS
             ->with([
                 'tahunAkademik:kode_tahun_akademik,tahun_akademik,semester',
                 'krsDetail' => function ($q) {
-                    $q->select('krs_detail.kode_krs_detail', 'krs_detail.kode_krs', 'krs_detail.id_matakuliah', 'status')
+                    $q->select('krs_detail.kode_krs_detail', 'krs_detail.kode_krs', 'krs_detail.id_matakuliah', 'krs_detail.status')
                         ->with('matakuliah:id_matakuliah,kode_matakuliah,nama_matakuliah,sks_teori,sks_praktik,block');
                 },
             ])
@@ -425,7 +425,7 @@ class ServiceKRS
                 'mahasiswa.programStudi:kode_program_studi,nama_program_studi',
                 'tahunAkademik:kode_tahun_akademik,tahun_akademik,semester',
                 'krsDetail' => function ($q) {
-                    $q->select('kode_krs_detail', 'kode_krs', 'id_matakuliah', 'status')
+                    $q->select('krs_detail.kode_krs_detail', 'krs_detail.kode_krs', 'krs_detail.id_matakuliah', 'krs_detail.status')
                         ->with('matakuliah:id_matakuliah,kode_matakuliah,nama_matakuliah,sks_teori,sks_praktik,block');
                 },
             ])
@@ -740,7 +740,7 @@ class ServiceKRS
                 'mahasiswa:nim,nama_mahasiswa,program_studi_kode',
                 'mahasiswa.programStudi:kode_program_studi,nama_program_studi',
                 'krsDetail' => function ($q) {
-                    $q->select('krs_detail.kode_krs_detail', 'krs_detail.kode_krs', 'krs_detail.id_matakuliah', 'status')
+                    $q->select('krs_detail.kode_krs_detail', 'krs_detail.kode_krs', 'krs_detail.id_matakuliah', 'krs_detail.status')
                         ->with('matakuliah:id_matakuliah,kode_matakuliah,nama_matakuliah,sks_teori,sks_praktik,block');
                 },
             ])

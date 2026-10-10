@@ -28,9 +28,12 @@ class DatabaseSeeder extends Seeder
             'role' => 'staff',
         ]);
 
-        // Seed API Connections
+        // Seed API Connections & Scheduling Master Data
         $this->call([
             ApiConnectionSeeder::class,
+            HariSeeder::class,
+            RuanganSeeder::class,
+            JadwalDocsSeeder::class,
         ]);
     }
 }

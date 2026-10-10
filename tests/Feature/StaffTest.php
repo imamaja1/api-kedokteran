@@ -766,6 +766,37 @@ test('GET /api/staff/assessment/students/score/breakdown validates params', func
     $response->assertStatus(422);
 });
 
+test('GET /api/staff/akademik/krs/detail executes without ambiguous column error', function () {
+    $mhs = TestDataHelper::createMahasiswa();
+    $ta = TestDataHelper::createTahunAkademik(['status' => 'A']);
+    $mk = Matakuliah::create([
+        'kode_matakuliah' => 'MK'.uniqid(),
+        'nama_matakuliah' => 'Anatomi Test Ambiguous',
+        'jenis' => 1,
+        'sks_teori' => 2,
+        'sks_praktik' => 1,
+        'block' => 0,
+        'tipe' => 'W',
+    ]);
+    $krs = \App\Models\Krs::create([
+        'nim' => $mhs->nim,
+        'kode_tahun_akademik' => $ta->kode_tahun_akademik,
+        'semester' => '1',
+    ]);
+    \App\Models\KrsDetail::create([
+        'kode_krs' => $krs->kode_krs,
+        'id_matakuliah' => $mk->id_matakuliah,
+        'status' => 'B',
+    ]);
+
+    $response = staffGet('/api/staff/akademik/krs-detail', [
+        'code_krs' => $krs->toCode(),
+    ]);
+
+    $response->assertStatus(200)
+        ->assertJsonPath('status', true);
+});
+
 // ─── 404 Fallback ────────────────────────────────────────────────────────────
 
 test('unknown staff endpoint returns 404', function () {

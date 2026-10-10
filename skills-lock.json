@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "skills": {
+    "ci-cd-best-practices": {
+      "source": "mindrally/skills",
+      "sourceType": "github",
+      "skillPath": "ci-cd-best-practices/SKILL.md",
+      "computedHash": "523731e762a6c6573bfe9c7183ca0ba6bd321ff4aab3dd8b56103689e69a61e0"
+    },
+    "laravel-api": {
+      "source": "juststeveking/laravel-api-skill",
+      "sourceType": "github",
+      "skillPath": "laravel-api/SKILL.md",
+      "computedHash": "7b0c77e751518f8953c1622fbd7ea0801b17aa51b1f038f3a2cada9b24815291"
+    },
+    "laravel-best-practices": {
+      "source": "asyrafhussin/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/laravel-best-practices/SKILL.md",
+      "computedHash": "3f2351dc1821d430b6b58ce24175e0af11f5c11b234198bfc76a6702c05fe3ef"
+    },
+    "laravel-testing": {
+      "source": "asyrafhussin/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/laravel-testing/SKILL.md",
+      "computedHash": "1e827d6ea94dff65484bd2e8ed0f67547941ae288b47c2fe8e075179aca520b6"
+    },
+    "ui-ux-pro-max": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/ui-ux-pro-max/SKILL.md",
+      "computedHash": "7ac62d931e52dbc7c309ed8ee067101969db2454709339b02daa583e80e98d5f"
+    }
+  }
+}
