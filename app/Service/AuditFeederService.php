@@ -65,6 +65,9 @@ class AuditFeederService
         if (! $force && Cache::has($cacheKey)) {
             $cached = Cache::get($cacheKey);
             $cached['source'] = 'cache';
+            if (isset($cached['data']) && is_array($cached['data'])) {
+                $cached['data'] = array_map([$this->feederService, 'sanitizeFeederRow'], $cached['data']);
+            }
             return $cached;
         }
 
@@ -78,6 +81,7 @@ class AuditFeederService
         // Ambil data nilai kelas dari Feeder (berdasarkan filter kode_mata_kuliah atau ambil semua)
         $filter = $kodeMk ? "kode_mata_kuliah = '{$kodeMk}'" : '';
         $feederRows = $this->feederService->getDetailNilaiPerkuliahanKelas($filter);
+        $feederRows = array_map([$this->feederService, 'sanitizeFeederRow'], $feederRows);
 
         $payload = [
             'kelas_id' => $kelasId,
@@ -353,10 +357,14 @@ class AuditFeederService
         if (! $force && Cache::has($cacheKey)) {
             $cached = Cache::get($cacheKey);
             $cached['source'] = 'cache';
+            if (isset($cached['data']) && is_array($cached['data'])) {
+                $cached['data'] = array_map([$this->feederService, 'sanitizeFeederRow'], $cached['data']);
+            }
             return $cached;
         }
 
         $feederRows = $this->feederService->getTranskripMahasiswa($cleanNim);
+        $feederRows = array_map([$this->feederService, 'sanitizeFeederRow'], $feederRows);
 
         $payload = [
             'nim' => $cleanNim,

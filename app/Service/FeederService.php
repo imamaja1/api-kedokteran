@@ -218,11 +218,35 @@ class FeederService
     }
 
     /**
+     * Saring dan sembunyikan field-field ID internal teknis (UUID) dari Feeder PDDIKTI.
+     * Menyembunyikan id_registrasi_mahasiswa, id_mahasiswa, id_kelas_kuliah, id_matkul, id_prodi, dll.
+     */
+    public function sanitizeFeederRow(array $row): array
+    {
+        return array_filter($row, function ($val, $key) {
+            $cleanKey = strtolower(trim((string) $key));
+
+            // Sembunyikan jika nama field diawali dengan 'id_' atau persis 'id'
+            if ($cleanKey === 'id' || str_starts_with($cleanKey, 'id_')) {
+                return false;
+            }
+
+            // Sembunyikan juga jika valuenya adalah string UUID 36 karakter
+            if (is_string($val) && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', trim($val))) {
+                return false;
+            }
+
+            return true;
+        }, ARRAY_FILTER_USE_BOTH);
+    }
+
+    /**
      * Mengambil detail nilai perkuliahan kelas (GetDetailNilaiPerkuliahanKelas).
      */
     public function getDetailNilaiPerkuliahanKelas(string|array $filter = '', string $order = ''): array
     {
-        return $this->fetchAll('GetDetailNilaiPerkuliahanKelas', $filter, $order);
+        $rows = $this->fetchAll('GetDetailNilaiPerkuliahanKelas', $filter, $order);
+        return array_map(fn ($r) => $this->sanitizeFeederRow($r), $rows);
     }
 
     /**
@@ -338,7 +362,7 @@ class FeederService
             unset($r);
         }
 
-        return $finalList;
+        return array_map(fn ($r) => $this->sanitizeFeederRow($r), $finalList);
     }
 
     /**

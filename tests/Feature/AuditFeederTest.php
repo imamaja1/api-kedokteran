@@ -365,3 +365,69 @@ test('staff can use query parameter fallback when URL contains literal placehold
         ],
     ]);
 });
+
+test('feeder pull responses hide internal UUID fields (id_registrasi_mahasiswa, id_mahasiswa, id_kelas_kuliah, id_matkul, id_prodi)', function () {
+    $mhs = TestDataHelper::createMahasiswa(['nim' => 'UUIDTEST01', 'nama_mahasiswa' => 'Mahasiswa Test UUID']);
+
+    Http::fake(function (\Illuminate\Http\Client\Request $request) use ($mhs) {
+        $act = $request['act'] ?? '';
+        if ($act === 'GetListMahasiswa') {
+            return Http::response([
+                'error_code' => 0,
+                'error_desc' => '',
+                'data' => [
+                    [
+                        'nim' => $mhs->nim,
+                        'nama_mahasiswa' => $mhs->nama_mahasiswa,
+                        'id_registrasi_mahasiswa' => 'bd322a2d-df93-4d90-907d-86f81ddc8f0c',
+                    ],
+                ],
+            ], 200);
+        }
+
+        return Http::response([
+            'error_code' => 0,
+            'error_desc' => '',
+            'data' => [
+                [
+                    'id_prodi' => 'c70d596a-6f2c-425c-892a-0daccdb3695d',
+                    'nama_program_studi' => 'S1 Kedokteran',
+                    'id_semester' => '20251',
+                    'nama_semester' => '2025/2026 Ganjil',
+                    'id_matkul' => '40979294-8b3b-4c9e-b369-14228aa0d7b6',
+                    'kode_mata_kuliah' => 'KD101',
+                    'nama_mata_kuliah' => 'Anatomi Umum',
+                    'sks_mata_kuliah' => '3.00',
+                    'id_kelas_kuliah' => '1c98e2a2-772a-4b27-81e1-e27b53a87291',
+                    'nama_kelas_kuliah' => 'IA',
+                    'id_registrasi_mahasiswa' => 'bd322a2d-df93-4d90-907d-86f81ddc8f0c',
+                    'id_mahasiswa' => '50c1c4c8-a721-4eb4-859d-ed7a86eb4bc3',
+                    'nim' => $mhs->nim,
+                    'nama_mahasiswa' => $mhs->nama_mahasiswa,
+                    'nilai_angka' => 85.00,
+                    'nilai_huruf' => 'A',
+                    'nilai_indeks' => 4.00,
+                ],
+            ],
+        ], 200);
+    });
+
+    $response = actingAsStaffUser()->getJson('/api/staff/feeder/pull/mahasiswa/' . $mhs->nim);
+
+    $response->assertStatus(200);
+    $data = $response->json('data.data');
+    expect($data)->toBeArray()->toHaveCount(1);
+
+    $row = $data[0];
+    expect($row)->toHaveKeys(['nim', 'nama_mahasiswa', 'kode_mata_kuliah', 'nama_mata_kuliah', 'nilai_angka', 'nilai_huruf', 'nilai_indeks']);
+
+    // Pastikan seluruh field UUID / ID teknis Feeder disembunyikan
+    expect($row)->not->toHaveKeys([
+        'id_registrasi_mahasiswa',
+        'id_mahasiswa',
+        'id_kelas_kuliah',
+        'id_matkul',
+        'id_prodi',
+        'id_semester',
+    ]);
+});
