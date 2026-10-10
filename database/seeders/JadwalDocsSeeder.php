@@ -19,6 +19,7 @@ class JadwalDocsSeeder extends Seeder
             ['sort_order' => 29, 'created_at' => now(), 'updated_at' => now()]
         );
         $sectionRuanganHariId = DB::table('api_sections')->where('title', 'Staff - Master Ruangan & Hari')->value('id');
+        DB::table('api_endpoints')->where('api_section_id', $sectionRuanganHariId)->delete();
 
         $endpointsRuanganHari = [
             [
@@ -43,7 +44,7 @@ class JadwalDocsSeeder extends Seeder
             ],
             [
                 'title' => 'Detail Ruangan',
-                'description' => 'Mendapatkan detail satu ruangan. Menerima encrypted `{code}` di URL parameter atau `?code=...` di query string.',
+                'description' => 'Mendapatkan detail satu ruangan dengan parameter encrypted `{code}` di URL.',
                 'method' => 'GET',
                 'url' => '/api/staff/ruangan/{code}',
                 'headers' => 'Cookie: laravel-session',
@@ -53,11 +54,11 @@ class JadwalDocsSeeder extends Seeder
             ],
             [
                 'title' => 'Update Ruangan',
-                'description' => 'Mengubah data master ruangan. Menerima parameter encrypted `{code}` di URL atau `code` di body payload.',
+                'description' => 'Mengubah data master ruangan dengan parameter encrypted `{code}` di URL.',
                 'method' => 'PUT',
                 'url' => '/api/staff/ruangan/{code}',
                 'headers' => "Cookie: laravel-session\nContent-Type: application/json",
-                'body' => "{\n    \"code\"        : \"{encrypted code}|nullable|string (jika PUT /api/staff/ruangan)\",\n    \"nama_ruangan\": \"Ruang Kuliah 01 (Renovasi)|sometimes|string\",\n    \"kapasitas\"   : \"45|sometimes|integer\",\n    \"lokasi\"      : \"Gedung Kedokteran Lt. 1|nullable|string\"\n}",
+                'body' => "{\n    \"nama_ruangan\": \"Ruang Kuliah 01 (Renovasi)|sometimes|string\",\n    \"kapasitas\"   : \"45|sometimes|integer\",\n    \"lokasi\"      : \"Gedung Kedokteran Lt. 1|nullable|string\"\n}",
                 'response_example' => "{\n    \"status\": true,\n    \"message\": \"Ruangan berhasil diperbarui.\",\n    \"data\": {\n        \"id\": 1,\n        \"code\": \"eyJpdiI6...\",\n        \"code_ruangan\": \"eyJpdiI6...\",\n        \"kode_ruangan\": \"RK.01\",\n        \"nama_ruangan\": \"Ruang Kuliah 01 (Renovasi)\",\n        \"kapasitas\": 45,\n        \"status_aktif\": true\n    }\n}",
                 'sort_order' => 4,
             ],
@@ -116,6 +117,7 @@ class JadwalDocsSeeder extends Seeder
             ['sort_order' => 30, 'created_at' => now(), 'updated_at' => now()]
         );
         $sectionJadwalId = DB::table('api_sections')->where('title', 'Staff - Penjadwalan Kelas')->value('id');
+        DB::table('api_endpoints')->where('api_section_id', $sectionJadwalId)->delete();
 
         $endpointsJadwal = [
             [
@@ -150,7 +152,7 @@ class JadwalDocsSeeder extends Seeder
             ],
             [
                 'title' => 'Detail Jadwal Kelas',
-                'description' => 'Mendapatkan detail satu jadwal perkuliahan via encrypted parameter `{code}` di URL atau `?code=...`.',
+                'description' => 'Mendapatkan detail satu jadwal perkuliahan via encrypted parameter `{code}` di URL.',
                 'method' => 'GET',
                 'url' => '/api/staff/jadwal-kelas/{code}',
                 'headers' => 'Cookie: laravel-session',
@@ -190,11 +192,11 @@ class JadwalDocsSeeder extends Seeder
             ],
             [
                 'title' => 'Update Jadwal Kelas',
-                'description' => 'Memperbarui ruangan, hari, atau jam jadwal kelas. Mendukung parameter encrypted `{code}` di URL atau `code` di body.',
+                'description' => 'Memperbarui ruangan, hari, atau jam jadwal kelas via encrypted parameter `{code}` di URL.',
                 'method' => 'PUT',
                 'url' => '/api/staff/jadwal-kelas/{code}',
                 'headers' => "Cookie: laravel-session\nContent-Type: application/json",
-                'body' => "{\n    \"code\": \"{encrypted code_jadwal}|nullable|string (jika PUT /api/staff/jadwal-kelas)\",\n    \"code_ruangan\": \"{encrypted code_ruangan}|sometimes|string\",\n    \"code_hari\": \"{encrypted code_hari}|sometimes|string\",\n    \"jam_mulai\": \"10:00|sometimes|string\",\n    \"jam_selesai\": \"11:40|sometimes|string\",\n    \"keterangan\": \"nullable|string\"\n}",
+                'body' => "{\n    \"code_ruangan\": \"{encrypted code_ruangan}|sometimes|string\",\n    \"code_hari\": \"{encrypted code_hari}|sometimes|string\",\n    \"jam_mulai\": \"10:00|sometimes|string\",\n    \"jam_selesai\": \"11:40|sometimes|string\",\n    \"keterangan\": \"nullable|string\"\n}",
                 'response_example' => "{\n    \"status\": true,\n    \"message\": \"Jadwal kelas berhasil diperbarui.\",\n    \"data\": {...}\n}",
                 'sort_order' => 8,
             ],

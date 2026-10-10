@@ -347,9 +347,7 @@ Route::prefix("api/staff")
         // ─── Master Data Ruangan ──────────────────────────────────────────────
         Route::prefix("ruangan")->group(function () {
             Route::get("/", [RuanganController::class, "index"]);
-            Route::get("/show", [RuanganController::class, "show"]);
             Route::post("/", [RuanganController::class, "store"]);
-            Route::put("/", [RuanganController::class, "update"]);
             Route::get("/{code}", [RuanganController::class, "show"]);
             Route::put("/{code}", [RuanganController::class, "update"]);
             Route::patch("/{code}/toggle", [RuanganController::class, "toggleStatus"]);
@@ -359,8 +357,6 @@ Route::prefix("api/staff")
         // ─── Master Data Hari ─────────────────────────────────────────────────
         Route::prefix("hari")->group(function () {
             Route::get("/", [HariController::class, "index"]);
-            Route::get("/show", [HariController::class, "show"]);
-            Route::put("/", [HariController::class, "update"]);
             Route::get("/{code}", [HariController::class, "show"]);
             Route::put("/{code}", [HariController::class, "update"]);
             Route::patch("/{code}/toggle", [HariController::class, "toggleStatus"]);
@@ -369,13 +365,11 @@ Route::prefix("api/staff")
         // ─── Penjadwalan Kelas Kuliah ─────────────────────────────────────────
         Route::prefix("jadwal-kelas")->group(function () {
             Route::get("/", [JadwalKelasController::class, "index"]);
-            Route::get("/show", [JadwalKelasController::class, "show"]);
             Route::get("/status-kelas", [JadwalKelasController::class, "statusKelas"]);
             Route::get("/kelas/{code}", [JadwalKelasController::class, "getByKelas"]);
             Route::get("/ruangan/{code}", [JadwalKelasController::class, "getByRuangan"]);
             Route::get("/hari/{code}", [JadwalKelasController::class, "getByHari"]);
             Route::post("/", [JadwalKelasController::class, "store"]);
-            Route::put("/", [JadwalKelasController::class, "update"]);
             Route::get("/{code}", [JadwalKelasController::class, "show"]);
             Route::put("/{code}", [JadwalKelasController::class, "update"]);
             Route::delete("/{code}", [JadwalKelasController::class, "destroy"]);

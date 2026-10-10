@@ -461,31 +461,18 @@ test('encryption support: endpoints return code_* and accept code_* in payloads 
 
     $codeJadwal = $dataJadwal['code_jadwal'];
 
-    // 4. Retrieve schedule by encrypted code (both /{code} and /show?code=)
+    // 4. Retrieve schedule by encrypted code via /{code}
     $resShow = $client->getJson("/api/staff/jadwal-kelas/{$codeJadwal}");
     $resShow->assertStatus(200);
     expect(\Illuminate\Support\Facades\Crypt::decryptString($resShow->json('data.code_jadwal')))
         ->toBe((string) \Illuminate\Support\Facades\Crypt::decryptString($codeJadwal));
 
-    $resShowQuery = $client->getJson("/api/staff/jadwal-kelas/show?code={$codeJadwal}");
-    $resShowQuery->assertStatus(200);
-    expect(\Illuminate\Support\Facades\Crypt::decryptString($resShowQuery->json('data.code_jadwal')))
-        ->toBe((string) \Illuminate\Support\Facades\Crypt::decryptString($codeJadwal));
-
-    // 5. Update schedule by encrypted code via URL parameter
+    // 5. Update schedule by encrypted code via URL parameter PUT /{code}
     $resUpdate = $client->putJson("/api/staff/jadwal-kelas/{$codeJadwal}", [
         'keterangan' => 'Diperbarui via code',
     ]);
     $resUpdate->assertStatus(200)
         ->assertJsonPath('data.keterangan', 'Diperbarui via code');
-
-    // 6. Update schedule by encrypted code via body payload (PUT /api/staff/jadwal-kelas)
-    $resUpdateBody = $client->putJson("/api/staff/jadwal-kelas", [
-        'code' => $codeJadwal,
-        'keterangan' => 'Diperbarui via code in body',
-    ]);
-    $resUpdateBody->assertStatus(200)
-        ->assertJsonPath('data.keterangan', 'Diperbarui via code in body');
 
     // 7. Sub-endpoints accept encrypted codes
     $resSubKelas = $client->getJson("/api/staff/jadwal-kelas/kelas/{$kelas->toCode()}");
