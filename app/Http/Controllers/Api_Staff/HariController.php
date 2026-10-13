@@ -47,7 +47,7 @@ class HariController extends Controller
 
     public function toggleStatus(Request $request, ?string $code = null): JsonResponse
     {
-        $resolvedId = $this->resolveId($code ?? $request->input('code'), 'code');
+        $resolvedId = $this->resolveId($code ?? $request->input('code') ?? $request->query('code'), 'code');
         if ($resolvedId instanceof JsonResponse) {
             return $resolvedId;
         }

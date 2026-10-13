@@ -184,8 +184,16 @@ class MahasiswaController extends Controller
         return $this->service->updateMahasiswa($nim, $validasi);
     }
 
-    public function destroy(string $code): JsonResponse
+    public function destroy(Request $request, ?string $code = null): JsonResponse
     {
+        $code = $code ?? $request->input('code');
+        if (! $code) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Parameter code wajib diisi',
+            ], 422);
+        }
+
         try {
             $nim = Crypt::decryptString($code);
         } catch (DecryptException) {
@@ -227,8 +235,16 @@ class MahasiswaController extends Controller
         return $this->service->restoreMahasiswa($nim);
     }
 
-    public function forceDelete(string $code): JsonResponse
+    public function forceDelete(Request $request, ?string $code = null): JsonResponse
     {
+        $code = $code ?? $request->input('code');
+        if (! $code) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Parameter code wajib diisi',
+            ], 422);
+        }
+
         try {
             $nim = Crypt::decryptString($code);
         } catch (DecryptException) {

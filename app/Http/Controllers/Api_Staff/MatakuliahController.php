@@ -95,9 +95,24 @@ class MatakuliahController extends Controller
         return $this->service->updateMatakuliah($id, $validasi);
     }
 
-    public function destroy(string $code): JsonResponse
+    public function destroy(Request $request, ?string $code = null): JsonResponse
     {
-        $id = Crypt::decryptString($code);
+        $code = $code ?? $request->input('code');
+        if (! $code) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Parameter code wajib diisi',
+            ], 422);
+        }
+
+        try {
+            $id = Crypt::decryptString($code);
+        } catch (DecryptException) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Format code tidak valid',
+            ], 422);
+        }
 
         return $this->service->deleteMatakuliah($id);
     }

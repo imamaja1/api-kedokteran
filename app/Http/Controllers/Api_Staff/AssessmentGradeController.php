@@ -217,10 +217,15 @@ class AssessmentGradeController extends Controller
     }
 
     /**
-     * DELETE /staff/assessment/grade/{code}
+     * DELETE /staff/assessment/grade
      */
-    public function destroy(string $code): JsonResponse
+    public function destroy(Request $request, ?string $code = null): JsonResponse
     {
+        $code = $code ?? $request->input('code');
+        if (! $code) {
+            return ApiResponse::validation(['code' => ['Parameter code wajib diisi.']]);
+        }
+
         try {
             $id = (int) Crypt::decryptString($code);
             $deleted = $this->service->destroy($id);

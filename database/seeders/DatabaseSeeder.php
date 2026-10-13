@@ -34,6 +34,7 @@ class DatabaseSeeder extends Seeder
             HariSeeder::class,
             RuanganSeeder::class,
             JadwalDocsSeeder::class,
+            ApiWorkflowSeeder::class,
         ]);
     }
 }

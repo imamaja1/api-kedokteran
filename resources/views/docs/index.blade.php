@@ -245,6 +245,32 @@
 
                 {{-- Tree View List (Sections & Endpoints) --}}
                 <div class="flex-1 overflow-y-auto px-2 py-3 space-y-2 font-code-sm" id="sidebar-tree">
+                    {{-- ─── PINNED WORKFLOWS SECTION (F3) ─── --}}
+                    @if(!empty($workflows))
+                    <div class="mb-3 pb-2 border-b border-[#222d45]" id="workflows-sidebar-section">
+                        <div class="px-2 py-1 flex items-center justify-between text-outline">
+                            <span class="flex items-center gap-1.5 font-label-badge text-[11px] uppercase tracking-wider text-secondary font-bold">
+                                <span class="material-symbols-outlined text-[15px]">alt_route</span>
+                                Alur Bisnis Utama
+                            </span>
+                            <span class="px-1.5 py-0.2 rounded bg-secondary/10 text-secondary text-[10px] font-bold">{{ count($workflows) }} Alur</span>
+                        </div>
+                        <div class="mt-1 space-y-0.5">
+                            @foreach($workflows as $wf)
+                            <button onclick="selectWorkflow('{{ $wf['id'] }}')" 
+                                id="nav-wf-{{ $wf['id'] }}"
+                                class="wf-nav-item w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-all text-left group">
+                                <span class="material-symbols-outlined text-[16px] text-secondary group-hover:text-primary shrink-0">{{ $wf['icon'] }}</span>
+                                <div class="truncate flex-1 min-w-0">
+                                    <div class="text-[12px] font-semibold truncate group-hover:text-on-surface font-body-sm">{{ $wf['title'] }}</div>
+                                    <div class="text-[10px] text-outline truncate">{{ $wf['badge'] }}</div>
+                                </div>
+                            </button>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
+
                     @forelse($sections as $sIdx => $section)
                     <div class="section-group" data-section-id="{{ $section->id }}" data-section-title="{{ strtolower($section->title) }}">
                         {{-- Section Accordion Header --}}
@@ -343,75 +369,118 @@
                 {{-- Content Specs Body --}}
                 <div class="p-4 sm:p-6 lg:p-8 space-y-6 max-w-4xl mx-auto w-full">
                     
-                    {{-- Title, Breadcrumbs & Overview --}}
-                    <div>
-                        <div class="flex items-center gap-2 text-outline font-label-badge text-[11px] uppercase tracking-wider mb-1" id="spec-breadcrumb">
-                            <span id="spec-section-label">Modul API</span> &bull; <span>SIAKAD Kedokteran Gateway</span>
-                        </div>
-                        <h1 class="font-headline-xl text-2xl sm:text-3xl text-on-surface font-bold tracking-tight" id="spec-title">
-                            Pilih Endpoint
-                        </h1>
-                        <p class="mt-2 text-body-md text-on-surface-variant leading-relaxed" id="spec-desc">
-                            Pilih salah satu endpoint dari daftar di kolom kiri untuk melihat rincian spesifikasi, parameter, dan skema respons.
-                        </p>
+                    {{-- ─── VIEW 1: ENDPOINT SPECIFICATION VIEW ─── --}}
+                    <div id="endpoint-spec-view" class="space-y-6">
 
-                        {{-- Security Notice Callout --}}
-                        <div class="mt-4 p-3.5 rounded-lg bg-surface-container-low border border-[#222d45] flex items-start gap-3">
-                            <span class="material-symbols-outlined text-secondary text-[20px] mt-0.5">security</span>
-                            <div class="text-body-sm text-on-surface-variant">
-                                <span class="font-semibold text-secondary">Autentikasi &amp; Proteksi Sanctum:</span> 
-                                Endpoint terlindungi memerlukan session cookie (<code>laravel_session</code>) dan token CSRF (<code>X-XSRF-TOKEN</code>). Pada pengujian via API Tester, token dan session akan otomatis disertakan.
+                        {{-- Title, Breadcrumbs & Overview --}}
+                        <div>
+                            <div class="flex items-center gap-2 text-outline font-label-badge text-[11px] uppercase tracking-wider mb-1" id="spec-breadcrumb">
+                                <span id="spec-section-label">Modul API</span> &bull; <span>SIAKAD Kedokteran Gateway</span>
+                            </div>
+                            <h1 class="font-headline-xl text-2xl sm:text-3xl text-on-surface font-bold tracking-tight" id="spec-title">
+                                Pilih Endpoint
+                            </h1>
+                            <p class="mt-2 text-body-md text-on-surface-variant leading-relaxed" id="spec-desc">
+                                Pilih salah satu endpoint dari daftar di kolom kiri untuk melihat rincian spesifikasi, parameter, dan skema respons.
+                            </p>
+
+                            {{-- Security Notice Callout --}}
+                            <div class="mt-4 p-3.5 rounded-lg bg-surface-container-low border border-[#222d45] flex items-start gap-3">
+                                <span class="material-symbols-outlined text-secondary text-[20px] mt-0.5">security</span>
+                                <div class="text-body-sm text-on-surface-variant">
+                                    <span class="font-semibold text-secondary">Autentikasi &amp; Proteksi Sanctum:</span> 
+                                    Endpoint terlindungi memerlukan session cookie (<code>laravel_session</code>) dan token CSRF (<code>X-XSRF-TOKEN</code>). Pada pengujian via API Tester, token dan session akan otomatis disertakan.
+                                </div>
+                            </div>
+
+                            {{-- Prerequisite Flow Card (Exclusive Fork-and-Join DAG with SVG Bézier Connectors) --}}
+                            <div id="spec-prerequisite-card" class="mt-4 p-4 rounded-xl bg-surface-container-low border border-[#222d45] space-y-3 hidden">
+                                <div class="flex items-center justify-between flex-wrap gap-2">
+                                    <div class="flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-secondary text-[18px]">account_tree</span>
+                                        <span class="font-title-md text-[13px] font-bold text-on-surface" id="spec-prereq-title">Alur Prerequisite Endpoint</span>
+                                        <span id="spec-prereq-branch-badge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-container/30 text-primary border border-primary/30">
+                                            Bercabang lalu Menyatu
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[11px] text-outline font-code-sm" id="spec-prereq-subtitle">Klik node langkah mana pun untuk menguji langsung di Live Tester</span>
+                                    </div>
+                                </div>
+
+                                {{-- Exclusive Branching Diagram (Bercabang lalu Menyatu dengan SVG Bézier Connectors) --}}
+                                <div id="spec-prereq-branching-wrap" class="overflow-x-auto pb-2 pt-1">
+                                    {{-- Injected dynamically --}}
+                                </div>
+                            </div>
+
+                            {{-- Active Prerequisite Indicator Banner --}}
+                            <div id="spec-prereq-active-banner" class="hidden mt-3 p-3 rounded-xl bg-primary-container/20 border border-primary/40 flex items-center justify-between gap-3 text-body-sm shadow-sm transition-all">
+                                <div class="flex items-center gap-2.5 truncate min-w-0">
+                                    <span class="material-symbols-outlined text-primary text-[20px] shrink-0 animate-pulse">play_circle</span>
+                                    <div class="truncate text-[12px]">
+                                        <span class="text-on-surface">Menguji Prasyarat:</span>
+                                        <strong id="spec-prereq-active-name" class="text-primary font-code-sm ml-1">GET /api/...</strong>
+                                        <span class="text-outline text-[11px] hidden md:inline ml-1.5">&bull; Request Headers, Body, Response &amp; Live Tester disesuaikan</span>
+                                    </div>
+                                </div>
+                                <button type="button" onclick="restoreMainEndpoint()" 
+                                    class="px-3 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-secondary hover:text-on-surface text-[11px] font-semibold flex items-center gap-1 border border-[#222d45] transition-colors shrink-0 shadow-sm"
+                                    title="Kembali ke spesifikasi dan tester endpoint utama">
+                                    <span>Kembali ke Target</span>
+                                    <span class="material-symbols-outlined text-[13px]">arrow_forward</span>
+                                </button>
                             </div>
                         </div>
-                    </div>
 
-                    {{-- Request Headers Table --}}
-                    <section class="space-y-3">
-                        <div class="flex items-center justify-between">
-                            <h2 class="font-title-md text-[16px] text-on-surface font-bold flex items-center gap-2">
-                                <span class="w-1.5 h-4 rounded-full bg-primary"></span>
-                                Request Headers
-                            </h2>
-                            <span class="font-code-sm text-[11px] text-outline">HTTP 1.1 / HTTP 2</span>
-                        </div>
-                        <div class="overflow-x-auto rounded-lg border border-[#222d45] bg-surface-container-lowest">
-                            <table class="w-full text-left font-body-sm text-[13px]">
-                                <thead class="bg-surface-container-low border-b border-[#222d45] text-outline font-label-badge text-[11px] uppercase">
-                                    <tr>
-                                        <th class="py-2.5 px-3">Header Key</th>
-                                        <th class="py-2.5 px-3">Tipe</th>
-                                        <th class="py-2.5 px-3">Status</th>
-                                        <th class="py-2.5 px-3">Keterangan</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-[#222d45] font-code-sm text-[12px]" id="spec-headers-tbody">
-                                    {{-- Injected dynamically --}}
-                                </tbody>
-                            </table>
-                        </div>
-                    </section>
+                        {{-- Request Headers Table --}}
+                        <section class="space-y-3">
+                            <div class="flex items-center justify-between">
+                                <h2 class="font-title-md text-[16px] text-on-surface font-bold flex items-center gap-2">
+                                    <span class="w-1.5 h-4 rounded-full bg-primary"></span>
+                                    Request Headers
+                                </h2>
+                                <span class="font-code-sm text-[11px] text-outline">HTTP 1.1 / HTTP 2</span>
+                            </div>
+                            <div class="overflow-x-auto rounded-lg border border-[#222d45] bg-surface-container-lowest">
+                                <table class="w-full text-left font-body-sm text-[13px]">
+                                    <thead class="bg-surface-container-low border-b border-[#222d45] text-outline font-label-badge text-[11px] uppercase">
+                                        <tr>
+                                            <th class="py-2.5 px-3">Header Key</th>
+                                            <th class="py-2.5 px-3">Tipe</th>
+                                            <th class="py-2.5 px-3">Status</th>
+                                            <th class="py-2.5 px-3">Keterangan</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-[#222d45] font-code-sm text-[12px]" id="spec-headers-tbody">
+                                        {{-- Injected dynamically --}}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
 
-                    {{-- Request Body / Params Schema Table --}}
-                    <section class="space-y-3" id="spec-body-section">
-                        <div class="flex items-center justify-between">
-                            <h2 class="font-title-md text-[16px] text-on-surface font-bold flex items-center gap-2">
-                                <span class="w-1.5 h-4 rounded-full bg-primary"></span>
-                                <span id="spec-body-heading">Request Body (JSON Schema)</span>
-                            </h2>
-                            <span class="font-code-sm text-[11px] text-outline" id="spec-body-type-badge">application/json</span>
-                        </div>
+                        {{-- Request Body / Params Schema Table --}}
+                        <section class="space-y-3" id="spec-body-section">
+                            <div class="flex items-center justify-between">
+                                <h2 class="font-title-md text-[16px] text-on-surface font-bold flex items-center gap-2">
+                                    <span class="w-1.5 h-4 rounded-full bg-primary"></span>
+                                    <span id="spec-body-heading">Request Body (JSON Schema)</span>
+                                </h2>
+                                <span class="font-code-sm text-[11px] text-outline" id="spec-body-type-badge">application/json</span>
+                            </div>
 
-                        {{-- Structured Schema Table (if fields detected) --}}
-                        <div class="overflow-x-auto rounded-lg border border-[#222d45] bg-surface-container-lowest hidden" id="spec-body-table-wrap">
-                            <table class="w-full text-left font-body-sm text-[13px]">
-                                <thead class="bg-surface-container-low border-b border-[#222d45] text-outline font-label-badge text-[11px] uppercase">
-                                    <tr>
-                                        <th class="py-2.5 px-3">Field</th>
-                                        <th class="py-2.5 px-3">Tipe</th>
-                                        <th class="py-2.5 px-3">Validasi</th>
-                                        <th class="py-2.5 px-3">Contoh / Deskripsi</th>
-                                    </tr>
-                                </thead>
+                            {{-- Structured Schema Table (if fields detected) --}}
+                            <div class="overflow-x-auto rounded-lg border border-[#222d45] bg-surface-container-lowest hidden" id="spec-body-table-wrap">
+                                <table class="w-full text-left font-body-sm text-[13px]">
+                                    <thead class="bg-surface-container-low border-b border-[#222d45] text-outline font-label-badge text-[11px] uppercase">
+                                        <tr>
+                                            <th class="py-2.5 px-3">Field</th>
+                                            <th class="py-2.5 px-3">Tipe</th>
+                                            <th class="py-2.5 px-3">Validasi</th>
+                                            <th class="py-2.5 px-3">Contoh / Deskripsi</th>
+                                            <th class="py-2.5 px-3 text-secondary font-bold">Asal Nilai (Source)</th>
+                                        </tr>
+                                    </thead>
                                 <tbody class="divide-y divide-[#222d45] font-code-sm text-[12px]" id="spec-body-tbody">
                                     {{-- Injected dynamically --}}
                                 </tbody>
@@ -481,7 +550,58 @@
                             </button>
                             <pre class="p-4 text-on-surface leading-5 overflow-x-auto" id="code-snippet-pre"><code>curl ...</code></pre>
                         </div>
-                    </section>
+                    </div>{{-- Akhir #endpoint-spec-view --}}
+
+                    {{-- ─── VIEW 2: ALUR BISNIS / WORKFLOW VIEW (F5) ─── --}}
+                    <div id="workflow-spec-view" class="space-y-6 hidden">
+                        <div>
+                            <div class="flex items-center gap-2 text-outline font-label-badge text-[11px] uppercase tracking-wider mb-1">
+                                <span id="wf-badge" class="px-2 py-0.5 rounded-full bg-secondary/10 text-secondary font-bold">Alur Bisnis</span>
+                                <span>&bull;</span>
+                                <span>SIAKAD Kedokteran Gateway</span>
+                            </div>
+                            <h1 class="font-headline-xl text-2xl sm:text-3xl text-on-surface font-bold tracking-tight flex items-center gap-2.5 mt-2" id="wf-title">
+                                <span class="material-symbols-outlined text-primary text-[30px]" id="wf-icon">alt_route</span>
+                                <span id="wf-title-text">Nama Alur Bisnis</span>
+                            </h1>
+                            <p class="mt-2 text-body-md text-on-surface-variant leading-relaxed" id="wf-summary">
+                                Deskripsi alur bisnis.
+                            </p>
+
+                            {{-- Roles Callout --}}
+                            <div class="mt-4 p-3.5 rounded-lg bg-surface-container-low border border-[#222d45] flex items-center gap-3 text-body-sm">
+                                <span class="material-symbols-outlined text-secondary text-[20px] shrink-0">groups</span>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="font-semibold text-on-surface">Role yang Terlibat:</span>
+                                    <div class="flex items-center gap-1.5 flex-wrap" id="wf-roles-list">
+                                        {{-- Injected dynamically --}}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Business Rules Section --}}
+                        <section class="space-y-3">
+                            <h2 class="font-title-md text-[16px] text-on-surface font-bold flex items-center gap-2">
+                                <span class="w-1.5 h-4 rounded-full bg-secondary"></span>
+                                Aturan Bisnis &amp; Validasi
+                            </h2>
+                            <div class="space-y-2 font-body-sm" id="wf-rules-list">
+                                {{-- Injected dynamically --}}
+                            </div>
+                        </section>
+
+                        {{-- Phases & Stepper Section --}}
+                        <section class="space-y-4 pb-8">
+                            <h2 class="font-title-md text-[16px] text-on-surface font-bold flex items-center gap-2">
+                                <span class="w-1.5 h-4 rounded-full bg-primary"></span>
+                                Tahapan Proses &amp; Endpoint Terkait
+                            </h2>
+                            <div class="space-y-3" id="wf-phases-list">
+                                {{-- Injected dynamically --}}
+                            </div>
+                        </section>
+                    </div>
 
                 </div>
             </main>
@@ -648,6 +768,7 @@
     <script>
         // Global Datasets injected from Laravel
         const SECTIONS_DATA = @json($sections);
+        const WORKFLOWS_DATA = @json($workflows ?? []);
         const BASE_API_URL = '{{ url("/api") }}';
         const APP_ROOT_URL = '{{ url("/") }}';
         
@@ -655,6 +776,9 @@
         const ENDPOINTS_MAP = {};
         let ALL_ENDPOINTS_LIST = [];
         let ACTIVE_ENDPOINT_ID = null;
+        let CURRENT_MAIN_ENDPOINT = null;
+        let ACTIVE_PREREQ_STEP_DATA = null;
+        let ACTIVE_WORKFLOW_ID = null;
         let CURRENT_SNIPPET_LANG = 'curl';
         let CURRENT_METHOD_FILTER = 'ALL';
 
@@ -669,13 +793,513 @@
             }
         });
 
+        // ─── SELECT WORKFLOW ACTION (F3 & F5) ───
+        function selectWorkflow(id) {
+            const wf = (WORKFLOWS_DATA || []).find(w => w.id === id);
+            if (!wf) return;
+            ACTIVE_WORKFLOW_ID = id;
+            ACTIVE_PREREQ_STEP_DATA = null;
+            document.getElementById('spec-prereq-active-banner')?.classList.add('hidden');
+
+            // Switch view
+            document.getElementById('endpoint-spec-view')?.classList.add('hidden');
+            document.getElementById('workflow-spec-view')?.classList.remove('hidden');
+
+            // Update sidebar active states
+            document.querySelectorAll('.ep-nav-item').forEach(el => {
+                el.classList.remove('bg-surface-container-high', 'text-on-surface', 'border-l-2', 'border-tertiary');
+                el.querySelector('.active-indicator')?.classList.add('hidden');
+            });
+            document.querySelectorAll('.wf-nav-item').forEach(el => {
+                el.classList.remove('bg-surface-container-high', 'text-on-surface', 'border-l-2', 'border-primary');
+            });
+            document.getElementById(`nav-wf-${id}`)?.classList.add('bg-surface-container-high', 'text-on-surface', 'border-l-2', 'border-primary');
+
+            // Populate Workflow Details
+            document.getElementById('wf-badge').textContent = wf.badge;
+            document.getElementById('wf-title-text').textContent = wf.title;
+            document.getElementById('wf-icon').textContent = wf.icon;
+            document.getElementById('wf-summary').textContent = wf.summary;
+
+            // Roles
+            const rolesContainer = document.getElementById('wf-roles-list');
+            rolesContainer.innerHTML = (wf.roles || []).map(r => `
+                <span class="px-2 py-0.5 rounded-full bg-secondary/10 text-secondary font-label-badge text-[11px] font-semibold border border-secondary/30">
+                    ${escapeHtml(r)}
+                </span>
+            `).join('');
+
+            // Rules
+            const rulesContainer = document.getElementById('wf-rules-list');
+            rulesContainer.innerHTML = Object.entries(wf.rules || {}).map(([rKey, rDesc]) => `
+                <div class="p-3 rounded-lg bg-surface-container-low border border-[#222d45] flex items-start gap-2.5">
+                    <span class="material-symbols-outlined text-amber-400 text-[18px] mt-0.5 shrink-0">verified</span>
+                    <div>
+                        <div class="font-semibold text-amber-300 font-label-badge text-[12px]">${escapeHtml(rKey)}</div>
+                        <div class="text-on-surface-variant text-[12px] mt-0.5 leading-relaxed font-body-sm">${escapeHtml(rDesc)}</div>
+                    </div>
+                </div>
+            `).join('');
+
+            // Phases
+            const phasesContainer = document.getElementById('wf-phases-list');
+            phasesContainer.innerHTML = (wf.phases || []).map((ph, idx) => {
+                const endpointsHtml = (ph.endpoints || []).map(epItem => {
+                    const matchedEp = ALL_ENDPOINTS_LIST.find(e => e.method === epItem.method && e.url === epItem.url);
+                    const actionBtn = matchedEp 
+                        ? `<button onclick="selectEndpoint(${matchedEp.id})" class="px-2 py-1 rounded bg-primary-container/20 hover:bg-primary-container/40 text-primary text-[11px] font-semibold border border-primary/30 transition-colors flex items-center gap-1 shrink-0">
+                               <span>Lihat Spec</span>
+                               <span class="material-symbols-outlined text-[13px]">arrow_forward</span>
+                           </button>`
+                        : `<span class="text-[10px] text-outline font-code-sm shrink-0">Spec Ready</span>`;
+
+                    return `
+                        <div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-lowest border border-[#222d45] gap-2">
+                            <div class="flex items-center gap-2 truncate min-w-0">
+                                <span class="px-1.5 py-0.5 rounded font-label-badge text-[10px] font-bold method-badge-${epItem.method}">${epItem.method}</span>
+                                <span class="font-code-sm text-[12px] text-on-surface font-semibold truncate">${escapeHtml(epItem.url)}</span>
+                                <span class="text-outline text-[11px] hidden sm:inline truncate">&bull; ${escapeHtml(epItem.desc)}</span>
+                            </div>
+                            ${actionBtn}
+                        </div>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="p-4 rounded-xl bg-surface-container-low border border-[#222d45] space-y-3">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-[12px]">${idx + 1}</span>
+                                <h3 class="font-title-md text-[14px] font-bold text-on-surface">${escapeHtml(ph.phase)}</h3>
+                            </div>
+                            <span class="px-2 py-0.5 rounded bg-surface-container text-secondary text-[11px] font-semibold font-label-badge">
+                                Aktor: ${escapeHtml(ph.actor)}
+                            </span>
+                        </div>
+                        <p class="text-body-sm text-on-surface-variant">${escapeHtml(ph.description)}</p>
+                        <div class="space-y-1.5 pt-1">
+                            ${endpointsHtml}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Sync Ribbon Title
+            document.getElementById('spec-ribbon-method').textContent = 'FLOW';
+            document.getElementById('spec-ribbon-method').className = 'px-2.5 py-1 rounded font-code-md text-[12px] font-bold bg-secondary/15 text-secondary border border-secondary/30';
+            document.getElementById('spec-ribbon-url').textContent = `/workflow/${wf.id}`;
+
+            if (window.innerWidth < 1024) {
+                toggleMobileSidebar(false);
+            }
+        }
+
+        // ─── PREREQUISITE TREE RESOLUTION (EXCLUSIVE FORK & JOIN DAG ENGINE) ───
+        let CURRENT_PREREQ_VIEW_MODE = 'branching';
+
+        function togglePrereqViewMode(mode) {
+            // Branching DAG is now the exclusive prerequisite view
+            requestAnimationFrame(() => renderDagConnectors());
+        }
+
+        function getPrerequisiteTree(ep) {
+            const authRole = ep.auth_role || (
+                ep.url.startsWith('/api/mhs') ? 'Mahasiswa' :
+                ep.url.startsWith('/api/dosen') ? 'Dosen' : 'Staff'
+            );
+
+            let loginEp = null;
+            if (authRole === 'Mahasiswa') {
+                loginEp = ALL_ENDPOINTS_LIST.find(e => e.url === '/api/auth/mhs/login');
+            } else if (authRole === 'Dosen') {
+                loginEp = ALL_ENDPOINTS_LIST.find(e => e.url === '/api/auth/dosen/login');
+            } else {
+                loginEp = ALL_ENDPOINTS_LIST.find(e => e.url === '/api/auth/staff/login');
+            }
+
+            // Direct dependencies of ep
+            const branches = [];
+            const directMap = new Map();
+
+            if (ep.parameters && ep.parameters.length > 0) {
+                ep.parameters.forEach(p => {
+                    if (p.source_type === 'endpoint' && p.source_endpoint) {
+                        const srcId = p.source_endpoint.id;
+                        const fieldName = p.source_field || p.name;
+                        if (directMap.has(srcId)) {
+                            const b = directMap.get(srcId);
+                            if (!b.fields.includes(fieldName)) b.fields.push(fieldName);
+                        } else {
+                            const fullSrcEp = ENDPOINTS_MAP[srcId] || p.source_endpoint;
+                            const b = {
+                                endpoint: fullSrcEp,
+                                fields: [fieldName],
+                                note: p.source_note,
+                                upstream: []
+                            };
+                            directMap.set(srcId, b);
+                            branches.push(b);
+                        }
+                    }
+                });
+            }
+
+            // Recursively collect upstream dependencies for each branch (if any)
+            branches.forEach(b => {
+                const visited = new Set([ep.id, b.endpoint.id]);
+                function collectUpstream(nodeEp) {
+                    if (!nodeEp || !nodeEp.parameters) return;
+                    nodeEp.parameters.forEach(p => {
+                        if (p.source_type === 'endpoint' && p.source_endpoint && !visited.has(p.source_endpoint.id)) {
+                            visited.add(p.source_endpoint.id);
+                            const upEp = ENDPOINTS_MAP[p.source_endpoint.id] || p.source_endpoint;
+                            collectUpstream(upEp);
+                            b.upstream.push({
+                                endpoint: upEp,
+                                fields: [p.source_field || p.name],
+                                note: p.source_note
+                            });
+                        }
+                    });
+                }
+                collectUpstream(b.endpoint);
+            });
+
+            // Sequential indexing for reference
+            let stepCounter = 2; // Step 1 is Auth Login
+            const linearList = [];
+
+            branches.forEach(b => {
+                b.upstream.forEach(up => {
+                    up.stepNumber = stepCounter++;
+                    linearList.push(up);
+                });
+                b.stepNumber = stepCounter++;
+                linearList.push(b);
+            });
+
+            const targetStepNumber = stepCounter;
+
+            return {
+                authRole,
+                loginEp,
+                branches,
+                isBranching: branches.length > 1,
+                linearList,
+                targetStepNumber,
+                targetEp: ep
+            };
+        }
+
+        // Backward compatibility helper
+        function getPrerequisiteChain(ep) {
+            const tree = getPrerequisiteTree(ep);
+            return {
+                authRole: tree.authRole,
+                loginEp: tree.loginEp,
+                prerequisites: tree.linearList,
+                targetEp: tree.targetEp
+            };
+        }
+
+        // ─── RENDER SVG BÉZIER CONNECTORS (SMOOTH FORK & JOIN CURVES - ANTI-PUTUS) ───
+        function renderDagConnectors() {
+            const container = document.getElementById('spec-prereq-dag-container');
+            const svgCanvas = document.getElementById('dag-svg-canvas');
+            const rootNode = document.getElementById('dag-node-root');
+            const targetNode = document.getElementById('dag-node-target');
+            const badgeFork = document.getElementById('dag-badge-fork');
+            const badgeJoin = document.getElementById('dag-badge-join');
+
+            if (!container || !svgCanvas || !rootNode || !targetNode) return;
+
+            const containerRect = container.getBoundingClientRect();
+            if (containerRect.width === 0 && containerRect.height === 0) return;
+
+            const rootRect = rootNode.getBoundingClientRect();
+            const targetRect = targetNode.getBoundingClientRect();
+
+            // Titik keluar sisi kanan Root (Login)
+            const xRoot = rootRect.right - containerRect.left;
+            const yRoot = rootRect.top + rootRect.height / 2 - containerRect.top;
+
+            // Titik masuk sisi kiri Target
+            const xTarget = targetRect.left - containerRect.left;
+            const yTarget = targetRect.top + targetRect.height / 2 - containerRect.top;
+            const xTargetPoint = xTarget - 7; // Ujung panah marker berlabuh 7px sebelum border kartu Target
+
+            const branchRows = container.querySelectorAll('.dag-branch-row');
+            let forkPaths = '';
+            let joinPaths = '';
+            let minInX = 999999;
+            let maxOutX = 0;
+
+            branchRows.forEach(row => {
+                const inCard = row.querySelector('.dag-branch-in-card') || row;
+                const outCard = row.querySelector('.dag-branch-out-card') || row;
+
+                const inRect = inCard.getBoundingClientRect();
+                const outRect = outCard.getBoundingClientRect();
+
+                // Titik masuk kartu cabang (InCard)
+                const xIn = inRect.left - containerRect.left;
+                const yIn = inRect.top + inRect.height / 2 - containerRect.top;
+                const xInPoint = xIn - 7; // Ujung panah marker berlabuh 7px sebelum border kartu cabang
+
+                if (xIn < minInX) minInX = xIn;
+
+                // --- 1. KURVA FORK: Root -> InCard ---
+                const dxFork = Math.max(xInPoint - xRoot, 20);
+                const cpFork1 = xRoot + dxFork * 0.52;
+                const cpFork2 = xRoot + dxFork * 0.48;
+                const dFork = `M ${xRoot},${yRoot} C ${cpFork1},${yRoot} ${cpFork2},${yIn} ${xInPoint},${yIn}`;
+
+                forkPaths += `
+                    <path d="${dFork}" 
+                        fill="none" 
+                        stroke="#38bdf8" 
+                        stroke-width="2.2" 
+                        stroke-linecap="round"
+                        filter="url(#glow-fork)"
+                        marker-end="url(#arrow-fork)"
+                        class="transition-all duration-300 opacity-90 hover:opacity-100" />
+                `;
+
+                // Titik keluar kartu cabang (OutCard)
+                const xOut = outRect.right - containerRect.left;
+                const yOut = outRect.top + outRect.height / 2 - containerRect.top;
+
+                if (xOut > maxOutX) maxOutX = xOut;
+
+                // --- 2. KURVA JOIN: OutCard -> Target (ANTI-PUTUS) ---
+                const dxJoin = xTargetPoint - xOut;
+
+                let dJoin = '';
+                if (dxJoin > 85) {
+                    // Jika outCard masih jauh dari Target (seperti baris yang lebih pendek dari baris lainnya):
+                    // Tarik garis horizontal lurus dari tepi kanan kartu hingga ke zona belokan,
+                    // lalu belokkan kurva Bézier yang simetris dan seimbang ke kartu Target!
+                    const xBridgeEnd = xTargetPoint - 55;
+                    const cpJoin1 = xBridgeEnd + 55 * 0.52;
+                    const cpJoin2 = xBridgeEnd + 55 * 0.48;
+                    dJoin = `M ${xOut},${yOut} L ${xBridgeEnd},${yOut} C ${cpJoin1},${yOut} ${cpJoin2},${yTarget} ${xTargetPoint},${yTarget}`;
+                } else {
+                    // Jika outCard sudah dekat dengan Target (jarak normal ~50-80px):
+                    const cpJoin1 = xOut + dxJoin * 0.52;
+                    const cpJoin2 = xOut + dxJoin * 0.48;
+                    dJoin = `M ${xOut},${yOut} C ${cpJoin1},${yOut} ${cpJoin2},${yTarget} ${xTargetPoint},${yTarget}`;
+                }
+
+                joinPaths += `
+                    <path d="${dJoin}" 
+                        fill="none" 
+                        stroke="#34d399" 
+                        stroke-width="2.2" 
+                        stroke-linecap="round"
+                        filter="url(#glow-join)"
+                        marker-end="url(#arrow-join)"
+                        class="transition-all duration-300 opacity-90 hover:opacity-100" />
+                `;
+            });
+
+            // Posisikan badge FORK dan JOIN dengan presisi
+            if (badgeFork && minInX < 999999) {
+                const forkCenterX = (xRoot + minInX) / 2;
+                badgeFork.style.left = `${forkCenterX}px`;
+                badgeFork.style.top = `10px`;
+                badgeFork.classList.remove('hidden');
+            }
+
+            if (badgeJoin && maxOutX > 0) {
+                const joinCenterX = (maxOutX + xTarget) / 2;
+                badgeJoin.style.left = `${joinCenterX}px`;
+                badgeJoin.style.top = `10px`;
+                badgeJoin.classList.remove('hidden');
+            }
+
+            const defs = `
+                <defs>
+                    <marker id="arrow-fork" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#38bdf8" />
+                    </marker>
+                    <marker id="arrow-join" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#34d399" />
+                    </marker>
+                    <filter id="glow-fork" x="-20%" y="-20%" width="140%" height="140%">
+                        <feDropShadow dx="0" dy="0" stdDeviation="1.2" flood-color="#38bdf8" flood-opacity="0.45"/>
+                    </filter>
+                    <filter id="glow-join" x="-20%" y="-20%" width="140%" height="140%">
+                        <feDropShadow dx="0" dy="0" stdDeviation="1.2" flood-color="#34d399" flood-opacity="0.45"/>
+                    </filter>
+                </defs>
+            `;
+
+            svgCanvas.innerHTML = defs + forkPaths + joinPaths;
+        }
+
+        // ─── BUILD FORK & JOIN BRANCHING DIAGRAM HTML ───
+        function buildBranchingHtml(tree) {
+            const loginRole = tree.authRole || 'Staff';
+            const loginEp = tree.loginEp;
+            const targetEp = tree.targetEp;
+
+            // 1. Pangkal: Root Node (Auth Login)
+            const rootHtml = loginEp ? `
+                <button type="button" id="prereq-branch-btn-1" data-step="1" data-endpoint-id="${loginEp.id}"
+                    onclick="selectPrerequisiteStep(${loginEp.id}, 1, false, 'Login ${loginRole}')"
+                    class="prereq-step-btn flex flex-col justify-center p-3 rounded-xl bg-surface-container hover:bg-surface-container-high border border-[#222d45] hover:border-primary shrink-0 transition-all text-left group cursor-pointer shadow-md w-[170px]"
+                    title="Klik untuk menguji login ${loginRole} di Live Tester">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="w-5 h-5 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-[10px] shrink-0">1</span>
+                        <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-primary/20 text-primary uppercase font-label-badge border border-primary/30">AUTH</span>
+                    </div>
+                    <div class="font-bold text-on-surface text-[12px] truncate group-hover:text-primary transition-colors">Login ${loginRole}</div>
+                    <div class="text-outline text-[10px] mt-0.5 truncate flex items-center justify-between">
+                        <span>Sanctum &amp; CSRF</span>
+                        <span class="material-symbols-outlined text-[13px] opacity-0 group-hover:opacity-100 text-primary transition-opacity">play_circle</span>
+                    </div>
+                </button>
+            ` : `
+                <div class="flex flex-col justify-center p-3 rounded-xl bg-surface-container border border-[#222d45] shrink-0 text-left w-[170px]">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="w-5 h-5 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-[10px] shrink-0">1</span>
+                        <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-primary/20 text-primary uppercase font-label-badge">AUTH</span>
+                    </div>
+                    <div class="font-bold text-on-surface text-[12px] truncate">Login ${loginRole}</div>
+                    <div class="text-outline text-[10px] mt-0.5 truncate">Sanctum &amp; CSRF</div>
+                </div>
+            `;
+
+            // 2. Cabang-Cabang Paralel (Middle Rows)
+            const branchesRowsHtml = tree.branches.map((b, bIdx) => {
+                const fieldsStr = b.fields.join(', ');
+                
+                let laneItemsHtml = '';
+                if (b.upstream && b.upstream.length > 0) {
+                    b.upstream.forEach((up, upIdx) => {
+                        const upFields = up.fields.join(', ');
+                        const isFirst = (upIdx === 0);
+                        laneItemsHtml += `
+                            <button type="button" id="prereq-branch-btn-${up.stepNumber}" data-step="${up.stepNumber}" data-endpoint-id="${up.endpoint.id}"
+                                onclick="selectPrerequisiteStep(${up.endpoint.id}, ${up.stepNumber}, false, 'Hasilkan ${escapeHtml(upFields)}')"
+                                class="prereq-step-btn ${isFirst ? 'dag-branch-in-card' : ''} flex items-center gap-2 p-2.5 rounded-xl bg-surface-container hover:bg-surface-container-high border border-[#222d45] hover:border-secondary shrink-0 transition-all text-left group cursor-pointer w-[215px] shadow-sm">
+                                <span class="w-5 h-5 rounded-full bg-secondary/20 text-secondary flex items-center justify-center font-bold text-[10px] shrink-0">${up.stepNumber}</span>
+                                <div class="text-[11px] min-w-0 flex-1 truncate">
+                                    <div class="font-semibold text-on-surface flex items-center gap-1">
+                                        <span class="px-1.5 py-0.2 rounded font-label-badge text-[9px] method-badge-${up.endpoint.method} font-bold">${up.endpoint.method}</span>
+                                        <span class="truncate font-code-sm group-hover:text-secondary transition-colors">${escapeHtml(up.endpoint.url)}</span>
+                                    </div>
+                                    <div class="text-tertiary text-[10px] mt-0.5 truncate">Hasilkan <code>${escapeHtml(upFields)}</code></div>
+                                </div>
+                            </button>
+                            <!-- In-lane connector arrow -->
+                            <div class="flex items-center px-2 shrink-0">
+                                <svg class="w-5 h-3 text-outline/70" viewBox="0 0 20 12" fill="none">
+                                    <path d="M 1 6 L 15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    <path d="M 11 2 L 16 6 L 11 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </div>
+                        `;
+                    });
+                }
+
+                const isLastInCard = (!b.upstream || b.upstream.length === 0);
+                laneItemsHtml += `
+                    <button type="button" id="prereq-branch-btn-${b.stepNumber}" data-step="${b.stepNumber}" data-endpoint-id="${b.endpoint.id}"
+                        onclick="selectPrerequisiteStep(${b.endpoint.id}, ${b.stepNumber}, false, 'Hasilkan ${escapeHtml(fieldsStr)}')"
+                        class="prereq-step-btn ${isLastInCard ? 'dag-branch-in-card' : ''} dag-branch-out-card flex items-center gap-2.5 p-2.5 rounded-xl bg-surface-container hover:bg-surface-container-high border border-[#222d45] hover:border-secondary shrink-0 transition-all text-left group cursor-pointer w-[240px] shadow-sm">
+                        <span class="w-5 h-5 rounded-full bg-secondary/20 text-secondary flex items-center justify-center font-bold text-[10px] shrink-0">${b.stepNumber}</span>
+                        <div class="text-[11px] min-w-0 flex-1 truncate">
+                            <div class="font-semibold text-on-surface flex items-center justify-between gap-1">
+                                <div class="flex items-center gap-1 min-w-0 truncate">
+                                    <span class="px-1.5 py-0.2 rounded font-label-badge text-[9px] method-badge-${b.endpoint.method} font-bold">${b.endpoint.method}</span>
+                                    <span class="truncate font-code-sm group-hover:text-secondary transition-colors">${escapeHtml(b.endpoint.url)}</span>
+                                </div>
+                                <span class="material-symbols-outlined text-[14px] text-outline group-hover:text-secondary transition-colors shrink-0">play_circle</span>
+                            </div>
+                            <div class="text-tertiary text-[10px] mt-0.5 truncate">Hasilkan <code class="bg-tertiary/10 px-1 py-0.2 rounded">${escapeHtml(fieldsStr)}</code></div>
+                        </div>
+                    </button>
+                `;
+
+                return `
+                    <div class="dag-branch-row flex items-center shrink-0" data-branch-idx="${bIdx}">
+                        ${laneItemsHtml}
+                    </div>
+                `;
+            }).join('');
+
+            // 3. Ujung: Target Node (Menyatu)
+            const targetHtml = `
+                <button type="button" id="prereq-branch-btn-${tree.targetStepNumber}" data-step="${tree.targetStepNumber}" data-endpoint-id="${targetEp.id}"
+                    onclick="restoreMainEndpoint()"
+                    class="prereq-step-btn flex flex-col justify-center p-3 rounded-xl bg-tertiary/10 hover:bg-tertiary/20 border border-tertiary/40 shrink-0 transition-all text-left group ring-2 ring-tertiary/40 cursor-pointer shadow-md w-[190px]"
+                    title="Klik untuk kembali ke endpoint target utama">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="w-5 h-5 rounded-full bg-tertiary/20 text-tertiary flex items-center justify-center font-bold text-[10px] shrink-0">${tree.targetStepNumber}</span>
+                        <span class="px-1.5 py-0.5 rounded font-label-badge text-[8px] bg-tertiary/20 text-tertiary font-bold tracking-wider border border-tertiary/30">TARGET</span>
+                    </div>
+                    <div class="font-bold text-tertiary text-[12px] truncate">${escapeHtml(targetEp.title)}</div>
+                    <div class="text-tertiary/80 text-[10px] mt-0.5 truncate flex items-center justify-between">
+                        <div class="flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[13px]">call_merge</span>
+                            <span>Menyatu &amp; Selesai</span>
+                        </div>
+                        <span class="material-symbols-outlined text-[13px] opacity-0 group-hover:opacity-100 text-tertiary transition-opacity">settings_backup_restore</span>
+                    </div>
+                </button>
+            `;
+
+            return `
+                <div id="spec-prereq-dag-container" class="relative flex items-center min-w-max py-5 px-6 rounded-xl bg-surface-container-lowest/80 border border-[#222d45]">
+                    <!-- Global SVG Canvas Overlay (Covers entire container) -->
+                    <svg id="dag-svg-canvas" class="absolute inset-0 w-full h-full pointer-events-none overflow-visible" style="z-index: 1;">
+                        <!-- Bézier paths and markers injected dynamically -->
+                    </svg>
+
+                    <!-- Floating Pill Badges -->
+                    <span id="dag-badge-fork" class="absolute -translate-x-1/2 px-2 py-0.5 rounded-full text-[8.5px] font-bold bg-primary-container/70 text-primary border border-primary/40 uppercase tracking-wider shadow-sm z-10 pointer-events-none hidden">Fork</span>
+                    <span id="dag-badge-join" class="absolute -translate-x-1/2 px-2 py-0.5 rounded-full text-[8.5px] font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-500/40 uppercase tracking-wider shadow-sm z-10 pointer-events-none hidden">Join</span>
+
+                    <!-- 1. Pangkal: Login (Root) -->
+                    <div id="dag-node-root" class="shrink-0 flex items-center mr-16 relative" style="z-index: 2;">
+                        ${rootHtml}
+                    </div>
+
+                    <!-- 2. Cabang-Cabang Paralel (Middle Rows) -->
+                    <div id="dag-branches-col" class="flex flex-col gap-4 shrink-0 py-1 mr-16 relative" style="z-index: 2;">
+                        ${branchesRowsHtml}
+                    </div>
+
+                    <!-- 3. Ujung: Target Endpoint (Target) -->
+                    <div id="dag-node-target" class="shrink-0 flex items-center relative" style="z-index: 2;">
+                        ${targetHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Backward compatibility helper
+        function buildLinearHtml(tree) {
+            return '';
+        }
+
         // ─── SELECT ENDPOINT ACTION ───
         function selectEndpoint(id) {
             const ep = ENDPOINTS_MAP[id];
             if (!ep) return;
             ACTIVE_ENDPOINT_ID = id;
+            CURRENT_MAIN_ENDPOINT = ep;
+            ACTIVE_PREREQ_STEP_DATA = null;
 
-            // 1. Update Sidebar Active State
+            // Switch to Endpoint view
+            document.getElementById('endpoint-spec-view')?.classList.remove('hidden');
+            document.getElementById('workflow-spec-view')?.classList.add('hidden');
+
+            // 1. Update Sidebar Active State (TETAP pada endpoint ini)
+            document.querySelectorAll('.wf-nav-item').forEach(el => {
+                el.classList.remove('bg-surface-container-high', 'text-on-surface', 'border-l-2', 'border-primary');
+            });
             document.querySelectorAll('.ep-nav-item').forEach(el => {
                 el.classList.remove('bg-surface-container-high', 'text-on-surface', 'border-l-2', 'border-tertiary');
                 el.querySelector('.active-indicator')?.classList.add('hidden');
@@ -686,10 +1310,16 @@
                 navEl.querySelector('.active-indicator')?.classList.remove('hidden');
             }
 
-            // 2. Render Kolom 2: Specs
+            // Hide prerequisite active banner when switching main endpoint
+            document.getElementById('spec-prereq-active-banner')?.classList.add('hidden');
+
+            // 2. Render Kolom 2: Specs & Exclusive Branching DAG Diagram
             renderSpecs(ep);
 
-            // 3. Render Kolom 3: Tester
+            // 3. Render Kolom 2: Sub-specs (Headers, Body/Params, Response, Snippets)
+            renderDynamicSubSpec(ep);
+
+            // 4. Render Kolom 3: Tester
             syncTester(ep);
 
             // Close mobile sidebar if open
@@ -698,7 +1328,7 @@
             }
         }
 
-        // ─── RENDER SPECS (KOLOM 2) ───
+        // ─── RENDER SPECS (KOLOM 2 - TOP CONTEXT & EXCLUSIVE BRANCHING DAG) ───
         function renderSpecs(ep) {
             // Ribbon
             const ribbonMethod = document.getElementById('spec-ribbon-method');
@@ -711,7 +1341,45 @@
             document.getElementById('spec-title').textContent = ep.title;
             document.getElementById('spec-desc').textContent = ep.description || 'Tidak ada deskripsi rinci untuk endpoint ini.';
 
-            // Headers Table
+            // Prerequisite Branching Diagram (Exclusive DAG with SVG Curves)
+            const prereqCard = document.getElementById('spec-prerequisite-card');
+            const prereqBranchWrap = document.getElementById('spec-prereq-branching-wrap');
+            const branchBadge = document.getElementById('spec-prereq-branch-badge');
+
+            const tree = getPrerequisiteTree(ep);
+
+            if (tree.branches.length > 0) {
+                prereqCard.classList.remove('hidden');
+                document.getElementById('spec-prereq-title').textContent = `Alur Prerequisite Endpoint (${tree.targetStepNumber} Langkah)`;
+
+                if (tree.isBranching) {
+                    branchBadge.classList.remove('hidden');
+                    branchBadge.textContent = `Bercabang (${tree.branches.length} Cabang lalu Menyatu)`;
+                } else {
+                    branchBadge.classList.remove('hidden');
+                    branchBadge.textContent = `Alur Prasyarat (1 Dependensi)`;
+                }
+
+                // Render diagram DAG bercabang eksklusif
+                prereqBranchWrap.innerHTML = buildBranchingHtml(tree);
+                prereqBranchWrap.scrollLeft = 0;
+
+                // Hitung koordinat dan render garis kurva Bézier SVG
+                requestAnimationFrame(() => {
+                    renderDagConnectors();
+                    setTimeout(renderDagConnectors, 60);
+                    setTimeout(renderDagConnectors, 250);
+                });
+            } else {
+                prereqCard.classList.add('hidden');
+                document.getElementById('spec-prereq-active-banner')?.classList.add('hidden');
+            }
+        }
+
+        // ─── RENDER DYNAMIC SUB-SPEC (HEADERS, BODY, RESPONSE, SNIPPET) ───
+        // Berubah dinamis in-place tanpa mengubah route aktif di sidebar atau judul utama
+        function renderDynamicSubSpec(ep) {
+            // 1. Headers Table
             const hTbody = document.getElementById('spec-headers-tbody');
             let hRows = `
                 <tr class="hover:bg-surface-container/50">
@@ -753,7 +1421,7 @@
             }
             hTbody.innerHTML = hRows;
 
-            // Body / Params Schema & Table Heading
+            // 2. Body / Params Schema & Table Heading
             const bodyHeading = document.getElementById('spec-body-heading');
             const bodyTypeBadge = document.getElementById('spec-body-type-badge');
             const bodyRawLabel = document.getElementById('spec-body-raw-label');
@@ -761,7 +1429,7 @@
             const bodyTableWrap = document.getElementById('spec-body-table-wrap');
             const bodyTbody = document.getElementById('spec-body-tbody');
 
-            if (ep.method === 'GET') {
+            if (ep.method === 'GET' || ep.method === 'DELETE') {
                 if (bodyHeading) bodyHeading.textContent = 'Request Parameters (Query & Path)';
                 if (bodyTypeBadge) bodyTypeBadge.textContent = 'URL Parameters';
                 if (bodyRawLabel) bodyRawLabel.textContent = 'Parameters Schema';
@@ -771,7 +1439,61 @@
                 if (bodyRawLabel) bodyRawLabel.textContent = 'Payload Schema';
             }
 
-            if (ep.body && ep.body !== '-') {
+            // Render Parameters (F1 - dengan Asal Nilai)
+            if (ep.parameters && ep.parameters.length > 0) {
+                bodyRawEl.textContent = ep.body || '// Skema parameter dari database';
+                bodyTableWrap.classList.remove('hidden');
+                bodyTbody.innerHTML = ep.parameters.map(p => {
+                    let sourceCell = '';
+                    if (p.source_type === 'endpoint' && p.source_endpoint) {
+                        sourceCell = `
+                            <div class="space-y-0.5">
+                                <a href="javascript:void(0)" onclick="selectPrerequisiteStep(${p.source_endpoint.id}, null, false, 'Hasilkan ${escapeHtml(p.source_field || p.name)}')" 
+                                    class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary-container/20 hover:bg-primary-container/40 text-primary text-[10px] font-semibold border border-primary/30 transition-colors cursor-pointer"
+                                    title="Uji ${p.source_endpoint.url} di Live Tester">
+                                    <span class="font-bold text-[9px] px-1 rounded bg-primary/20">${p.source_endpoint.method}</span>
+                                    <span class="truncate max-w-[130px] font-code-sm">${p.source_endpoint.url}</span>
+                                    <span class="material-symbols-outlined text-[11px]">play_circle</span>
+                                </a>
+                                <div class="text-[10px] text-outline">
+                                    ${p.source_field ? 'Field: <code class="text-secondary">' + escapeHtml(p.source_field) + '</code>' : ''}
+                                </div>
+                            </div>
+                        `;
+                    } else if (p.source_type === 'session') {
+                        sourceCell = `
+                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-300 text-[10px] font-medium border border-purple-500/30">
+                                <span class="material-symbols-outlined text-[12px]">vpn_key</span>
+                                <span>Sesi Sanctum</span>
+                            </span>
+                        `;
+                    } else {
+                        sourceCell = `
+                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container-high text-outline text-[10px]">
+                                <span class="material-symbols-outlined text-[12px]">edit</span>
+                                <span>Input Manual</span>
+                            </span>
+                        `;
+                    }
+
+                    const validationBadge = p.is_required 
+                        ? `<span class="px-1.5 py-0.5 rounded bg-error/10 text-error text-[10px] font-bold">Wajib</span>`
+                        : `<span class="px-1.5 py-0.5 rounded bg-surface-variant text-outline text-[10px]">Opsional</span>`;
+
+                    return `
+                        <tr class="hover:bg-surface-container/50">
+                            <td class="py-2 px-3 font-semibold text-tertiary">
+                                ${escapeHtml(p.name)}
+                                <span class="text-[9px] text-outline block">(${p.location})</span>
+                            </td>
+                            <td class="py-2 px-3 text-outline">${escapeHtml(p.type)}</td>
+                            <td class="py-2 px-3">${validationBadge}</td>
+                            <td class="py-2 px-3 text-on-surface-variant font-body-sm">${escapeHtml(p.example || p.source_note || '-')}</td>
+                            <td class="py-2 px-3">${sourceCell}</td>
+                        </tr>
+                    `;
+                }).join('');
+            } else if (ep.body && ep.body !== '-') {
                 bodyRawEl.textContent = ep.body;
                 const parsedRows = parseBodyValidationSchema(ep.body);
                 if (parsedRows.length > 0) {
@@ -782,19 +1504,20 @@
                             <td class="py-2 px-3 text-outline">${escapeHtml(r.type)}</td>
                             <td class="py-2 px-3">${r.validation}</td>
                             <td class="py-2 px-3 text-on-surface-variant font-body-sm">${escapeHtml(r.desc)}</td>
+                            <td class="py-2 px-3"><span class="text-outline text-[10px]">Input Manual</span></td>
                         </tr>
                     `).join('');
                 } else {
                     bodyTableWrap.classList.add('hidden');
                 }
             } else {
-                bodyRawEl.textContent = ep.method === 'GET' 
+                bodyRawEl.textContent = (ep.method === 'GET' || ep.method === 'DELETE')
                     ? '// Endpoint ini tidak memerlukan parameter URL.' 
                     : '// Endpoint ini tidak memerlukan request body.';
                 bodyTableWrap.classList.add('hidden');
             }
 
-            // Response Example
+            // 3. Response Example
             const respCodeEl = document.getElementById('spec-response-code');
             if (ep.response_example && ep.response_example !== '-') {
                 try {
@@ -807,8 +1530,74 @@
                 respCodeEl.textContent = JSON.stringify({ status: true, message: "OK" }, null, 2);
             }
 
-            // Code Snippets
+            // 4. Code Snippets
             renderCodeSnippet(ep);
+        }
+
+        // ─── SELECT PREREQUISITE STEP (IN-PLACE TESTER & SUB-SPEC SWITCHER) ───
+        function selectPrerequisiteStep(targetEpId, stepNumber, isMainTarget = false, stepLabel = '') {
+            const targetEp = ENDPOINTS_MAP[targetEpId];
+            if (!targetEp) return;
+
+            const banner = document.getElementById('spec-prereq-active-banner');
+            const bannerName = document.getElementById('spec-prereq-active-name');
+
+            // Reset active styles on buttons across both views
+            document.querySelectorAll('.prereq-step-btn').forEach(btn => {
+                btn.classList.remove('ring-2', 'ring-primary', 'bg-primary-container/20', 'border-primary', 'font-bold');
+            });
+
+            if (isMainTarget || (CURRENT_MAIN_ENDPOINT && targetEpId === CURRENT_MAIN_ENDPOINT.id)) {
+                // User returns to Main Target Endpoint
+                ACTIVE_PREREQ_STEP_DATA = null;
+                banner?.classList.add('hidden');
+
+                // Highlight the final target button in both views
+                document.querySelectorAll('.prereq-step-btn').forEach(btn => {
+                    if (btn.dataset.endpointId == CURRENT_MAIN_ENDPOINT.id) {
+                        btn.classList.add('ring-2', 'ring-tertiary', 'bg-tertiary/20');
+                    }
+                });
+
+                renderDynamicSubSpec(CURRENT_MAIN_ENDPOINT);
+                syncTester(CURRENT_MAIN_ENDPOINT);
+                return;
+            }
+
+            // User clicked a prerequisite step
+            ACTIVE_PREREQ_STEP_DATA = { ep: targetEp, step: stepNumber, label: stepLabel };
+
+            // Highlight the clicked step button across both views (branching & linear)
+            document.querySelectorAll('.prereq-step-btn').forEach(btn => {
+                const matchStep = stepNumber && btn.dataset.step == stepNumber;
+                const matchEp = btn.dataset.endpointId == targetEpId;
+                if (matchStep || (!stepNumber && matchEp)) {
+                    btn.classList.add('ring-2', 'ring-primary', 'bg-primary-container/20', 'border-primary');
+                }
+            });
+
+            // Display informative active banner
+            if (banner && bannerName) {
+                banner.classList.remove('hidden');
+                const stepNumText = stepNumber ? `(Langkah ${stepNumber})` : '';
+                const labelText = stepLabel ? `&bull; ${escapeHtml(stepLabel)}` : '';
+                bannerName.innerHTML = `
+                    <span class="px-1.5 py-0.5 rounded font-label-badge text-[10px] font-bold method-badge-${targetEp.method}">${targetEp.method}</span>
+                    <span class="text-primary font-code-sm font-semibold">${escapeHtml(targetEp.url)}</span>
+                    <span class="text-on-surface-variant font-normal text-[11px] ml-1">${stepNumText} ${labelText}</span>
+                `;
+            }
+
+            // Dynamic in-place switch for sub-specs & live tester
+            renderDynamicSubSpec(targetEp);
+            syncTester(targetEp);
+        }
+
+        // ─── RESTORE MAIN ENDPOINT ───
+        function restoreMainEndpoint() {
+            if (CURRENT_MAIN_ENDPOINT) {
+                selectPrerequisiteStep(CURRENT_MAIN_ENDPOINT.id, null, true);
+            }
         }
 
         // ─── SYNC TESTER (KOLOM 3) ───
@@ -921,8 +1710,9 @@
                 activeBtn.classList.add('bg-primary', 'text-on-primary');
                 activeBtn.classList.remove('text-outline');
             }
-            if (ACTIVE_ENDPOINT_ID) {
-                renderCodeSnippet(ENDPOINTS_MAP[ACTIVE_ENDPOINT_ID]);
+            const currentActive = ACTIVE_PREREQ_STEP_DATA?.ep || CURRENT_MAIN_ENDPOINT || (ACTIVE_ENDPOINT_ID ? ENDPOINTS_MAP[ACTIVE_ENDPOINT_ID] : null);
+            if (currentActive) {
+                renderCodeSnippet(currentActive);
             }
         }
 
@@ -1168,8 +1958,9 @@
         }
 
         function resetTesterBody() {
-            if (ACTIVE_ENDPOINT_ID) {
-                syncTester(ENDPOINTS_MAP[ACTIVE_ENDPOINT_ID]);
+            const epToSync = ACTIVE_PREREQ_STEP_DATA?.ep || CURRENT_MAIN_ENDPOINT || (ACTIVE_ENDPOINT_ID ? ENDPOINTS_MAP[ACTIVE_ENDPOINT_ID] : null);
+            if (epToSync) {
+                syncTester(epToSync);
             } else {
                 const p = document.getElementById('tester-params-input');
                 const b = document.getElementById('tester-body-input');
@@ -1621,6 +2412,7 @@
                     document.body.classList.remove('is-resizing');
                     gutter.classList.remove('is-dragging');
                     saveLayout();
+                    requestAnimationFrame(() => renderDagConnectors());
                 }
 
                 gutter.addEventListener('pointerup', endDrag);
@@ -1715,6 +2507,10 @@
                 e.preventDefault();
                 toggleTesterPanel();
             }
+        });
+
+        window.addEventListener('resize', function() {
+            requestAnimationFrame(() => renderDagConnectors());
         });
 
         // ─── INITIALIZATION ON LOAD ───

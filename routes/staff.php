@@ -61,7 +61,7 @@ Route::prefix("api/staff")
             Route::get("/", [PenempatanController::class, "index"]);
             Route::get("belum-kelas", [PenempatanController::class, "belumKelas"]);
             Route::post("/", [PenempatanController::class, "store"]);
-            Route::delete("/{id}", [PenempatanController::class, "destroy"]);
+            Route::delete("/{id?}", [PenempatanController::class, "destroy"]);
         });
 
         // Kelas
@@ -117,6 +117,10 @@ Route::prefix("api/staff")
                         AkademikController::class,
                         "storePerwalian",
                     ]);
+                    Route::post("batch", [
+                        AkademikController::class,
+                        "storeBatchPerwalian",
+                    ]);
                     Route::get("dosen", [
                         AkademikController::class,
                         "perwalianByDosen",
@@ -125,9 +129,13 @@ Route::prefix("api/staff")
                         AkademikController::class,
                         "perwalianByMahasiswa",
                     ]);
-                    Route::put("{code}", [
+                    Route::put("/{code?}", [
                         AkademikController::class,
                         "updatePerwalian",
+                    ]);
+                    Route::delete("/{code?}", [
+                        AkademikController::class,
+                        "destroyPerwalian",
                     ]);
                 });
             });
@@ -142,7 +150,7 @@ Route::prefix("api/staff")
                     Route::get("/show", [MatakuliahController::class, "show"]);
                     Route::post("/", [MatakuliahController::class, "store"]);
                     Route::put("/", [MatakuliahController::class, "update"]);
-                    Route::delete("/{code}", [
+                    Route::delete("/{code?}", [
                         MatakuliahController::class,
                         "destroy",
                     ]);
@@ -157,7 +165,7 @@ Route::prefix("api/staff")
                     ]);
                     Route::post("/", [ProgramStudiController::class, "store"]);
                     Route::put("/", [ProgramStudiController::class, "update"]);
-                    Route::delete("/{code}", [
+                    Route::delete("/{code?}", [
                         ProgramStudiController::class,
                         "destroy",
                     ]);
@@ -170,13 +178,17 @@ Route::prefix("api/staff")
                     Route::get("/trash", [DosenController::class, "trash"]);
                     Route::post("/", [DosenController::class, "store"]);
                     Route::put("/", [DosenController::class, "update"]);
-                    Route::delete("/{code}", [
+                    Route::delete("/{code?}", [
                         DosenController::class,
                         "destroy",
                     ]);
                     Route::patch("/{code}/restore", [
                         DosenController::class,
                         "restore",
+                    ]);
+                    Route::delete("/force", [
+                        DosenController::class,
+                        "forceDelete",
                     ]);
                     Route::delete("/{code}/force", [
                         DosenController::class,
@@ -193,7 +205,7 @@ Route::prefix("api/staff")
                     ]);
                     Route::post("/", [NamaKurikulumController::class, "store"]);
                     Route::put("/", [NamaKurikulumController::class, "update"]);
-                    Route::delete("/{code}", [
+                    Route::delete("/{code?}", [
                         NamaKurikulumController::class,
                         "destroy",
                     ]);
@@ -208,7 +220,7 @@ Route::prefix("api/staff")
                     ]);
                     Route::post("/", [TahunAkademikController::class, "store"]);
                     Route::put("/", [TahunAkademikController::class, "update"]);
-                    Route::delete("/{code}", [
+                    Route::delete("/{code?}", [
                         TahunAkademikController::class,
                         "destroy",
                     ]);
@@ -232,7 +244,7 @@ Route::prefix("api/staff")
                         KurikulumAngkatanController::class,
                         "update",
                     ]);
-                    Route::delete("/{code}", [
+                    Route::delete("/{code?}", [
                         KurikulumAngkatanController::class,
                         "destroy",
                     ]);
@@ -245,13 +257,17 @@ Route::prefix("api/staff")
                     Route::get("/trash", [MahasiswaController::class, "trash"]);
                     Route::post("/", [MahasiswaController::class, "store"]);
                     Route::put("/", [MahasiswaController::class, "update"]);
-                    Route::delete("/{code}", [
+                    Route::delete("/{code?}", [
                         MahasiswaController::class,
                         "destroy",
                     ]);
                     Route::patch("/{code}/restore", [
                         MahasiswaController::class,
                         "restore",
+                    ]);
+                    Route::delete("/force", [
+                        MahasiswaController::class,
+                        "forceDelete",
                     ]);
                     Route::delete("/{code}/force", [
                         MahasiswaController::class,
@@ -320,7 +336,7 @@ Route::prefix("api/staff")
                         AssessmentGradeController::class,
                         "update",
                     ]);
-                    Route::delete("/{code}", [
+                    Route::delete("/{code?}", [
                         AssessmentGradeController::class,
                         "destroy",
                     ]);
@@ -342,13 +358,19 @@ Route::prefix("api/staff")
                 Route::post("/", [SksRuleController::class, "store"]);
                 Route::get("/show", [SksRuleController::class, "show"]);
                 Route::put("/update", [SksRuleController::class, "update"]);
-                Route::delete("/{code}", [SksRuleController::class, "destroy"]);
+                Route::delete("/{code?}", [SksRuleController::class, "destroy"]);
             });
 
         // ─── Master Data Ruangan ──────────────────────────────────────────────
         Route::prefix("ruangan")->group(function () {
             Route::get("/", [RuanganController::class, "index"]);
+            Route::get("/show", [RuanganController::class, "show"]);
             Route::post("/", [RuanganController::class, "store"]);
+            Route::put("/", [RuanganController::class, "update"]);
+            Route::patch("/toggle", [RuanganController::class, "toggleStatus"]);
+            Route::delete("/", [RuanganController::class, "destroy"]);
+
+            // Dual support alias path parameter /{code}
             Route::get("/{code}", [RuanganController::class, "show"]);
             Route::put("/{code}", [RuanganController::class, "update"]);
             Route::patch("/{code}/toggle", [RuanganController::class, "toggleStatus"]);
@@ -358,6 +380,11 @@ Route::prefix("api/staff")
         // ─── Master Data Hari ─────────────────────────────────────────────────
         Route::prefix("hari")->group(function () {
             Route::get("/", [HariController::class, "index"]);
+            Route::get("/show", [HariController::class, "show"]);
+            Route::put("/", [HariController::class, "update"]);
+            Route::patch("/toggle", [HariController::class, "toggleStatus"]);
+
+            // Dual support alias path parameter /{code}
             Route::get("/{code}", [HariController::class, "show"]);
             Route::put("/{code}", [HariController::class, "update"]);
             Route::patch("/{code}/toggle", [HariController::class, "toggleStatus"]);
@@ -367,19 +394,38 @@ Route::prefix("api/staff")
         Route::prefix("jadwal-kelas")->group(function () {
             Route::get("/", [JadwalKelasController::class, "index"]);
             Route::get("/status-kelas", [JadwalKelasController::class, "statusKelas"]);
-            Route::get("/kelas/{code}", [JadwalKelasController::class, "getByKelas"]);
-            Route::get("/ruangan/{code}", [JadwalKelasController::class, "getByRuangan"]);
-            Route::get("/hari/{code}", [JadwalKelasController::class, "getByHari"]);
+            Route::get("/show", [JadwalKelasController::class, "show"]);
             Route::post("/", [JadwalKelasController::class, "store"]);
+            Route::put("/", [JadwalKelasController::class, "update"]);
+            Route::post("/copy", [JadwalKelasController::class, "copy"]);
+            Route::delete("/", [JadwalKelasController::class, "destroy"]);
+
+            // Filter sub-resource
+            Route::get("/kelas", [JadwalKelasController::class, "getByKelas"]);
+            Route::get("/kelas/{code}", [JadwalKelasController::class, "getByKelas"]);
+            Route::get("/ruangan", [JadwalKelasController::class, "getByRuangan"]);
+            Route::get("/ruangan/{code}", [JadwalKelasController::class, "getByRuangan"]);
+            Route::get("/hari", [JadwalKelasController::class, "getByHari"]);
+            Route::get("/hari/{code}", [JadwalKelasController::class, "getByHari"]);
+
+            // Dual support alias path parameter /{code}
             Route::get("/{code}", [JadwalKelasController::class, "show"]);
             Route::put("/{code}", [JadwalKelasController::class, "update"]);
             Route::delete("/{code}", [JadwalKelasController::class, "destroy"]);
             Route::post("/{code}/copy", [JadwalKelasController::class, "copy"]);
         });
 
-        // ─── Audit Feeder PDDIKTI (5 GET Endpoints) ───────────────────────────
+        // ─── Audit Feeder PDDIKTI ─────────────────────────────────────────────
         Route::prefix("feeder")->group(function () {
             Route::get("status", [AuditFeederController::class, "status"]);
+
+            // Gaya Master Data Umum (?code= atau ?nim=)
+            Route::get("pull/kelas", [AuditFeederController::class, "pullKelas"]);
+            Route::get("audit/kelas", [AuditFeederController::class, "auditKelas"]);
+            Route::get("pull/mahasiswa", [AuditFeederController::class, "pullMahasiswa"]);
+            Route::get("audit/mahasiswa", [AuditFeederController::class, "auditMahasiswa"]);
+
+            // Dual support alias path parameter /{code} dan /{nim}
             Route::get("pull/kelas/{code}", [AuditFeederController::class, "pullKelas"]);
             Route::get("audit/kelas/{code}", [AuditFeederController::class, "auditKelas"]);
             Route::get("pull/mahasiswa/{nim}", [AuditFeederController::class, "pullMahasiswa"]);

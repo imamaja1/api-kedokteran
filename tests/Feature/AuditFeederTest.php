@@ -431,3 +431,37 @@ test('feeder pull responses hide internal UUID fields (id_registrasi_mahasiswa, 
         'id_semester',
     ]);
 });
+
+test('staff can call feeder endpoints using master data query style (without path parameter)', function () {
+    $mhs = TestDataHelper::createMahasiswa();
+
+    Http::fake(function ($request) use ($mhs) {
+        return Http::response([
+            'error_code' => 0,
+            'error_desc' => '',
+            'data' => [
+                [
+                    'id_matkul' => 'some-uuid',
+                    'kode_mata_kuliah' => 'MK101',
+                    'nama_mata_kuliah' => 'Anatomi I',
+                    'sks_mata_kuliah' => '3.00',
+                    'id_kelas_kuliah' => 'some-uuid-kelas',
+                    'nama_kelas_kuliah' => 'A',
+                    'id_registrasi_mahasiswa' => 'some-uuid-reg',
+                    'id_mahasiswa' => 'some-uuid-mhs',
+                    'nim' => $mhs->nim,
+                    'nama_mahasiswa' => $mhs->nama_mahasiswa,
+                    'nilai_angka' => 90.00,
+                    'nilai_huruf' => 'A',
+                    'nilai_indeks' => 4.00,
+                ],
+            ],
+        ], 200);
+    });
+
+    // Query style without path parameter
+    $response = actingAsStaffUser()->getJson('/api/staff/feeder/pull/mahasiswa?nim=' . $mhs->nim);
+
+    $response->assertStatus(200)
+        ->assertJsonPath('status', true);
+});

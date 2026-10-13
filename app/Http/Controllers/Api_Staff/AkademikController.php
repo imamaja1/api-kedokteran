@@ -172,16 +172,55 @@ class AkademikController extends Controller
         ]);
     }
 
+    public function storeBatchPerwalian(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'code_dosen' => ['required', 'string'],
+            'code_dosen_perwakilan' => ['nullable', 'string'],
+            'codes' => ['required', 'array', 'min:1'],
+            'codes.*' => ['required', 'string'],
+        ]);
+
+        $kodeDosen = $this->decryptIntegerCode($validated['code_dosen'], 'code_dosen');
+        if ($kodeDosen instanceof JsonResponse) {
+            return $kodeDosen;
+        }
+
+        $kodeDosenPerwakilan = null;
+        if (isset($validated['code_dosen_perwakilan'])) {
+            $kodeDosenPerwakilan = $this->decryptIntegerCode(
+                $validated['code_dosen_perwakilan'],
+                'code_dosen_perwakilan',
+            );
+            if ($kodeDosenPerwakilan instanceof JsonResponse) {
+                return $kodeDosenPerwakilan;
+            }
+        }
+
+        $nims = [];
+        foreach ($validated['codes'] as $idx => $codeItem) {
+            try {
+                $nims[] = Crypt::decryptString($codeItem);
+            } catch (DecryptException) {
+                return ApiResponse::validation(["codes.{$idx}" => "Format code pada index {$idx} tidak valid"]);
+            }
+        }
+
+        return $this->perwalianService->storeBatchPerwalian($kodeDosen, $kodeDosenPerwakilan, $nims);
+    }
+
     public function perwalian(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'code' => ['nullable', 'string'], // encrypted nim
             'code_dosen' => ['nullable', 'string'], // encrypted kode_dosen
+            'program_studi' => ['nullable', 'string'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
         $nim = null;
         $kode_dosen = null;
+        $programStudi = $validated['program_studi'] ?? null;
 
         if (isset($validated['code'])) {
             try {
@@ -202,7 +241,7 @@ class AkademikController extends Controller
 
         $perPage = $validated['per_page'] ?? 20;
 
-        return $this->perwalianService->getAllPerwalian($nim, $kode_dosen, $perPage);
+        return $this->perwalianService->getAllPerwalian($nim, $kode_dosen, $programStudi, $perPage);
     }
 
     public function perwalianByDosen(Request $request): JsonResponse
@@ -216,17 +255,16 @@ class AkademikController extends Controller
             return ApiResponse::validation(['search' => 'Harus ada parameter']);
         }
 
-        if ($validated['nama']) {
+        if (! empty($validated['nama'])) {
             return $this->perwalianService->getPerwalianByDosenName($validated['nama']);
         }
 
-        try {
-            $kode_dosen = Crypt::decryptString($validated['code']);
-        } catch (DecryptException) {
-            return ApiResponse::validation(['code' => 'Format code tidak valid']);
+        $kodeDosen = $this->decryptIntegerCode($validated['code'], 'code');
+        if ($kodeDosen instanceof JsonResponse) {
+            return $kodeDosen;
         }
 
-        return $this->perwalianService->getPerwalianByDosen((int) $kode_dosen);
+        return $this->perwalianService->getPerwalianByDosen($kodeDosen);
     }
 
     public function perwalianByMahasiswa(Request $request): JsonResponse
@@ -240,7 +278,7 @@ class AkademikController extends Controller
             return ApiResponse::validation(['search' => 'Harus ada parameter']);
         }
 
-        if ($validated['nama']) {
+        if (! empty($validated['nama'])) {
             return $this->perwalianService->getPerwalianByMahasiswaName($validated['nama']);
         }
 
@@ -253,42 +291,89 @@ class AkademikController extends Controller
         return $this->perwalianService->getPerwalianByMahasiswa($nim);
     }
 
-    public function updatePerwalian(Request $request, string $code): JsonResponse
+    public function updatePerwalian(Request $request, ?string $code = null): JsonResponse
     {
         $validated = $request->validate([
-            'kode_dosen' => ['nullable', 'string'],
-            'kode_dosen_perwakilan' => ['nullable', 'string'],
+            'code' => ['nullable', 'string'],
+            'code_perwalian' => ['nullable', 'string'],
             'nim' => ['nullable', 'string'],
+            'code_nim' => ['nullable', 'string'],
+            'code_dosen' => ['nullable', 'string'],
+            'kode_dosen' => ['nullable', 'string'],
+            'code_dosen_perwakilan' => ['nullable', 'string'],
+            'kode_dosen_perwakilan' => ['nullable', 'string'],
         ]);
 
+        $targetCode = $code ?? $validated['code_perwalian'] ?? $validated['code'] ?? null;
+        if (! $targetCode) {
+            return ApiResponse::validation(['code' => 'Parameter code perwalian wajib diisi']);
+        }
+
         try {
-            $kode_perwalian = Crypt::decryptString($code);
+            $kode_perwalian = Crypt::decryptString($targetCode);
         } catch (DecryptException) {
             return ApiResponse::validation(['code' => 'Format code tidak valid']);
         }
 
-        if (isset($validated['nim'])) {
+        $payload = [];
+
+        // Support both 'code_nim' / 'nim', or 'code' if $code was passed via path param
+        $rawNim = $validated['nim'] ?? $validated['code_nim'] ?? null;
+        if ($rawNim === null && $code !== null && isset($validated['code'])) {
+            $rawNim = $validated['code'];
+        }
+        if ($rawNim !== null) {
             try {
-                $validated['nim'] = Crypt::decryptString($validated['nim']);
+                $payload['nim'] = Crypt::decryptString($rawNim);
             } catch (DecryptException) {
-                return ApiResponse::validation(['nim' => 'Format nim tidak valid']);
+                return ApiResponse::validation(['nim' => 'Format code nim tidak valid']);
             }
         }
 
-        foreach (['kode_dosen', 'kode_dosen_perwakilan'] as $field) {
-            if (! isset($validated[$field])) {
-                continue;
-            }
-
-            $decoded = $this->decryptIntegerCode($validated[$field], $field);
+        // Support both 'code_dosen' and 'kode_dosen'
+        $rawDosen = $validated['code_dosen'] ?? $validated['kode_dosen'] ?? null;
+        if ($rawDosen !== null) {
+            $decoded = $this->decryptIntegerCode($rawDosen, 'kode_dosen');
             if ($decoded instanceof JsonResponse) {
                 return $decoded;
             }
-
-            $validated[$field] = $decoded;
+            $payload['kode_dosen'] = $decoded;
         }
 
-        return $this->perwalianService->updatePerwalian((int) $kode_perwalian, array_filter($validated, fn ($value) => $value !== null));
+        // Support both 'code_dosen_perwakilan' and 'kode_dosen_perwakilan'
+        $hasPerwakilan = array_key_exists('code_dosen_perwakilan', $request->all())
+            || array_key_exists('kode_dosen_perwakilan', $request->all());
+
+        if ($hasPerwakilan) {
+            $rawPerwakilan = $validated['code_dosen_perwakilan'] ?? $validated['kode_dosen_perwakilan'] ?? null;
+            if ($rawPerwakilan !== null) {
+                $decoded = $this->decryptIntegerCode($rawPerwakilan, 'kode_dosen_perwakilan');
+                if ($decoded instanceof JsonResponse) {
+                    return $decoded;
+                }
+                $payload['kode_dosen_perwakilan'] = $decoded;
+            } else {
+                $payload['kode_dosen_perwakilan'] = null;
+            }
+        }
+
+        return $this->perwalianService->updatePerwalian((int) $kode_perwalian, $payload);
+    }
+
+    public function destroyPerwalian(Request $request, ?string $code = null): JsonResponse
+    {
+        $targetCode = $code ?? $request->input('code_perwalian') ?? $request->input('code');
+        if (! $targetCode) {
+            return ApiResponse::validation(['code' => 'Parameter code perwalian wajib diisi']);
+        }
+
+        try {
+            $kode_perwalian = Crypt::decryptString($targetCode);
+        } catch (DecryptException) {
+            return ApiResponse::validation(['code' => 'Format code tidak valid']);
+        }
+
+        return $this->perwalianService->deletePerwalian((int) $kode_perwalian);
     }
 
     private function decryptIntegerCode(string $code, string $field): int|JsonResponse

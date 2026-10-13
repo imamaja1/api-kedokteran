@@ -507,4 +507,77 @@ test('encryption support: endpoints return code_* and accept code_* in payloads 
         ->assertJsonValidationErrors(['code']);
 });
 
+test('staff can use general master data style (show?code= and PUT with body) for ruangan, hari, and jadwal-kelas', function () {
+    $client = actingAsStaffJadwal();
+
+    // 1. Ruangan: show?code= and PUT with body code
+    $ruangan = App\Models\Ruangan::create([
+        'kode_ruangan' => 'R-TEST-MD',
+        'nama_ruangan' => 'Ruang Master Data',
+        'kapasitas' => 40,
+        'status_aktif' => true,
+    ]);
+
+    $resShowRuangan = $client->getJson('/api/staff/ruangan/show?code='.$ruangan->toCode());
+    $resShowRuangan->assertStatus(200)
+        ->assertJsonPath('status', true)
+        ->assertJsonPath('data.kode_ruangan', 'R-TEST-MD');
+
+    $resPutRuangan = $client->putJson('/api/staff/ruangan', [
+        'code' => $ruangan->toCode(),
+        'nama_ruangan' => 'Ruang Master Data Updated',
+    ]);
+    $resPutRuangan->assertStatus(200)
+        ->assertJsonPath('status', true)
+        ->assertJsonPath('data.nama_ruangan', 'Ruang Master Data Updated');
+
+    // 2. Hari: show?code= and PUT with body code
+    $senin = App\Models\Hari::where('nama_hari', 'Senin')->first();
+    $resShowHari = $client->getJson('/api/staff/hari/show?code='.$senin->toCode());
+    $resShowHari->assertStatus(200)
+        ->assertJsonPath('status', true);
+
+    $resPutHari = $client->putJson('/api/staff/hari', [
+        'code' => $senin->toCode(),
+        'status_aktif' => true,
+    ]);
+    $resPutHari->assertStatus(200)
+        ->assertJsonPath('status', true);
+
+    // 3. Jadwal Kelas: show?code=, filter ?code=, and PUT with body code
+    $kelas = createSampleKelas();
+
+    $resStoreJadwal = $client->postJson('/api/staff/jadwal-kelas', [
+        'code_kelas' => $kelas->toCode(),
+        'code_ruangan' => $ruangan->toCode(),
+        'code_hari' => $senin->toCode(),
+        'jam_mulai' => '14:00',
+        'jam_selesai' => '15:40',
+    ]);
+    $codeJadwal = $resStoreJadwal->json('data.code');
+
+    $resShowJadwal = $client->getJson('/api/staff/jadwal-kelas/show?code='.$codeJadwal);
+    $resShowJadwal->assertStatus(200)
+        ->assertJsonPath('status', true)
+        ->assertJsonPath('data.jam_mulai', '14:00');
+
+    $resFilterKelas = $client->getJson('/api/staff/jadwal-kelas/kelas?code='.$kelas->toCode());
+    $resFilterKelas->assertStatus(200)->assertJsonPath('status', true);
+
+    $resFilterRuangan = $client->getJson('/api/staff/jadwal-kelas/ruangan?code='.$ruangan->toCode());
+    $resFilterRuangan->assertStatus(200)->assertJsonPath('status', true);
+
+    $resFilterHari = $client->getJson('/api/staff/jadwal-kelas/hari?code='.$senin->toCode());
+    $resFilterHari->assertStatus(200)->assertJsonPath('status', true);
+
+    $resUpdateJadwal = $client->putJson('/api/staff/jadwal-kelas', [
+        'code' => $codeJadwal,
+        'jam_mulai' => '14:30',
+        'jam_selesai' => '16:10',
+    ]);
+    $resUpdateJadwal->assertStatus(200)
+        ->assertJsonPath('status', true)
+        ->assertJsonPath('data.jam_mulai', '14:30');
+});
+
 

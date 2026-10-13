@@ -69,9 +69,10 @@ class JadwalKelasController extends Controller
         return $this->service->statusKelas($validator->validated());
     }
 
-    public function getByKelas(string $code): JsonResponse
+    public function getByKelas(Request $request, ?string $code = null): JsonResponse
     {
-        $resolvedKelasId = $this->resolveId($code, 'code_kelas');
+        $rawCode = $code ?? $request->query('code') ?? $request->query('code_kelas') ?? $request->input('code') ?? $request->input('code_kelas');
+        $resolvedKelasId = $this->resolveId($rawCode, 'code_kelas');
         if ($resolvedKelasId instanceof JsonResponse) {
             return $resolvedKelasId;
         }
@@ -79,9 +80,10 @@ class JadwalKelasController extends Controller
         return $this->service->getByKelas($resolvedKelasId);
     }
 
-    public function getByRuangan(Request $request, string $code): JsonResponse
+    public function getByRuangan(Request $request, ?string $code = null): JsonResponse
     {
-        $resolvedRuanganId = $this->resolveId($code, 'code_ruangan');
+        $rawCode = $code ?? $request->query('code') ?? $request->query('code_ruangan') ?? $request->input('code') ?? $request->input('code_ruangan');
+        $resolvedRuanganId = $this->resolveId($rawCode, 'code_ruangan');
         if ($resolvedRuanganId instanceof JsonResponse) {
             return $resolvedRuanganId;
         }
@@ -104,9 +106,10 @@ class JadwalKelasController extends Controller
         return $this->service->getByRuangan($resolvedRuanganId, $validator->validated());
     }
 
-    public function getByHari(Request $request, string $code): JsonResponse
+    public function getByHari(Request $request, ?string $code = null): JsonResponse
     {
-        $resolvedHariId = $this->resolveId($code, 'code_hari');
+        $rawCode = $code ?? $request->query('code') ?? $request->query('code_hari') ?? $request->input('code') ?? $request->input('code_hari');
+        $resolvedHariId = $this->resolveId($rawCode, 'code_hari');
         if ($resolvedHariId instanceof JsonResponse) {
             return $resolvedHariId;
         }
@@ -204,7 +207,7 @@ class JadwalKelasController extends Controller
 
     public function destroy(Request $request, ?string $code = null): JsonResponse
     {
-        $resolvedId = $this->resolveId($code ?? $request->input('code'), 'code');
+        $resolvedId = $this->resolveId($code ?? $request->input('code') ?? $request->query('code'), 'code');
         if ($resolvedId instanceof JsonResponse) {
             return $resolvedId;
         }
@@ -214,7 +217,7 @@ class JadwalKelasController extends Controller
 
     public function copy(Request $request, ?string $code = null): JsonResponse
     {
-        $resolvedId = $this->resolveId($code ?? $request->input('code'), 'code');
+        $resolvedId = $this->resolveId($code ?? $request->input('code') ?? $request->query('code'), 'code');
         if ($resolvedId instanceof JsonResponse) {
             return $resolvedId;
         }

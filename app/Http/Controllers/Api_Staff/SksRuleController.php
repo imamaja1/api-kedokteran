@@ -209,10 +209,15 @@ class SksRuleController extends Controller
     }
 
     /**
-     * DELETE /staff/sks-rule/{code}
+     * DELETE /staff/sks-rule
      */
-    public function destroy(string $code): JsonResponse
+    public function destroy(Request $request, ?string $code = null): JsonResponse
     {
+        $code = $code ?? $request->input('code');
+        if (! $code) {
+            return ApiResponse::validation(['code' => ['Parameter code wajib diisi.']]);
+        }
+
         try {
             $id = (int) Crypt::decryptString($code);
             $deleted = $this->service->destroy($id);

@@ -16,7 +16,7 @@ class JadwalDocsSeeder extends Seeder
         // 1. Section: Master Ruangan & Hari
         DB::table('api_sections')->updateOrInsert(
             ['title' => 'Staff - Master Ruangan & Hari'],
-            ['sort_order' => 29, 'created_at' => now(), 'updated_at' => now()]
+            ['sort_order' => 13, 'created_at' => now(), 'updated_at' => now()]
         );
         $sectionRuanganHariId = DB::table('api_sections')->where('title', 'Staff - Master Ruangan & Hari')->value('id');
         DB::table('api_endpoints')->where('api_section_id', $sectionRuanganHariId)->delete();
@@ -43,42 +43,42 @@ class JadwalDocsSeeder extends Seeder
                 'sort_order' => 2,
             ],
             [
-                'title' => 'Detail Ruangan',
-                'description' => 'Mendapatkan detail satu ruangan dengan parameter encrypted `{code}` di URL.',
+                'title' => 'Detail Ruangan (Query & Path Param)',
+                'description' => 'Mendapatkan detail satu ruangan. Mendukung gaya master data umum via query string `?code=...` maupun path parameter `/{code}`.',
                 'method' => 'GET',
-                'url' => '/api/staff/ruangan/{code}',
+                'url' => '/api/staff/ruangan/show',
                 'headers' => 'Cookie: laravel-session',
-                'body' => null,
+                'body' => "{\n    \"code\": \"{encrypted code}|required|string\"\n}",
                 'response_example' => "{\n    \"status\": true,\n    \"message\": \"Detail ruangan berhasil diambil.\",\n    \"data\": {\n        \"id\": 1,\n        \"code\": \"eyJpdiI6...\",\n        \"code_ruangan\": \"eyJpdiI6...\",\n        \"kode_ruangan\": \"RK.01\",\n        \"nama_ruangan\": \"Ruang Kuliah 01\",\n        \"kapasitas\": 40,\n        \"jenis\": \"kuliah\",\n        \"lokasi\": \"Gedung Kedokteran Lt. 1\",\n        \"status_aktif\": true\n    }\n}",
                 'sort_order' => 3,
             ],
             [
-                'title' => 'Update Ruangan',
-                'description' => 'Mengubah data master ruangan dengan parameter encrypted `{code}` di URL.',
+                'title' => 'Update Ruangan (Body Payload & Path Param)',
+                'description' => 'Mengubah data master ruangan. Mendukung gaya master data umum `PUT /api/staff/ruangan` (kirim `code` dalam JSON body) maupun path parameter `PUT /api/staff/ruangan/{code}`.',
                 'method' => 'PUT',
-                'url' => '/api/staff/ruangan/{code}',
+                'url' => '/api/staff/ruangan',
                 'headers' => "Cookie: laravel-session\nContent-Type: application/json",
-                'body' => "{\n    \"nama_ruangan\": \"Ruang Kuliah 01 (Renovasi)|sometimes|string\",\n    \"kapasitas\"   : \"45|sometimes|integer\",\n    \"lokasi\"      : \"Gedung Kedokteran Lt. 1|nullable|string\"\n}",
+                'body' => "{\n    \"code\"        : \"{encrypted code}|required|string\",\n    \"nama_ruangan\": \"Ruang Kuliah 01 (Renovasi)|sometimes|string\",\n    \"kapasitas\"   : \"45|sometimes|integer\",\n    \"lokasi\"      : \"Gedung Kedokteran Lt. 1|nullable|string\"\n}",
                 'response_example' => "{\n    \"status\": true,\n    \"message\": \"Ruangan berhasil diperbarui.\",\n    \"data\": {\n        \"id\": 1,\n        \"code\": \"eyJpdiI6...\",\n        \"code_ruangan\": \"eyJpdiI6...\",\n        \"kode_ruangan\": \"RK.01\",\n        \"nama_ruangan\": \"Ruang Kuliah 01 (Renovasi)\",\n        \"kapasitas\": 45,\n        \"status_aktif\": true\n    }\n}",
                 'sort_order' => 4,
             ],
             [
                 'title' => 'Toggle Status Ruangan',
-                'description' => 'Mengaktifkan atau menonaktifkan ruangan dengan parameter encrypted `{code}`.',
+                'description' => 'Mengaktifkan atau menonaktifkan ruangan. Mendukung query param `?code=...` / body `code` maupun legacy path param `/{code}/toggle`.',
                 'method' => 'PATCH',
-                'url' => '/api/staff/ruangan/{code}/toggle',
+                'url' => '/api/staff/ruangan/toggle',
                 'headers' => 'Cookie: laravel-session',
-                'body' => null,
+                'body' => "{\n    \"code\": \"{encrypted code}|required|string\"\n}",
                 'response_example' => "{\n    \"status\": true,\n    \"message\": \"Ruangan berhasil dinonaktifkan.\",\n    \"data\": {\n        \"id\": 1,\n        \"code\": \"eyJpdiI6...\",\n        \"kode_ruangan\": \"RK.01\",\n        \"status_aktif\": false\n    }\n}",
                 'sort_order' => 5,
             ],
             [
                 'title' => 'Hapus Ruangan',
-                'description' => 'Menghapus master ruangan jika belum memiliki jadwal. Menerima parameter encrypted `{code}`.',
+                'description' => 'Menghapus master ruangan jika belum memiliki jadwal. Mendukung query param `?code=...` / body `code` maupun legacy path param `/{code}`.',
                 'method' => 'DELETE',
-                'url' => '/api/staff/ruangan/{code}',
+                'url' => '/api/staff/ruangan',
                 'headers' => 'Cookie: laravel-session',
-                'body' => null,
+                'body' => "{\n    \"code\": \"{encrypted code}|required|string\"\n}",
                 'response_example' => "{\n    \"status\": true,\n    \"message\": \"Ruangan berhasil dihapus.\",\n    \"data\": null\n}",
                 'sort_order' => 6,
             ],
@@ -94,11 +94,11 @@ class JadwalDocsSeeder extends Seeder
             ],
             [
                 'title' => 'Toggle Status Hari',
-                'description' => 'Mengaktifkan atau menonaktifkan hari aktif perkuliahan dengan parameter encrypted `{code}`.',
+                'description' => 'Mengaktifkan atau menonaktifkan hari aktif perkuliahan via query param `?code=...` / body `code` maupun legacy path param `/{code}/toggle`.',
                 'method' => 'PATCH',
-                'url' => '/api/staff/hari/{code}/toggle',
+                'url' => '/api/staff/hari/toggle',
                 'headers' => 'Cookie: laravel-session',
-                'body' => null,
+                'body' => "{\n    \"code\": \"{encrypted code}|required|string\"\n}",
                 'response_example' => "{\n    \"status\": true,\n    \"message\": \"Hari Sabtu berhasil diaktifkan.\",\n    \"data\": {\"id\": 6, \"code_hari\": \"eyJpdiI6...\", \"nama_hari\": \"Sabtu\", \"status_aktif\": true}\n}",
                 'sort_order' => 8,
             ],
@@ -114,7 +114,7 @@ class JadwalDocsSeeder extends Seeder
         // 2. Section: Penjadwalan Kelas
         DB::table('api_sections')->updateOrInsert(
             ['title' => 'Staff - Penjadwalan Kelas'],
-            ['sort_order' => 30, 'created_at' => now(), 'updated_at' => now()]
+            ['sort_order' => 19, 'created_at' => now(), 'updated_at' => now()]
         );
         $sectionJadwalId = DB::table('api_sections')->where('title', 'Staff - Penjadwalan Kelas')->value('id');
         DB::table('api_endpoints')->where('api_section_id', $sectionJadwalId)->delete();
@@ -152,71 +152,71 @@ class JadwalDocsSeeder extends Seeder
             ],
             [
                 'title' => 'Detail Jadwal Kelas',
-                'description' => 'Mendapatkan detail satu jadwal perkuliahan via encrypted parameter `{code}` di URL.',
+                'description' => 'Mendapatkan detail satu jadwal perkuliahan via query param `?code=...` maupun encrypted parameter `/{code}` di URL.',
                 'method' => 'GET',
-                'url' => '/api/staff/jadwal-kelas/{code}',
+                'url' => '/api/staff/jadwal-kelas/show',
                 'headers' => 'Cookie: laravel-session',
-                'body' => null,
+                'body' => "{\n    \"code\": \"{encrypted code}|required|string\"\n}",
                 'response_example' => "{\n    \"status\": true,\n    \"message\": \"Detail jadwal kelas berhasil diambil.\",\n    \"data\": {\n        \"id\": 1,\n        \"code\": \"eyJpdiI6...\",\n        \"code_jadwal\": \"eyJpdiI6...\",\n        \"code_kelas\": \"eyJpdiI6...\",\n        \"nama_kelas\": \"Kelas A\",\n        \"ruangan\": {\"nama_ruangan\": \"Ruang Kuliah 01\"},\n        \"hari\": {\"nama_hari\": \"Senin\"},\n        \"jam_mulai\": \"08:00\",\n        \"jam_selesai\": \"09:40\"\n    }\n}",
                 'sort_order' => 4,
             ],
             [
                 'title' => 'Jadwal per Kelas Kuliah',
-                'description' => 'Mengambil jadwal untuk satu kelas kuliah dengan parameter encrypted `{code}` (code_kelas).',
+                'description' => 'Mengambil jadwal untuk satu kelas kuliah via query param `?code=...` maupun encrypted parameter `/{code}`.',
                 'method' => 'GET',
-                'url' => '/api/staff/jadwal-kelas/kelas/{code}',
+                'url' => '/api/staff/jadwal-kelas/kelas',
                 'headers' => 'Cookie: laravel-session',
-                'body' => null,
+                'body' => "{\n    \"code\": \"{encrypted code_kelas}|required|string\"\n}",
                 'response_example' => "{\n    \"status\": true,\n    \"message\": \"Jadwal per kelas berhasil diambil.\",\n    \"data\": {\n        \"kelas\": {\n            \"kelas_id\": 11605,\n            \"code_kelas\": \"eyJpdiI6...\",\n            \"nama_kelas\": \"Kelas A\",\n            \"jumlah_mahasiswa\": 26\n        },\n        \"total_jadwal\": 2,\n        \"jadwal_list\": [...],\n        \"jadwal_per_hari\": {\n            \"Senin\": [...],\n            \"Rabu\": [...]\n        }\n    }\n}",
                 'sort_order' => 5,
             ],
             [
                 'title' => 'Jadwal per Ruangan',
-                'description' => 'Melihat jadwal penggunaan suatu ruangan dengan parameter encrypted `{code}` (code_ruangan).',
+                'description' => 'Melihat jadwal penggunaan suatu ruangan via query param `?code=...` maupun encrypted parameter `/{code}`.',
                 'method' => 'GET',
-                'url' => '/api/staff/jadwal-kelas/ruangan/{code}',
+                'url' => '/api/staff/jadwal-kelas/ruangan',
                 'headers' => 'Cookie: laravel-session',
-                'body' => "{\n    \"code_tahun_akademik\": \"{encrypted code_tahun_akademik}|nullable|string\",\n    \"code_hari\": \"{encrypted code_hari}|nullable|string\"\n}",
+                'body' => "{\n    \"code\": \"{encrypted code_ruangan}|required|string\",\n    \"code_tahun_akademik\": \"{encrypted code_tahun_akademik}|nullable|string\",\n    \"code_hari\": \"{encrypted code_hari}|nullable|string\"\n}",
                 'response_example' => "{\n    \"status\": true,\n    \"message\": \"Jadwal ruangan berhasil diambil.\",\n    \"data\": {\n        \"ruangan\": {\"code_ruangan\": \"eyJpdiI6...\", \"nama_ruangan\": \"Ruang Kuliah 01\"},\n        \"total_jadwal\": 3,\n        \"jadwal_per_hari\": {...}\n    }\n}",
                 'sort_order' => 6,
             ],
             [
                 'title' => 'Jadwal per Hari',
-                'description' => 'Melihat seluruh jadwal perkuliahan pada hari tertentu dengan parameter encrypted `{code}` (code_hari).',
+                'description' => 'Melihat seluruh jadwal perkuliahan pada hari tertentu via query param `?code=...` maupun encrypted parameter `/{code}`.',
                 'method' => 'GET',
-                'url' => '/api/staff/jadwal-kelas/hari/{code}',
+                'url' => '/api/staff/jadwal-kelas/hari',
                 'headers' => 'Cookie: laravel-session',
-                'body' => "{\n    \"code_tahun_akademik\": \"{encrypted code_tahun_akademik}|nullable|string\"\n}",
+                'body' => "{\n    \"code\": \"{encrypted code_hari}|required|string\",\n    \"code_tahun_akademik\": \"{encrypted code_tahun_akademik}|nullable|string\"\n}",
                 'response_example' => "{\n    \"status\": true,\n    \"message\": \"Jadwal hari berhasil diambil.\",\n    \"data\": {\n        \"hari\": {\"code_hari\": \"eyJpdiI6...\", \"nama_hari\": \"Senin\"},\n        \"total_jadwal\": 4,\n        \"jadwal_list\": [...]\n    }\n}",
                 'sort_order' => 7,
             ],
             [
                 'title' => 'Update Jadwal Kelas',
-                'description' => 'Memperbarui ruangan, hari, atau jam jadwal kelas via encrypted parameter `{code}` di URL.',
+                'description' => 'Memperbarui ruangan, hari, atau jam jadwal kelas via `PUT /api/staff/jadwal-kelas` (body `code`) maupun legacy `PUT /api/staff/jadwal-kelas/{code}`.',
                 'method' => 'PUT',
-                'url' => '/api/staff/jadwal-kelas/{code}',
+                'url' => '/api/staff/jadwal-kelas',
                 'headers' => "Cookie: laravel-session\nContent-Type: application/json",
-                'body' => "{\n    \"code_ruangan\": \"{encrypted code_ruangan}|sometimes|string\",\n    \"code_hari\": \"{encrypted code_hari}|sometimes|string\",\n    \"jam_mulai\": \"10:00|sometimes|string\",\n    \"jam_selesai\": \"11:40|sometimes|string\",\n    \"keterangan\": \"nullable|string\"\n}",
+                'body' => "{\n    \"code\"         : \"{encrypted code}|required|string\",\n    \"code_ruangan\": \"{encrypted code_ruangan}|sometimes|string\",\n    \"code_hari\": \"{encrypted code_hari}|sometimes|string\",\n    \"jam_mulai\": \"10:00|sometimes|string\",\n    \"jam_selesai\": \"11:40|sometimes|string\",\n    \"keterangan\": \"nullable|string\"\n}",
                 'response_example' => "{\n    \"status\": true,\n    \"message\": \"Jadwal kelas berhasil diperbarui.\",\n    \"data\": {...}\n}",
                 'sort_order' => 8,
             ],
             [
                 'title' => 'Hapus Jadwal Kelas',
-                'description' => 'Menghapus satu jadwal kelas dengan parameter encrypted `{code}`.',
+                'description' => 'Menghapus satu jadwal kelas via query param `?code=...` / body `code` maupun legacy path param `/{code}`.',
                 'method' => 'DELETE',
-                'url' => '/api/staff/jadwal-kelas/{code}',
+                'url' => '/api/staff/jadwal-kelas',
                 'headers' => 'Cookie: laravel-session',
-                'body' => null,
+                'body' => "{\n    \"code\": \"{encrypted code}|required|string\"\n}",
                 'response_example' => "{\n    \"status\": true,\n    \"message\": \"Jadwal kelas berhasil dihapus.\",\n    \"data\": null\n}",
                 'sort_order' => 9,
             ],
             [
                 'title' => 'Salin Jadwal Kelas',
-                'description' => 'Menyalin jadwal ke hari lain, ruangan lain, atau kelas lain dengan parameter encrypted `{code}` dan body `code_*`.',
+                'description' => 'Menyalin jadwal ke hari lain, ruangan lain, atau kelas lain via `POST /api/staff/jadwal-kelas/copy` (body `code` dan `target_code_kelas`) maupun `POST /api/staff/jadwal-kelas/{code}/copy`.',
                 'method' => 'POST',
-                'url' => '/api/staff/jadwal-kelas/{code}/copy',
+                'url' => '/api/staff/jadwal-kelas/copy',
                 'headers' => "Cookie: laravel-session\nContent-Type: application/json",
-                'body' => "{\n    \"code_hari\": \"{encrypted code_hari}|nullable|string\",\n    \"code_ruangan\": \"{encrypted code_ruangan}|nullable|string\",\n    \"jam_mulai\": \"13:00|nullable|string\",\n    \"jam_selesai\": \"14:40|nullable|string\"\n}",
+                'body' => "{\n    \"code\": \"{encrypted code}|required|string\",\n    \"target_code_kelas\": \"{encrypted target_kelas_id}|nullable|string\",\n    \"code_hari\": \"{encrypted code_hari}|nullable|string\",\n    \"code_ruangan\": \"{encrypted code_ruangan}|nullable|string\",\n    \"jam_mulai\": \"13:00|nullable|string\",\n    \"jam_selesai\": \"14:40|nullable|string\"\n}",
                 'response_example' => "{\n    \"status\": true,\n    \"message\": \"Jadwal kelas berhasil dibuat.\",\n    \"data\": {...}\n}",
                 'sort_order' => 10,
             ],
@@ -248,6 +248,174 @@ class JadwalDocsSeeder extends Seeder
                     'updated_at' => now(),
                 ]
             );
+        }
+
+        // 4. Update Section: Staff - Perwalian (Tambah Batch & Hapus)
+        $sectionPerwalianId = DB::table('api_sections')->where('title', 'Staff - Perwalian')->value('id');
+        if ($sectionPerwalianId) {
+            DB::table('api_endpoints')->where('api_section_id', $sectionPerwalianId)->where('method', 'PUT')->update([
+                'url' => '/api/staff/akademik/perwalian/{code}',
+                'description' => 'Update data perwalian dengan encrypted code perwalian di URL path. Mendukung pengiriman `code_dosen_perwakilan: null` untuk melepas dosen perwakilan.',
+                'body' => "{\n    \"code_dosen\"            : \"{encrypted atau integer ID}|nullable|string\",\n    \"code_dosen_perwakilan\" : \"{encrypted, integer ID, atau null}|nullable\",\n    \"code\"                  : \"{encrypted NIM}|nullable|string\"\n}",
+                'updated_at' => now(),
+            ]);
+
+            DB::table('api_endpoints')->where('api_section_id', $sectionPerwalianId)->where('method', 'POST')->where('url', 'like', '%/perwalian/')->update([
+                'url' => '/api/staff/akademik/perwalian',
+                'description' => 'Buat perwalian baru. Mendukung fleksibilitas input code/nim dan encrypted code_dosen atau integer ID. Mengembalikan 201 Created.',
+                'body' => "{\n    \"code\"                  : \"{encrypted NIM atau plaintext NIM}|required|string\",\n    \"code_dosen\"            : \"{encrypted kode_dosen atau ID}|required|string\",\n    \"code_dosen_perwakilan\" : \"{nullable|string}\"\n}",
+                'updated_at' => now(),
+            ]);
+
+            DB::table('api_endpoints')->where('api_section_id', $sectionPerwalianId)->where('method', 'GET')->where('url', 'like', '%/perwalian/')->update([
+                'url' => '/api/staff/akademik/perwalian',
+                'updated_at' => now(),
+            ]);
+
+            DB::table('api_endpoints')->updateOrInsert(
+                ['api_section_id' => $sectionPerwalianId, 'url' => '/api/staff/akademik/perwalian/batch', 'method' => 'POST'],
+                [
+                    'api_section_id' => $sectionPerwalianId,
+                    'title' => 'Batch Tambah Perwalian',
+                    'description' => 'Menetapkan dosen wali untuk banyak mahasiswa sekaligus dalam satu transaksi basis data.',
+                    'method' => 'POST',
+                    'url' => '/api/staff/akademik/perwalian/batch',
+                    'headers' => "Cookie: laravel-session\nContent-Type: application/json",
+                    'body' => "{\n    \"items\": [\n        {\n            \"code\": \"{encrypted NIM atau plaintext NIM}|required|string\",\n            \"code_dosen\": \"{encrypted kode_dosen atau ID}|required|string\",\n            \"code_dosen_perwakilan\": \"{nullable|string}\"\n        }\n    ]\n}",
+                    'response_example' => "{\n    \"status\": true,\n    \"message\": \"2 perwalian berhasil ditambahkan.\",\n    \"data\": {\n        \"created_count\": 2,\n        \"perwalian\": [...]\n    }\n}",
+                    'sort_order' => 6,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
+
+            DB::table('api_endpoints')->updateOrInsert(
+                ['api_section_id' => $sectionPerwalianId, 'url' => '/api/staff/akademik/perwalian/{code}', 'method' => 'DELETE'],
+                [
+                    'api_section_id' => $sectionPerwalianId,
+                    'title' => 'Hapus Perwalian',
+                    'description' => 'Menghapus data perwalian mahasiswa berdasarkan encrypted code perwalian.',
+                    'method' => 'DELETE',
+                    'url' => '/api/staff/akademik/perwalian/{code}',
+                    'headers' => 'Cookie: laravel-session',
+                    'body' => null,
+                    'response_example' => "{\n    \"status\": true,\n    \"message\": \"Data perwalian berhasil dihapus\",\n    \"data\": null\n}",
+                    'sort_order' => 7,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
+        }
+
+        // 5. Update Section: Staff - Audit Feeder PDDIKTI (5 Canonical Endpoints)
+        DB::table('api_sections')->updateOrInsert(
+            ['title' => 'Staff - Audit Feeder PDDIKTI'],
+            ['sort_order' => 25, 'created_at' => now(), 'updated_at' => now()]
+        );
+        $sectionFeederId = DB::table('api_sections')->where('title', 'Staff - Audit Feeder PDDIKTI')->value('id');
+        if ($sectionFeederId) {
+            DB::table('api_endpoints')->where('api_section_id', $sectionFeederId)->delete();
+
+            $endpointsFeeder = [
+                [
+                    'title' => 'Cek Status Koneksi Feeder',
+                    'description' => 'Memeriksa ketersediaan koneksi Web Service Neo Feeder PDDIKTI dan masa aktif token.',
+                    'method' => 'GET',
+                    'url' => '/api/staff/feeder/status',
+                    'headers' => "Accept: application/json\nCookie: laravel-session",
+                    'body' => null,
+                    'response_example' => "{\n    \"status\": true,\n    \"message\": \"Koneksi ke Feeder aktif.\",\n    \"data\": {\n        \"connected\": true,\n        \"token_valid_until\": \"2026-10-12 18:00:00\"\n    }\n}",
+                    'sort_order' => 1,
+                ],
+                [
+                    'title' => 'Tarik Nilai Kelas (Pre-Fetch)',
+                    'description' => 'Menarik data nilai kelas dari Feeder (GetDetailNilaiPerkuliahanKelas) dan menyimpannya di cache server (TTL 1 jam). Mendukung query param `?code=...` (code_kelas) maupun legacy path param `/{code}`.',
+                    'method' => 'GET',
+                    'url' => '/api/staff/feeder/pull/kelas',
+                    'headers' => "Accept: application/json\nCookie: laravel-session",
+                    'body' => "{\n    \"code\": \"{code_kelas}|required|string\"\n}",
+                    'response_example' => "{\n    \"status\": true,\n    \"message\": \"Data nilai kelas berhasil ditarik dari Feeder dan disimpan di cache.\",\n    \"data\": {\n        \"code_kelas\": \"eyJpdiI6...\",\n        \"source\": \"feeder_live\",\n        \"pulled_at\": \"2026-10-12T12:00:00+00:00\",\n        \"total_rows\": 45,\n        \"data\": [...]\n    }\n}",
+                    'sort_order' => 2,
+                ],
+                [
+                    'title' => 'Audit Nilai Kelas (In-Memory Audit)',
+                    'description' => 'Audit komparasi nilai kelas SISKA vs Feeder di memori (O(1)). Mendeteksi selisih angka desimal > 0.001, perbedaan huruf mutu, dan fuzzy matching matakuliah (>= 60%). Mendukung query param `?code=...` & `?refresh=1` maupun legacy path param `/{code}`.',
+                    'method' => 'GET',
+                    'url' => '/api/staff/feeder/audit/kelas',
+                    'headers' => "Accept: application/json\nCookie: laravel-session",
+                    'body' => "{\n    \"code\": \"{code_kelas}|required|string\",\n    \"refresh\": \"false|nullable|boolean\"\n}",
+                    'response_example' => "{\n    \"status\": true,\n    \"message\": \"Audit perbandingan nilai kelas berhasil diproses.\",\n    \"data\": {\n        \"summary\": {\n            \"total_mahasiswa_siska\": 45,\n            \"total_mahasiswa_feeder\": 45,\n            \"sesuai\": 44,\n            \"berbeda\": 1\n        },\n        \"audit_results\": [...]\n    }\n}",
+                    'sort_order' => 3,
+                ],
+                [
+                    'title' => 'Tarik Transkrip Mahasiswa (Pre-Fetch)',
+                    'description' => 'Menarik riwayat transkrip lengkap mahasiswa dari Feeder (GetTranskripMahasiswa) dan menyimpannya di cache server (TTL 1 jam). Mendukung query param `?nim=...` maupun legacy path param `/{nim}`.',
+                    'method' => 'GET',
+                    'url' => '/api/staff/feeder/pull/mahasiswa',
+                    'headers' => "Accept: application/json\nCookie: laravel-session",
+                    'body' => "{\n    \"nim\": \"{nim}|required|string\"\n}",
+                    'response_example' => "{\n    \"status\": true,\n    \"message\": \"Data transkrip mahasiswa berhasil ditarik dari Feeder dan disimpan di cache.\",\n    \"data\": {\n        \"nim\": \"25080110001\",\n        \"source\": \"feeder_live\",\n        \"pulled_at\": \"2026-10-12T12:00:00+00:00\",\n        \"total_rows\": 24,\n        \"data\": [...]\n    }\n}",
+                    'sort_order' => 4,
+                ],
+                [
+                    'title' => 'Audit Petikan Transkrip (In-Memory Audit)',
+                    'description' => 'Audit petikan transkrip mahasiswa SISKA vs Feeder di memori. Menerapkan konsolidasi matakuliah retake (pilih nilai terbaik), Two-Tier Matching (Tier-1: Kode MK, Tier-2: Nama MK normalisasi), serta deteksi transfer/konversi MBKM. Mendukung query param `?nim=...` & `?refresh=1` maupun legacy path param `/{nim}`.',
+                    'method' => 'GET',
+                    'url' => '/api/staff/feeder/audit/mahasiswa',
+                    'headers' => "Accept: application/json\nCookie: laravel-session",
+                    'body' => "{\n    \"nim\": \"{nim}|required|string\",\n    \"refresh\": \"false|nullable|boolean\"\n}",
+                    'response_example' => "{\n    \"status\": true,\n    \"message\": \"Audit petikan transkrip mahasiswa berhasil diproses.\",\n    \"data\": {\n        \"summary\": {\n            \"total_matakuliah_siska\": 20,\n            \"total_matakuliah_feeder\": 20,\n            \"sesuai\": 19,\n            \"berbeda\": 1\n        },\n        \"audit_results\": [...]\n    }\n}",
+                    'sort_order' => 5,
+                ],
+            ];
+
+            foreach ($endpointsFeeder as $ep) {
+                DB::table('api_endpoints')->updateOrInsert(
+                    ['api_section_id' => $sectionFeederId, 'url' => $ep['url'], 'method' => $ep['method']],
+                    array_merge($ep, ['api_section_id' => $sectionFeederId, 'updated_at' => now(), 'created_at' => now()])
+                );
+            }
+        }
+
+        // 6. Sinkronisasi urutan seluruh seksi agar Staff & Dosen konsisten dan rapi
+        $sectionOrderMap = [
+            'Auth - Mahasiswa' => 1,
+            'Auth - Staff' => 2,
+            'Auth - Dosen' => 3,
+            'Mahasiswa - Akademik' => 4,
+            'Staff - Pencarian' => 5,
+            'Staff - Master Data (Mahasiswa)' => 6,
+            'Staff - Master Data (Dosen)' => 7,
+            'Staff - Master Data (Matakuliah)' => 8,
+            'Staff - Master Data (Prodi)' => 9,
+            'Staff - Master Data (Nama Kurikulum)' => 10,
+            'Staff - Master Data (Tahun Akademik)' => 11,
+            'Staff - Master Data (Kurikulum Angkatan)' => 12,
+            'Staff - Master Ruangan & Hari' => 13,
+            'Staff - Data Default' => 14,
+            'Staff - SKS Rule' => 15,
+            'Staff - Akademik' => 16,
+            'Staff - Perwalian' => 17,
+            'Staff - Konfig Kelas' => 18,
+            'Staff - Penjadwalan Kelas' => 19,
+            'Staff - Pembayaran' => 20,
+            'Staff - Assessment (Templates)' => 21,
+            'Staff - Assessment (Scores)' => 22,
+            'Staff - Assessment (Grade)' => 23,
+            'Staff - Assessment Dosen (Setup)' => 24,
+            'Staff - Audit Feeder PDDIKTI' => 25,
+            'Dosen - Data Dosen' => 26,
+            'Dosen - Kurikulum' => 27,
+            'Dosen - Perwalian' => 28,
+            'Dosen - Penilaian' => 29,
+            'Dosen - Kaprodi' => 30,
+            'Dosen - Assessment Dosen (Multi-level)' => 31,
+        ];
+
+        foreach ($sectionOrderMap as $title => $sortOrder) {
+            DB::table('api_sections')
+                ->where('title', $title)
+                ->update(['sort_order' => $sortOrder, 'updated_at' => now()]);
         }
     }
 }

@@ -55,16 +55,17 @@ class ServicePerwalian
             return ApiResponse::notFound('Mahasiswa tidak ditemukan');
         }
 
-        $perwalianRecords = Perwalian::with(['dosen', 'dosenPerwakilan'])
+        $perwalianRecords = Perwalian::with(['mahasiswa', 'dosen', 'dosenPerwakilan'])
             ->where('nim', $nim)
             ->get();
 
-        $validasiRecords = PerwalianKrsValidasi::with('dosenValidator')
+        $validasiRecords = PerwalianKrsValidasi::with(['mahasiswa', 'dosenValidator'])
             ->where('nim', $nim)
             ->get();
 
         $data = [
             'mahasiswa' => [
+                'code' => $mahasiswa->toCode(),
                 'nim' => $mahasiswa->nim,
                 'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
                 'nama_program_studi' => optional($mahasiswa->programStudi)->nama_program_studi,
@@ -84,9 +85,13 @@ class ServicePerwalian
             'krs_validasi' => $validasiRecords->map(function ($record, $idx) {
                 return [
                     'id' => $idx + 1,
+                    'code' => $record->toCode(),
+                    'nim' => $record->nim,
+                    'nama_mahasiswa' => optional($record->mahasiswa)->nama_mahasiswa,
                     'code_dosen_validator' => $record->dosenValidator?->toCode(),
                     'nama_dosen_validator' => optional($record->dosenValidator)->nama_dosen,
                     'status_krs' => $record->status_krs,
+                    'catatan' => $record->catatan,
                 ];
             })->values()->toArray(),
         ];
@@ -109,10 +114,6 @@ class ServicePerwalian
             })
             ->get();
 
-        if ($records->isEmpty()) {
-            return ApiResponse::notFound('Tidak ada data perwalian untuk dosen ini');
-        }
-
         $data = [
             'dosen' => [
                 'code' => $dosen->toCode(),
@@ -125,7 +126,9 @@ class ServicePerwalian
                     'nim' => $record->nim,
                     'nama_mahasiswa' => optional($record->mahasiswa)->nama_mahasiswa,
                     'code_dosen' => $record->dosen?->toCode(),
+                    'nama_dosen' => optional($record->dosen)->nama_dosen,
                     'code_dosen_perwakilan' => $record->dosenPerwakilan?->toCode(),
+                    'nama_dosen_perwakilan' => optional($record->dosenPerwakilan)->nama_dosen,
                 ];
             })->values()->toArray(),
         ];
@@ -142,15 +145,24 @@ class ServicePerwalian
 
         $dosen = Dosen::find($payload['kode_dosen']);
         if (! $dosen) {
-            return ApiResponse::notFound('Dosen validator tidak ditemukan');
+            return ApiResponse::notFound('Dosen tidak ditemukan');
         }
 
         $dosenPerwakilan = null;
         if (isset($payload['kode_dosen_perwakilan'])) {
+            if ($payload['kode_dosen'] === $payload['kode_dosen_perwakilan']) {
+                return ApiResponse::error('Dosen perwakilan tidak boleh sama dengan dosen wali utama.', 422);
+            }
+
             $dosenPerwakilan = Dosen::find($payload['kode_dosen_perwakilan']);
             if (! $dosenPerwakilan) {
                 return ApiResponse::notFound('Dosen perwakilan tidak ditemukan');
             }
+        }
+
+        $existing = Perwalian::where('nim', $payload['nim'])->first();
+        if ($existing) {
+            return ApiResponse::error('Mahasiswa sudah memiliki dosen pembimbing akademik.', 422);
         }
 
         $perwalian = Perwalian::create($payload);
@@ -158,9 +170,91 @@ class ServicePerwalian
         return ApiResponse::success([
             'code' => $perwalian->toCode(),
             'nim' => $perwalian->nim,
+            'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
             'code_dosen' => $dosen->toCode(),
+            'nama_dosen' => $dosen->nama_dosen,
             'code_dosen_perwakilan' => $dosenPerwakilan?->toCode(),
-        ], 'Perwalian berhasil ditambahkan.');
+            'nama_dosen_perwakilan' => $dosenPerwakilan?->nama_dosen,
+        ], 'Perwalian berhasil ditambahkan.', 201);
+    }
+
+    public function storeBatchPerwalian(int $kodeDosen, ?int $kodeDosenPerwakilan, array $nims): JsonResponse
+    {
+        $dosen = Dosen::find($kodeDosen);
+        if (! $dosen) {
+            return ApiResponse::notFound('Dosen tidak ditemukan');
+        }
+
+        $dosenPerwakilan = null;
+        if ($kodeDosenPerwakilan !== null) {
+            if ($kodeDosen === $kodeDosenPerwakilan) {
+                return ApiResponse::error('Dosen perwakilan tidak boleh sama dengan dosen wali utama.', 422);
+            }
+
+            $dosenPerwakilan = Dosen::find($kodeDosenPerwakilan);
+            if (! $dosenPerwakilan) {
+                return ApiResponse::notFound('Dosen perwakilan tidak ditemukan');
+            }
+        }
+
+        $created = [];
+        $skipped = [];
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            foreach ($nims as $nim) {
+                $mahasiswa = Mahasiswa::find($nim);
+                if (! $mahasiswa) {
+                    $skipped[] = [
+                        'nim' => $nim,
+                        'alasan' => 'Mahasiswa tidak ditemukan',
+                    ];
+                    continue;
+                }
+
+                $existing = Perwalian::where('nim', $nim)->first();
+                if ($existing) {
+                    $skipped[] = [
+                        'nim' => $nim,
+                        'alasan' => 'Sudah memiliki dosen pembimbing akademik',
+                    ];
+                    continue;
+                }
+
+                $perwalian = Perwalian::create([
+                    'nim' => $nim,
+                    'kode_dosen' => $kodeDosen,
+                    'kode_dosen_perwakilan' => $kodeDosenPerwakilan,
+                ]);
+
+                $created[] = [
+                    'code' => $perwalian->toCode(),
+                    'nim' => $perwalian->nim,
+                    'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
+                ];
+            }
+
+            \Illuminate\Support\Facades\DB::commit();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return ApiResponse::serverError('Gagal memproses penugasan massal perwalian.');
+        }
+
+        return ApiResponse::success([
+            'dosen' => [
+                'code' => $dosen->toCode(),
+                'nama_dosen' => $dosen->nama_dosen,
+            ],
+            'dosen_perwakilan' => $dosenPerwakilan ? [
+                'code' => $dosenPerwakilan->toCode(),
+                'nama_dosen' => $dosenPerwakilan->nama_dosen,
+            ] : null,
+            'total_diproses' => count($nims),
+            'total_berhasil' => count($created),
+            'total_dilewati' => count($skipped),
+            'berhasil' => $created,
+            'dilewati' => $skipped,
+        ], 'Batch perwalian selesai diproses.', 201);
     }
 
     public function updatePerwalian(int $kode_perwalian, array $payload)
@@ -175,9 +269,15 @@ class ServicePerwalian
             if (! $mahasiswa) {
                 return ApiResponse::notFound('Mahasiswa tidak ditemukan');
             }
+
+            $existing = Perwalian::where('nim', $payload['nim'])
+                ->where('kode_perwalian', '!=', $kode_perwalian)
+                ->first();
+            if ($existing) {
+                return ApiResponse::error('Mahasiswa sudah memiliki dosen pembimbing akademik di data lain.', 422);
+            }
         }
 
-        $dosen = null;
         if (isset($payload['kode_dosen'])) {
             $dosen = Dosen::find($payload['kode_dosen']);
             if (! $dosen) {
@@ -185,27 +285,56 @@ class ServicePerwalian
             }
         }
 
-        $dosenPerwakilan = null;
-        if (isset($payload['kode_dosen_perwakilan'])) {
-            $dosenPerwakilan = Dosen::find($payload['kode_dosen_perwakilan']);
-            if (! $dosenPerwakilan) {
-                return ApiResponse::notFound('Dosen perwakilan tidak ditemukan');
+        if (array_key_exists('kode_dosen_perwakilan', $payload)) {
+            if ($payload['kode_dosen_perwakilan'] !== null) {
+                $targetKodeDosen = $payload['kode_dosen'] ?? $perwalian->kode_dosen;
+                if ($targetKodeDosen === $payload['kode_dosen_perwakilan']) {
+                    return ApiResponse::error('Dosen perwakilan tidak boleh sama dengan dosen wali utama.', 422);
+                }
+
+                $dosenPerwakilan = Dosen::find($payload['kode_dosen_perwakilan']);
+                if (! $dosenPerwakilan) {
+                    return ApiResponse::notFound('Dosen perwakilan tidak ditemukan');
+                }
             }
         }
 
         $perwalian->update($payload);
+        $perwalian->refresh();
 
         return ApiResponse::success([
             'code' => $perwalian->toCode(),
             'nim' => $perwalian->nim,
-            'code_dosen' => $dosen?->toCode() ?? $perwalian->dosen?->toCode(),
-            'code_dosen_perwakilan' => $dosenPerwakilan?->toCode() ?? $perwalian->dosenPerwakilan?->toCode(),
+            'nama_mahasiswa' => optional($perwalian->mahasiswa)->nama_mahasiswa,
+            'code_dosen' => $perwalian->dosen?->toCode(),
+            'nama_dosen' => optional($perwalian->dosen)->nama_dosen,
+            'code_dosen_perwakilan' => $perwalian->dosenPerwakilan?->toCode(),
+            'nama_dosen_perwakilan' => optional($perwalian->dosenPerwakilan)->nama_dosen,
         ], 'Perwalian berhasil diperbarui.');
     }
 
-    public function getAllPerwalian(?string $nim = null, ?int $kode_dosen = null, int $perPage = 20)
+    public function deletePerwalian(int $kode_perwalian): JsonResponse
     {
-        $query = Perwalian::with(['mahasiswa', 'dosen', 'dosenPerwakilan'])
+        $perwalian = Perwalian::find($kode_perwalian);
+
+        if (! $perwalian) {
+            return ApiResponse::notFound('Perwalian tidak ditemukan');
+        }
+
+        $code = $perwalian->toCode();
+        $nim = $perwalian->nim;
+
+        $perwalian->delete();
+
+        return ApiResponse::success([
+            'code' => $code,
+            'nim' => $nim,
+        ], 'Perwalian berhasil dihapus.');
+    }
+
+    public function getAllPerwalian(?string $nim = null, ?int $kode_dosen = null, ?string $kode_program_studi = null, int $perPage = 20)
+    {
+        $query = Perwalian::with(['mahasiswa.programStudi', 'dosen', 'dosenPerwakilan'])
             ->when($nim, function ($q, $nim) {
                 return $q->where('nim', $nim);
             })
@@ -213,6 +342,11 @@ class ServicePerwalian
                 return $q->where(function ($sub) use ($kode) {
                     $sub->where('kode_dosen', $kode)
                         ->orWhere('kode_dosen_perwakilan', $kode);
+                });
+            })
+            ->when($kode_program_studi, function ($q, $prodi) {
+                return $q->whereHas('mahasiswa', function ($m) use ($prodi) {
+                    $m->where('program_studi_kode', $prodi);
                 });
             });
 
@@ -254,10 +388,6 @@ class ServicePerwalian
             })
             ->get();
 
-        if ($records->isEmpty()) {
-            return ApiResponse::notFound('Tidak ada data perwalian untuk dosen dengan nama ini');
-        }
-
         $data = [
             'dosen_found' => $dosenList->map(function ($dosen) {
                 return [
@@ -272,7 +402,9 @@ class ServicePerwalian
                     'nim' => $record->nim,
                     'nama_mahasiswa' => optional($record->mahasiswa)->nama_mahasiswa,
                     'code_dosen' => $record->dosen?->toCode(),
+                    'nama_dosen' => optional($record->dosen)->nama_dosen,
                     'code_dosen_perwakilan' => $record->dosenPerwakilan?->toCode(),
+                    'nama_dosen_perwakilan' => optional($record->dosenPerwakilan)->nama_dosen,
                 ];
             })->values()->toArray(),
         ];
@@ -293,17 +425,18 @@ class ServicePerwalian
 
         $nimList = $mahasiswaList->pluck('nim')->toArray();
 
-        $perwalianRecords = Perwalian::with(['dosen', 'dosenPerwakilan'])
+        $perwalianRecords = Perwalian::with(['mahasiswa', 'dosen', 'dosenPerwakilan'])
             ->whereIn('nim', $nimList)
             ->get();
 
-        $validasiRecords = PerwalianKrsValidasi::with('dosenValidator')
+        $validasiRecords = PerwalianKrsValidasi::with(['mahasiswa', 'dosenValidator'])
             ->whereIn('nim', $nimList)
             ->get();
 
         $data = [
             'mahasiswa_found' => $mahasiswaList->map(function ($mhs) {
                 return [
+                    'code' => $mhs->toCode(),
                     'nim' => $mhs->nim,
                     'nama_mahasiswa' => $mhs->nama_mahasiswa,
                     'nama_program_studi' => optional($mhs->programStudi)->nama_program_studi,
@@ -324,9 +457,13 @@ class ServicePerwalian
             'krs_validasi' => $validasiRecords->map(function ($record, $idx) {
                 return [
                     'id' => $idx + 1,
+                    'code' => $record->toCode(),
+                    'nim' => $record->nim,
+                    'nama_mahasiswa' => optional($record->mahasiswa)->nama_mahasiswa,
                     'code_dosen_validator' => $record->dosenValidator?->toCode(),
                     'nama_dosen_validator' => optional($record->dosenValidator)->nama_dosen,
                     'status_krs' => $record->status_krs,
+                    'catatan' => $record->catatan,
                 ];
             })->values()->toArray(),
         ];

@@ -135,8 +135,16 @@ class DosenController extends Controller
         return $this->service->updateDosen($id, $validasi);
     }
 
-    public function destroy(string $code): JsonResponse
+    public function destroy(Request $request, ?string $code = null): JsonResponse
     {
+        $code = $code ?? $request->input('code');
+        if (! $code) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Parameter code wajib diisi',
+            ], 422);
+        }
+
         try {
             $id = Crypt::decryptString($code);
         } catch (DecryptException) {
@@ -180,8 +188,16 @@ class DosenController extends Controller
         return $this->service->restoreDosen($id);
     }
 
-    public function forceDelete(string $code): JsonResponse
+    public function forceDelete(Request $request, ?string $code = null): JsonResponse
     {
+        $code = $code ?? $request->input('code');
+        if (! $code) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Parameter code wajib diisi',
+            ], 422);
+        }
+
         try {
             $id = Crypt::decryptString($code);
         } catch (DecryptException) {

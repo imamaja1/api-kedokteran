@@ -64,12 +64,14 @@ class TestDataHelper
 
     public static function createStaff(array $overrides = []): User
     {
-        return User::create(array_merge([
-            'name' => 'Staff Test',
-            'email' => 'staff@test.com',
-            'password' => Hash::make('password'),
-            'role' => 'staff',
-        ], $overrides));
+        return User::firstOrCreate(
+            ['email' => $overrides['email'] ?? 'staff@test.com'],
+            array_merge([
+                'name' => 'Staff Test',
+                'password' => Hash::make('password'),
+                'role' => 'staff',
+            ], $overrides)
+        );
     }
 
     public static function createTahunAkademik(array $overrides = []): TahunAkademik

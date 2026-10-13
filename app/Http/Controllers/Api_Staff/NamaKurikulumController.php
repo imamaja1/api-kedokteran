@@ -65,8 +65,16 @@ class NamaKurikulumController extends Controller
         return $this->service->updateNamaKurikulum($decrypted, $validasi);
     }
 
-    public function destroy(string $code): JsonResponse
+    public function destroy(Request $request, ?string $code = null): JsonResponse
     {
+        $code = $code ?? $request->input('code');
+        if (! $code) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Parameter code wajib diisi',
+            ], 422);
+        }
+
         $decrypted = $this->decryptWithErrorHandling($code);
         if ($decrypted instanceof JsonResponse) {
             return $decrypted;  // Error response

@@ -240,6 +240,131 @@ test('PUT /api/staff/akademik/perwalian/{code} validates code', function () {
     $response->assertStatus(422);
 });
 
+test('POST /api/staff/akademik/perwalian creates perwalian successfully', function () {
+    $mhs = TestDataHelper::createMahasiswa(['nim' => '2023010999']);
+    $dosen1 = TestDataHelper::createDosen(['kode_dosen' => 101, 'nama_dosen' => 'Dr. Utama']);
+    $dosen2 = TestDataHelper::createDosen(['kode_dosen' => 102, 'nama_dosen' => 'Dr. Pengganti']);
+
+    $response = staffPost('/api/staff/akademik/perwalian', [
+        'code' => $mhs->toCode(),
+        'code_dosen' => $dosen1->toCode(),
+        'code_dosen_perwakilan' => $dosen2->toCode(),
+    ]);
+
+    $response->assertStatus(201)
+        ->assertJson([
+            'status' => true,
+            'message' => 'Perwalian berhasil ditambahkan.',
+            'data' => [
+                'nim' => '2023010999',
+            ],
+        ]);
+});
+
+test('POST /api/staff/akademik/perwalian rejects duplicate perwalian for same mahasiswa', function () {
+    $mhs = TestDataHelper::createMahasiswa(['nim' => '2023010888']);
+    $dosen = TestDataHelper::createDosen(['kode_dosen' => 103]);
+
+    staffPost('/api/staff/akademik/perwalian', [
+        'code' => $mhs->toCode(),
+        'code_dosen' => $dosen->toCode(),
+    ])->assertStatus(201);
+
+    $dupResponse = staffPost('/api/staff/akademik/perwalian', [
+        'code' => $mhs->toCode(),
+        'code_dosen' => $dosen->toCode(),
+    ]);
+
+    $dupResponse->assertStatus(422)
+        ->assertJson([
+            'status' => false,
+            'message' => 'Mahasiswa sudah memiliki dosen pembimbing akademik.',
+        ]);
+});
+
+test('POST /api/staff/akademik/perwalian rejects same dosen and dosen perwakilan', function () {
+    $mhs = TestDataHelper::createMahasiswa(['nim' => '2023010777']);
+    $dosen = TestDataHelper::createDosen(['kode_dosen' => 104]);
+
+    $response = staffPost('/api/staff/akademik/perwalian', [
+        'code' => $mhs->toCode(),
+        'code_dosen' => $dosen->toCode(),
+        'code_dosen_perwakilan' => $dosen->toCode(),
+    ]);
+
+    $response->assertStatus(422);
+});
+
+test('PUT /api/staff/akademik/perwalian/{code} can update and clear dosen perwakilan', function () {
+    $mhs = TestDataHelper::createMahasiswa(['nim' => '2023010666']);
+    $dosen1 = TestDataHelper::createDosen(['kode_dosen' => 105]);
+    $dosen2 = TestDataHelper::createDosen(['kode_dosen' => 106]);
+
+    $createRes = staffPost('/api/staff/akademik/perwalian', [
+        'code' => $mhs->toCode(),
+        'code_dosen' => $dosen1->toCode(),
+        'code_dosen_perwakilan' => $dosen2->toCode(),
+    ]);
+    $codePerwalian = $createRes->json('data.code');
+
+    // Update clearing dosen perwakilan with null and using code_dosen naming
+    $dosen3 = TestDataHelper::createDosen(['kode_dosen' => 107]);
+    $updateRes = staffPut("/api/staff/akademik/perwalian/{$codePerwalian}", [
+        'code_dosen' => $dosen3->toCode(),
+        'code_dosen_perwakilan' => null,
+    ]);
+
+    $updateRes->assertStatus(200)
+        ->assertJson([
+            'status' => true,
+            'data' => [
+                'code_dosen_perwakilan' => null,
+            ],
+        ]);
+    expect(\Illuminate\Support\Facades\Crypt::decryptString($updateRes->json('data.code_dosen')))
+        ->toBe((string) $dosen3->kode_dosen);
+});
+
+test('POST /api/staff/akademik/perwalian/batch assigns multiple students', function () {
+    $mhs1 = TestDataHelper::createMahasiswa(['nim' => '2023010551']);
+    $mhs2 = TestDataHelper::createMahasiswa(['nim' => '2023010552']);
+    $dosen = TestDataHelper::createDosen(['kode_dosen' => 108]);
+
+    $response = staffPost('/api/staff/akademik/perwalian/batch', [
+        'code_dosen' => $dosen->toCode(),
+        'codes' => [$mhs1->toCode(), $mhs2->toCode()],
+    ]);
+
+    $response->assertStatus(201)
+        ->assertJson([
+            'status' => true,
+            'data' => [
+                'total_diproses' => 2,
+                'total_berhasil' => 2,
+                'total_dilewati' => 0,
+            ],
+        ]);
+});
+
+test('DELETE /api/staff/akademik/perwalian/{code} deletes perwalian successfully', function () {
+    $mhs = TestDataHelper::createMahasiswa(['nim' => '2023010444']);
+    $dosen = TestDataHelper::createDosen(['kode_dosen' => 109]);
+
+    $createRes = staffPost('/api/staff/akademik/perwalian', [
+        'code' => $mhs->toCode(),
+        'code_dosen' => $dosen->toCode(),
+    ]);
+    $codePerwalian = $createRes->json('data.code');
+
+    $delResponse = staffDelete("/api/staff/akademik/perwalian/{$codePerwalian}");
+
+    $delResponse->assertStatus(200)
+        ->assertJson([
+            'status' => true,
+            'message' => 'Perwalian berhasil dihapus.',
+        ]);
+});
+
 // ─── STAFF MASTER DATA: Matakuliah ──────────────────────────────────────────
 
 test('GET /api/staff/master-data/matakuliah returns list', function () {
