@@ -12,6 +12,8 @@ class AssessmentTemplate extends Model
 
     protected $fillable = [
         'id_matakuliah',
+        'kode_nama_kurikulum',
+        'kode_tahun_akademik',
         'kode_kurikulum_angkatan',
         'versi',
         'structure',

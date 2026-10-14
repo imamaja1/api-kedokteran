@@ -30,6 +30,24 @@ class TreeTraversalService
         return $path;
     }
 
+    public function getAssignableNodes(AssessmentTemplate $template, array $assignedMap = []): array
+    {
+        $nodes = [];
+        $visitedKeys = [];
+        if (!empty($template->structure)) {
+            $this->collectAssignableNodes($template->structure, $assignedMap, 0, $nodes, $visitedKeys);
+        }
+        return $nodes;
+    }
+
+    public function buildTreeWithAssignments(AssessmentTemplate $template, array $assignedMap = []): ?array
+    {
+        if (empty($template->structure)) {
+            return null;
+        }
+        return $this->traverseTreeWithAssignments($template->structure, $assignedMap, 0);
+    }
+
     // ==================== Private ====================
 
     private function treeToArray(array $node): array
@@ -98,5 +116,76 @@ class TreeTraversalService
         }
 
         return false;
+    }
+
+    private function collectAssignableNodes(array $node, array $assignedMap, int $depth, array &$nodes, array &$visitedKeys): void
+    {
+        $key    = $node['key'] ?? '';
+        $name   = $node['name'] ?? '';
+        $weight = $node['weight'] ?? 0;
+        $type   = $node['type'] ?? ($depth === 0 ? 'root' : 'category');
+        $isAssignable = ($type !== 'input');
+
+        $assigned = $assignedMap[$key] ?? null;
+
+        $subComponents = [];
+        if (!empty($node['children'])) {
+            foreach ($node['children'] as $child) {
+                if (($child['type'] ?? '') === 'input') {
+                    $subComponents[] = [
+                        'key'    => $child['key'] ?? '',
+                        'name'   => $child['name'] ?? '',
+                        'weight' => $child['weight'] ?? 0,
+                    ];
+                }
+            }
+        }
+
+        if ($isAssignable && !empty($key) && !isset($visitedKeys[$key])) {
+            $visitedKeys[$key] = true;
+            $nodes[] = [
+                'node_key'       => $key,
+                'name'           => $name,
+                'type'           => $type,
+                'weight'         => $weight,
+                'is_assigned'    => !is_null($assigned),
+                'assigned_dosen' => $assigned,
+                'sub_components' => $subComponents,
+            ];
+        }
+
+        if (!empty($node['children'])) {
+            foreach ($node['children'] as $child) {
+                $this->collectAssignableNodes($child, $assignedMap, $depth + 1, $nodes, $visitedKeys);
+            }
+        }
+    }
+
+    private function traverseTreeWithAssignments(array $node, array $assignedMap, int $depth): array
+    {
+        $key    = $node['key'] ?? '';
+        $name   = $node['name'] ?? '';
+        $weight = $node['weight'] ?? 0;
+        $type   = $node['type'] ?? ($depth === 0 ? 'root' : 'category');
+        $isAssignable = ($type !== 'input');
+
+        $assigned = $assignedMap[$key] ?? null;
+
+        $children = [];
+        if (!empty($node['children'])) {
+            foreach ($node['children'] as $child) {
+                $children[] = $this->traverseTreeWithAssignments($child, $assignedMap, $depth + 1);
+            }
+        }
+
+        return [
+            'key'            => $key,
+            'name'           => $name,
+            'type'           => $type,
+            'weight'         => $weight,
+            'is_assignable'  => $isAssignable,
+            'assigned_dosen' => $assigned,
+            'children'       => $children,
+        ];
     }
 }

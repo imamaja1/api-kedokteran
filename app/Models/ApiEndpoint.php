@@ -36,14 +36,26 @@ class ApiEndpoint extends Model
         $url = strtolower($this->url);
         $sectionTitle = strtolower($this->section?->title ?? '');
 
-        if (str_starts_with($url, '/api/mhs') || str_contains($url, '/mhs/') || str_contains($sectionTitle, 'mahasiswa')) {
-            return 'Mahasiswa';
+        // 1. Cek prefix path URL utama
+        if (str_starts_with($url, '/api/staff') || str_starts_with($url, '/staff')) {
+            return 'Staff';
         }
-        if (str_starts_with($url, '/api/dosen') || str_contains($url, '/dosen/') || str_contains($sectionTitle, 'dosen')) {
+        if (str_starts_with($url, '/api/dosen') || str_starts_with($url, '/dosen')) {
             return 'Dosen';
         }
-        if (str_starts_with($url, '/api/staff') || str_contains($url, '/staff/') || str_contains($sectionTitle, 'staff')) {
+        if (str_starts_with($url, '/api/mhs') || str_starts_with($url, '/mhs') || str_contains($url, '/auth/mhs')) {
+            return 'Mahasiswa';
+        }
+
+        // 2. Cek judul seksi
+        if (str_contains($sectionTitle, 'staff')) {
             return 'Staff';
+        }
+        if (str_contains($sectionTitle, 'dosen')) {
+            return 'Dosen';
+        }
+        if (str_contains($sectionTitle, 'mahasiswa')) {
+            return 'Mahasiswa';
         }
 
         return 'Public / Session';

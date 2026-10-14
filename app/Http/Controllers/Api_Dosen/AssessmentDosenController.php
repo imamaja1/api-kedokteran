@@ -68,6 +68,30 @@ class AssessmentDosenController extends Controller
     }
 
     /**
+     * POST /api/dosen/assessment-dosen/input-score
+     */
+    public function inputScore(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'assessment_dosen_id'           => 'required|integer',
+            'node_key'                      => 'required|string',
+            'mahasiswa'                     => 'required|array|min:1',
+            'mahasiswa.*.code_mahasiswa'    => 'required|string',
+            'mahasiswa.*.scores'            => 'required|array|min:1',
+            'mahasiswa.*.scores.*.node_key' => 'required|string',
+            'mahasiswa.*.scores.*.score'    => 'required|numeric|min:0|max:100',
+            'mahasiswa.*.scores.*.notes'    => 'nullable|string',
+        ]);
+
+        return $this->service->inputScore(
+            $validated['assessment_dosen_id'],
+            $validated['node_key'],
+            $validated['mahasiswa'],
+            $this->getKodeDosen()
+        );
+    }
+
+    /**
      * POST /api/dosen/assessment-dosen/validasi
      */
     public function validasi(Request $request): JsonResponse
@@ -83,6 +107,25 @@ class AssessmentDosenController extends Controller
             $validated['assessment_dosen_id'],
             $validated['node_key'],
             $validated['code_mahasiswa'],
+            $this->getKodeDosen(),
+            $validated['catatan'] ?? null
+        );
+    }
+
+    /**
+     * POST /api/dosen/assessment-dosen/validasi-bulk
+     */
+    public function validasiBulk(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'assessment_dosen_id' => 'required|integer',
+            'node_key'            => 'required|string',
+            'catatan'             => 'nullable|string',
+        ]);
+
+        return $this->service->validasiBulk(
+            $validated['assessment_dosen_id'],
+            $validated['node_key'],
             $this->getKodeDosen(),
             $validated['catatan'] ?? null
         );

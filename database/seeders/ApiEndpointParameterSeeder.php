@@ -89,7 +89,45 @@ class ApiEndpointParameterSeeder extends Seeder
                 $sourceNote = null;
                 $lowerName = strtolower($paramName);
 
-                if (str_contains($lowerName, 'ruangan') || ($lowerName === 'code' && str_contains($ep->url, 'ruangan'))) {
+                // --- Spesifik: Assessment Dosen (Staff & Dosen Flow) ---
+                if (str_contains($lowerName, 'assessment_dosen_id')) {
+                    if (str_contains($ep->url, '/api/staff/')) {
+                        $sourceType = 'endpoint';
+                        $sourceEndpointId = $endpoints->first(fn($e) => $e->method === 'GET' && $e->url === '/api/staff/assessment/dosen/assignments')?->id
+                            ?? $endpoints->first(fn($e) => $e->method === 'POST' && $e->url === '/api/staff/assessment/dosen')?->id;
+                        $sourceField = 'assessment_dosen_id';
+                        $sourceNote = 'ID AssessmentDosen dari GET /api/staff/assessment/dosen/assignments atau response POST /api/staff/assessment/dosen';
+                    } else {
+                        $sourceType = 'endpoint';
+                        $sourceEndpointId = $endpoints->first(fn($e) => $e->method === 'GET' && $e->url === '/api/dosen/assessment-dosen/my-nodes')?->id;
+                        $sourceField = 'assessment_dosen_id';
+                        $sourceNote = 'Nilai assessment_dosen_id tugas dosen dari GET /api/dosen/assessment-dosen/my-nodes';
+                    }
+                } elseif (str_contains($lowerName, 'node_key')) {
+                    if (str_contains($ep->url, '/api/staff/')) {
+                        $sourceType = 'endpoint';
+                        $sourceEndpointId = $endpoints->first(fn($e) => $e->method === 'GET' && $e->url === '/api/staff/assessment/dosen/assignments')?->id
+                            ?? $endpoints->first(fn($e) => $e->method === 'GET' && $e->url === '/api/staff/assessment/templates/show')?->id;
+                        $sourceField = 'available_nodes[].node_key';
+                        $sourceNote = 'Kunci node kategori dari GET /api/staff/assessment/dosen/assignments atau template assessment';
+                    } else {
+                        $sourceType = 'endpoint';
+                        $sourceEndpointId = $endpoints->first(fn($e) => $e->method === 'GET' && $e->url === '/api/dosen/assessment-dosen/my-nodes')?->id;
+                        $sourceField = 'node_key';
+                        $sourceNote = 'Node key tugas validasi dosen dari GET /api/dosen/assessment-dosen/my-nodes';
+                    }
+                } elseif ($ep->url === '/api/staff/assessment/dosen/assign' && str_contains($lowerName, 'kode_dosen')) {
+                    $sourceType = 'endpoint';
+                    $sourceEndpointId = $endpoints->first(fn($e) => $e->method === 'GET' && $e->url === '/api/staff/assessment/dosen/assignments')?->id
+                        ?? $lookupEndpoints['dosen'];
+                    $sourceField = 'dosen_pengajar[].kode_dosen';
+                    $sourceNote = 'Kode dosen pengajar kelas dari GET /api/staff/assessment/dosen/assignments';
+                } elseif (str_contains($ep->url, 'assessment/dosen') && str_contains($lowerName, 'kelas')) {
+                    $sourceType = 'endpoint';
+                    $sourceEndpointId = $lookupEndpoints['kelas'];
+                    $sourceField = 'code';
+                    $sourceNote = 'Nilai terenkripsi code_kelas dari master kelas perkuliahan (GET /api/staff/kelas)';
+                } elseif (str_contains($lowerName, 'ruangan') || ($lowerName === 'code' && str_contains($ep->url, 'ruangan'))) {
                     $sourceType = 'endpoint';
                     $sourceEndpointId = $lookupEndpoints['ruangan'];
                     $sourceField = 'code_ruangan';
@@ -101,9 +139,9 @@ class ApiEndpointParameterSeeder extends Seeder
                     $sourceNote = 'Nilai terenkripsi code_hari dari master hari';
                 } elseif (str_contains($lowerName, 'kelas') || ($lowerName === 'code' && str_contains($ep->url, 'jadwal-kelas')) || ($lowerName === 'code' && str_contains($ep->url, 'kelas'))) {
                     $sourceType = 'endpoint';
-                    $sourceEndpointId = $lookupEndpoints['status_kelas'] ?? $lookupEndpoints['kelas'];
+                    $sourceEndpointId = str_contains($ep->url, 'jadwal-kelas') ? ($lookupEndpoints['status_kelas'] ?? $lookupEndpoints['kelas']) : $lookupEndpoints['kelas'];
                     $sourceField = 'code_kelas';
-                    $sourceNote = 'Nilai terenkripsi code_kelas dari daftar kelas / status penjadwalan';
+                    $sourceNote = 'Nilai terenkripsi code_kelas dari daftar kelas';
                 } elseif (str_contains($lowerName, 'tahun_akademik') || ($lowerName === 'code' && str_contains($ep->url, 'tahun-akademik'))) {
                     $sourceType = 'endpoint';
                     $sourceEndpointId = $lookupEndpoints['tahun_akademik'];

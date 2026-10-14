@@ -143,12 +143,16 @@
                     </span>
                 </div>
             </div>
-            <div class="h-4 w-px bg-surface-variant hidden md:block"></div>
-            <div class="hidden md:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-surface-container-high border border-[#222d45]">
-                <span class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span>
-                <span class="font-label-badge text-[11px] text-tertiary uppercase font-bold">Gateway v1.0</span>
-                <span class="font-code-sm text-[11px] text-outline">Sanctum SPA</span>
-            </div>
+            <div class="h-4 w-px bg-surface-variant hidden sm:block"></div>
+            <a href="{{ url('/admin/docs/penilaian') }}" 
+               class="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 rounded-full bg-surface-container-high hover:bg-primary-container/20 text-on-surface hover:text-primary border border-[#222d45] hover:border-primary/50 transition-all duration-200 text-[11px] sm:text-[12px] font-semibold group shadow-sm"
+               title="Buka Dokumentasi Lengkap Mekanisme Penilaian Blok Kedokteran">
+                <span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+                <span class="material-symbols-outlined text-[15px] text-secondary group-hover:text-primary transition-colors">schema</span>
+                <span class="hidden sm:inline tracking-tight">Mekanisme Penilaian Blok</span>
+                <span class="sm:hidden font-medium">Penilaian Blok</span>
+                <span class="material-symbols-outlined text-[14px] text-outline group-hover:text-primary group-hover:translate-x-0.5 transition-all">arrow_forward</span>
+            </a>
         </div>
 
 
@@ -393,6 +397,7 @@
                                 </div>
                             </div>
 
+
                             {{-- Prerequisite Flow Card (Exclusive Fork-and-Join DAG with SVG Bézier Connectors) --}}
                             <div id="spec-prerequisite-card" class="mt-4 p-4 rounded-xl bg-surface-container-low border border-[#222d45] space-y-3 hidden">
                                 <div class="flex items-center justify-between flex-wrap gap-2">
@@ -578,6 +583,28 @@
                                     </div>
                                 </div>
                             </div>
+
+                            {{-- Dedicated Assessment Banner inside Workflow View (active when penilaian-bertingkat is selected) --}}
+                            <div id="wf-assessment-banner" class="hidden mt-4 p-4 rounded-xl bg-gradient-to-r from-primary-container/20 via-surface-container-low to-secondary-container/10 border border-primary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg">
+                                <div class="flex items-start gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-primary-container/40 border border-primary/50 flex items-center justify-center text-primary shrink-0 mt-0.5 sm:mt-0">
+                                        <span class="material-symbols-outlined text-[22px]">schema</span>
+                                    </div>
+                                    <div>
+                                        <div class="flex items-center gap-2">
+                                            <h3 class="font-title-md text-[14px] font-bold text-white">Visual Peta Alur &amp; Spesifikasi Lengkap Penilaian Blok</h3>
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-tertiary/20 text-tertiary border border-tertiary/30">DEDICATED PAGE</span>
+                                        </div>
+                                        <p class="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                                            Tersedia diagram sequence interaktif (Mermaid), pohon hierarki komponen 100%, matrix wewenang Staff vs Dosen, dan panduan validasi bulk sekelas.
+                                        </p>
+                                    </div>
+                                </div>
+                                <a href="{{ url('/admin/docs/penilaian') }}" class="px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-on-primary text-xs font-bold flex items-center gap-1.5 shrink-0 shadow transition-all hover:scale-[1.02]">
+                                    <span>Buka Halaman Spesifik</span>
+                                    <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+                                </a>
+                            </div>
                         </div>
 
                         {{-- Business Rules Section --}}
@@ -658,6 +685,10 @@
                             <button id="req-tab-cookies" onclick="switchReqTab('cookies')" class="px-2.5 py-1 rounded text-outline hover:text-on-surface text-[11px]">Cookies Debug</button>
                         </div>
                         <span class="font-code-sm text-[10px] text-outline" id="req-type-indicator">URL • Query & Path Params</span>
+                    </div>
+                    {{-- Active Auto-Chained Parameters Indicator Bar --}}
+                    <div id="tester-prereq-chain-bar" class="hidden mt-2 p-2 rounded-lg bg-secondary/10 border border-secondary/20 text-[11px] text-secondary flex items-center justify-between shadow-sm">
+                        {{-- Injected dynamically --}}
                     </div>
                 </div>
 
@@ -821,6 +852,16 @@
             document.getElementById('wf-icon').textContent = wf.icon;
             document.getElementById('wf-summary').textContent = wf.summary;
 
+            // Toggle Dedicated Assessment Banner
+            const wfAssessBanner = document.getElementById('wf-assessment-banner');
+            if (wfAssessBanner) {
+                if (id === 'penilaian-bertingkat') {
+                    wfAssessBanner.classList.remove('hidden');
+                } else {
+                    wfAssessBanner.classList.add('hidden');
+                }
+            }
+
             // Roles
             const rolesContainer = document.getElementById('wf-roles-list');
             rolesContainer.innerHTML = (wf.roles || []).map(r => `
@@ -917,10 +958,8 @@
                 loginEp = ALL_ENDPOINTS_LIST.find(e => e.url === '/api/auth/staff/login');
             }
 
-            // Direct dependencies of ep
-            const branches = [];
+            // 1. Kumpulkan semua dependensi langsung dari parameter endpoint
             const directMap = new Map();
-
             if (ep.parameters && ep.parameters.length > 0) {
                 ep.parameters.forEach(p => {
                     if (p.source_type === 'endpoint' && p.source_endpoint) {
@@ -931,42 +970,106 @@
                             if (!b.fields.includes(fieldName)) b.fields.push(fieldName);
                         } else {
                             const fullSrcEp = ENDPOINTS_MAP[srcId] || p.source_endpoint;
-                            const b = {
+                            directMap.set(srcId, {
+                                id: srcId,
                                 endpoint: fullSrcEp,
                                 fields: [fieldName],
-                                note: p.source_note,
-                                upstream: []
-                            };
-                            directMap.set(srcId, b);
-                            branches.push(b);
+                                note: p.source_note
+                            });
                         }
                     }
                 });
             }
 
-            // Recursively collect upstream dependencies for each branch (if any)
-            branches.forEach(b => {
-                const visited = new Set([ep.id, b.endpoint.id]);
-                function collectUpstream(nodeEp) {
-                    if (!nodeEp || !nodeEp.parameters) return;
-                    nodeEp.parameters.forEach(p => {
-                        if (p.source_type === 'endpoint' && p.source_endpoint && !visited.has(p.source_endpoint.id)) {
-                            visited.add(p.source_endpoint.id);
-                            const upEp = ENDPOINTS_MAP[p.source_endpoint.id] || p.source_endpoint;
-                            collectUpstream(upEp);
-                            b.upstream.push({
-                                endpoint: upEp,
-                                fields: [p.source_field || p.name],
-                                note: p.source_note
-                            });
+            if (directMap.size === 0) {
+                return {
+                    authRole,
+                    loginEp,
+                    branches: [],
+                    isBranching: false,
+                    linearList: [],
+                    targetStepNumber: 1,
+                    targetEp: ep
+                };
+            }
+
+            // 2. Helper untuk mendapatkan semua upstream IDs dari sebuah node secara rekursif
+            function getUpstreamIds(nodeId, visited = new Set()) {
+                const node = ENDPOINTS_MAP[nodeId];
+                if (!node || !node.parameters) return visited;
+                node.parameters.forEach(p => {
+                    if (p.source_type === 'endpoint' && p.source_endpoint) {
+                        const upId = p.source_endpoint.id;
+                        if (!visited.has(upId)) {
+                            visited.add(upId);
+                            getUpstreamIds(upId, visited);
+                        }
+                    }
+                });
+                return visited;
+            }
+
+            // 3. Transitive Reduction:
+            // Jika sebuah dependensi A ada di directMap, TETAPI A juga merupakan upstream dari B yang ada di directMap,
+            // maka A BUKAN cabang independen yang setara, melainkan A adalah hulu dari B!
+            const directBranchIds = [];
+            directMap.forEach((dataA, idA) => {
+                let isSubsumed = false;
+                directMap.forEach((dataB, idB) => {
+                    if (idA !== idB) {
+                        const upstreamsB = getUpstreamIds(idB);
+                        if (upstreamsB.has(idA)) {
+                            isSubsumed = true;
+                        }
+                    }
+                });
+                if (!isSubsumed) {
+                    directBranchIds.push(idA);
+                }
+            });
+
+            // 4. Susun cabang dan alirkan upstream secara terurut (tanpa duplikasi node)
+            const branches = [];
+            const visitedGlobal = new Set([ep.id]);
+
+            directBranchIds.forEach(bId => {
+                const branchDirect = directMap.get(bId);
+                const laneNodes = [];
+
+                function collectLane(curId) {
+                    const curNode = ENDPOINTS_MAP[curId];
+                    if (!curNode || !curNode.parameters) return;
+                    curNode.parameters.forEach(p => {
+                        if (p.source_type === 'endpoint' && p.source_endpoint) {
+                            const uId = p.source_endpoint.id;
+                            if (!visitedGlobal.has(uId)) {
+                                visitedGlobal.add(uId);
+                                collectLane(uId);
+                                laneNodes.push({
+                                    id: uId,
+                                    endpoint: ENDPOINTS_MAP[uId] || p.source_endpoint,
+                                    fields: [p.source_field || p.name],
+                                    note: p.source_note
+                                });
+                            }
                         }
                     });
                 }
-                collectUpstream(b.endpoint);
+
+                collectLane(bId);
+                visitedGlobal.add(bId);
+
+                branches.push({
+                    id: bId,
+                    endpoint: branchDirect.endpoint,
+                    fields: branchDirect.fields,
+                    note: branchDirect.note,
+                    upstream: laneNodes
+                });
             });
 
-            // Sequential indexing for reference
-            let stepCounter = 2; // Step 1 is Auth Login
+            // 5. Penomoran Langkah Sekuensial (Step 1 Login, Step 2..N Prereq, Step Target)
+            let stepCounter = 2;
             const linearList = [];
 
             branches.forEach(b => {
@@ -1600,12 +1703,184 @@
             }
         }
 
+        // ─── GLOBAL AUTO-CAPTURED PREREQUISITE STORE (SMART DATA CHAINING) ───
+        const AUTO_CAPTURED_PARAMS = {};
+
+        function setDeepValue(obj, path, value) {
+            const parts = path.split('.');
+            let current = obj;
+            for (let i = 0; i < parts.length; i++) {
+                const p = parts[i];
+                const isLast = (i === parts.length - 1);
+                if (p === '*') {
+                    if (!Array.isArray(current)) {
+                        // fallback jika bukan array
+                    }
+                    if (current.length === 0) current.push({});
+                    if (isLast) {
+                        current[0] = value;
+                    } else {
+                        current = current[0];
+                    }
+                } else {
+                    if (isLast) {
+                        current[p] = value;
+                    } else {
+                        const nextPart = parts[i + 1];
+                        if (!current[p] || typeof current[p] !== 'object') {
+                            current[p] = (nextPart === '*') ? [] : {};
+                        }
+                        current = current[p];
+                    }
+                }
+            }
+        }
+
+        function synthesizeSampleParams(ep) {
+            const result = { query: {}, body: {}, capturedList: [] };
+
+            if (ep.parameters && ep.parameters.length > 0) {
+                ep.parameters.forEach(p => {
+                    let val = null;
+                    const paramKey = p.name;
+                    const cleanKey = paramKey.replace(/^mahasiswa\.\*\./, '').replace(/\.\*/g, '');
+
+                    // Prioritas 1: Ambil dari hasil live test sebelumnya (Auto-Chained)
+                    if (AUTO_CAPTURED_PARAMS[paramKey] !== undefined) {
+                        val = AUTO_CAPTURED_PARAMS[paramKey];
+                        if (!result.capturedList.includes(paramKey)) result.capturedList.push(paramKey);
+                    } else if (AUTO_CAPTURED_PARAMS[cleanKey] !== undefined) {
+                        val = AUTO_CAPTURED_PARAMS[cleanKey];
+                        if (!result.capturedList.includes(cleanKey)) result.capturedList.push(cleanKey);
+                    } else if (paramKey === 'code' && ep.url.includes('program-studi') && AUTO_CAPTURED_PARAMS['code_prodi'] !== undefined) {
+                        val = AUTO_CAPTURED_PARAMS['code_prodi'];
+                        if (!result.capturedList.includes('code_prodi')) result.capturedList.push('code_prodi');
+                    } else if (p.example && p.example !== '-') {
+                        // Prioritas 2: Nilai example dari database
+                        val = p.example.split('|')[0].replace(/[{}]/g, '').trim();
+                        if (p.type === 'number' || p.type === 'integer') {
+                            const num = Number(val);
+                            if (!isNaN(num)) val = num;
+                        }
+                    } else if (p.source_type === 'endpoint' && p.source_endpoint) {
+                        // Prioritas 3: Petunjuk terarah jika belum dieksekusi
+                        val = `<Ambil dari ${p.source_endpoint.method} ${p.source_endpoint.url}>`;
+                    } else {
+                        if (p.type === 'number' || p.type === 'integer') val = 1;
+                        else if (p.type === 'boolean') val = true;
+                        else if (p.type === 'array') val = [];
+                        else val = `contoh_${cleanKey}`;
+                    }
+
+                    if (p.location === 'query') {
+                        result.query[paramKey] = val;
+                    } else {
+                        // Body: periksa apakah dot notation
+                        if (paramKey.includes('.')) {
+                            setDeepValue(result.body, paramKey, val);
+                        } else {
+                            if (p.type === 'array' && !Array.isArray(val)) {
+                                result.body[paramKey] = [];
+                            } else {
+                                result.body[paramKey] = val;
+                            }
+                        }
+                    }
+                });
+
+                return result;
+            }
+
+            // Fallback ke ep.body jika tabel parameters belum terisi
+            if (ep.body && ep.body !== '-') {
+                try {
+                    const parsed = JSON.parse(ep.body);
+                    const cleanObj = {};
+                    for (const [k, v] of Object.entries(parsed)) {
+                        let cleanV = v;
+                        if (typeof v === 'string' && v.includes('|')) {
+                            cleanV = v.split('|')[0].replace(/[{}]/g, '');
+                        }
+                        if (k.includes('.')) {
+                            setDeepValue(cleanObj, k, cleanV);
+                        } else {
+                            cleanObj[k] = cleanV;
+                        }
+                    }
+                    if (ep.method === 'GET') {
+                        result.query = cleanObj;
+                    } else {
+                        result.body = cleanObj;
+                    }
+                } catch {
+                    if (ep.method === 'GET') result.query = {};
+                    else result.body = ep.body;
+                }
+            }
+
+            return result;
+        }
+
+        function autoCaptureResponseParams(data, targetUrl = '') {
+            if (!data || typeof data !== 'object') return [];
+            const captured = [];
+
+            function traverse(obj, depth = 0) {
+                if (depth > 6 || !obj) return;
+                if (Array.isArray(obj)) {
+                    if (obj.length > 0 && typeof obj[0] === 'object') {
+                        traverse(obj[0], depth + 1);
+                    }
+                    return;
+                }
+                for (const [k, v] of Object.entries(obj)) {
+                    if (typeof v === 'string' || typeof v === 'number') {
+                        // Deteksi pola property kunci: diawali code_, id_, key, dsb.
+                        if (
+                            k.startsWith('code_') || 
+                            k === 'assessment_dosen_id' || 
+                            k === 'node_key' || 
+                            k === 'id' || 
+                            k === 'code'
+                        ) {
+                            if (!AUTO_CAPTURED_PARAMS[k] || AUTO_CAPTURED_PARAMS[k] !== v) {
+                                AUTO_CAPTURED_PARAMS[k] = v;
+                                if (!captured.includes(k)) captured.push(k);
+                            }
+                            // Contextual Aliases berdasarkan URL
+                            if (k === 'code') {
+                                if (targetUrl.includes('dosen')) {
+                                    AUTO_CAPTURED_PARAMS['code_dosen'] = v;
+                                    if (!captured.includes('code_dosen')) captured.push('code_dosen');
+                                } else if (targetUrl.includes('program-studi')) {
+                                    AUTO_CAPTURED_PARAMS['code_prodi'] = v;
+                                    AUTO_CAPTURED_PARAMS['code_program_studi'] = v;
+                                    AUTO_CAPTURED_PARAMS['program_studi_kode'] = v;
+                                    AUTO_CAPTURED_PARAMS['kode_program_studi'] = v;
+                                    if (!captured.includes('code_prodi')) captured.push('code_prodi');
+                                } else if (targetUrl.includes('mahasiswa')) {
+                                    AUTO_CAPTURED_PARAMS['code_mahasiswa'] = v;
+                                    if (!captured.includes('code_mahasiswa')) captured.push('code_mahasiswa');
+                                }
+                            }
+                        }
+                    } else if (typeof v === 'object' && v !== null) {
+                        traverse(v, depth + 1);
+                    }
+                }
+            }
+
+            traverse(data);
+            return captured;
+        }
+
         // ─── SYNC TESTER (KOLOM 3) ───
         function syncTester(ep) {
             const methodSel = document.getElementById('tester-method');
             const urlInput = document.getElementById('tester-url');
             const paramsInput = document.getElementById('tester-params-input');
             const bodyInput = document.getElementById('tester-body-input');
+            const prereqChainBar = document.getElementById('tester-prereq-chain-bar');
 
             methodSel.value = ep.method;
 
@@ -1616,34 +1891,41 @@
             }
             urlInput.value = fullUrl;
 
-            // Construct Sample Clean Data
-            let cleanSampleStr = '';
-            if (ep.body && ep.body !== '-') {
-                try {
-                    const parsed = JSON.parse(ep.body);
-                    const cleanObj = {};
-                    for (const [k, v] of Object.entries(parsed)) {
-                        if (typeof v === 'string' && v.includes('|')) {
-                            cleanObj[k] = v.split('|')[0].replace(/[{}]/g, '');
-                        } else {
-                            cleanObj[k] = v;
-                        }
-                    }
-                    cleanSampleStr = JSON.stringify(cleanObj, null, 2);
-                } catch {
-                    cleanSampleStr = ep.body;
-                }
-            }
+            // Generate Smart Synthesized Data
+            const synthesized = synthesizeSampleParams(ep);
 
-            // Pisahkan tampilan: GET -> Params tab, Selain GET -> Body tab
+            const queryStr = Object.keys(synthesized.query).length > 0 
+                ? JSON.stringify(synthesized.query, null, 2) 
+                : '';
+            
+            const bodyStr = Object.keys(synthesized.body).length > 0
+                ? (typeof synthesized.body === 'string' ? synthesized.body : JSON.stringify(synthesized.body, null, 2))
+                : '';
+
             if (ep.method === 'GET') {
-                if (paramsInput) paramsInput.value = cleanSampleStr;
+                if (paramsInput) paramsInput.value = queryStr;
                 if (bodyInput) bodyInput.value = '';
                 switchReqTab('params');
             } else {
-                if (bodyInput) bodyInput.value = cleanSampleStr;
-                if (paramsInput) paramsInput.value = '';
+                if (bodyInput) bodyInput.value = bodyStr;
+                if (paramsInput) paramsInput.value = queryStr;
                 switchReqTab('body');
+            }
+
+            // UI Feedback: Apakah ada parameter yang terisi otomatis dari respon langkah sebelumnya
+            if (prereqChainBar) {
+                if (synthesized.capturedList.length > 0) {
+                    prereqChainBar.classList.remove('hidden');
+                    prereqChainBar.innerHTML = `
+                        <div class="flex items-center gap-1.5 truncate">
+                            <span class="material-symbols-outlined text-secondary text-[14px]">link</span>
+                            <span>Auto-Chained: <strong class="text-on-surface">${synthesized.capturedList.join(', ')}</strong></span>
+                        </div>
+                        <span class="text-[9px] px-1.5 py-0.2 rounded bg-secondary/20 text-secondary font-bold">Terisi Otomatis</span>
+                    `;
+                } else {
+                    prereqChainBar.classList.add('hidden');
+                }
             }
 
             updateCharCount();
@@ -1653,18 +1935,19 @@
         function renderCodeSnippet(ep) {
             const preEl = document.getElementById('code-snippet-pre');
             let fullUrl = ep.url.startsWith('http') ? ep.url : `${APP_ROOT_URL}${ep.url.startsWith('/') ? '' : '/'}${ep.url}`;
+            const synthesized = synthesizeSampleParams(ep);
+
             let payloadStr = '';
-            if (ep.body && ep.body !== '-') {
-                try {
-                    const p = JSON.parse(ep.body);
-                    const c = {};
-                    for (const [k, v] of Object.entries(p)) {
-                        c[k] = typeof v === 'string' && v.includes('|') ? v.split('|')[0].replace(/[{}]/g, '') : v;
-                    }
-                    payloadStr = JSON.stringify(c, null, 2);
-                } catch {
-                    payloadStr = ep.body;
+            if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(ep.method)) {
+                if (Object.keys(synthesized.body).length > 0) {
+                    payloadStr = typeof synthesized.body === 'string' ? synthesized.body : JSON.stringify(synthesized.body, null, 2);
                 }
+            }
+
+            // Jika GET dan memiliki query params, tambahkan ke URL snippet
+            if (ep.method === 'GET' && Object.keys(synthesized.query).length > 0) {
+                const qs = new URLSearchParams(synthesized.query).toString();
+                if (qs) fullUrl += (fullUrl.includes('?') ? '&' : '?') + qs;
             }
 
             if (CURRENT_SNIPPET_LANG === 'curl') {
@@ -1926,10 +2209,27 @@
             sizeBadge.classList.remove('hidden');
             copyResBtn.classList.remove('hidden');
 
-            // Format Body JSON
+            // Format Body JSON & Auto-Capture Prerequisite Values
             try {
                 const jsonObj = JSON.parse(resText);
                 resBodyCode.textContent = JSON.stringify(jsonObj, null, 2);
+
+                if (res.ok) {
+                    const newlyCaptured = autoCaptureResponseParams(jsonObj, finalUrl);
+                    if (newlyCaptured.length > 0) {
+                        const prereqChainBar = document.getElementById('tester-prereq-chain-bar');
+                        if (prereqChainBar) {
+                            prereqChainBar.classList.remove('hidden');
+                            prereqChainBar.innerHTML = `
+                                <div class="flex items-center gap-1.5 truncate">
+                                    <span class="material-symbols-outlined text-secondary text-[14px]">task_alt</span>
+                                    <span>Tersimpan untuk langkah berikutnya: <strong class="text-on-surface">${newlyCaptured.join(', ')}</strong></span>
+                                </div>
+                                <span class="text-[9px] px-1.5 py-0.2 rounded bg-secondary/20 text-secondary font-bold">Auto-Captured</span>
+                            `;
+                        }
+                    }
+                }
             } catch {
                 resBodyCode.textContent = resText;
             }

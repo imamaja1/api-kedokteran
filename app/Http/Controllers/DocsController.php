@@ -40,4 +40,9 @@ class DocsController extends Controller
     {
         return view('docs.tester');
     }
+
+    public function penilaian()
+    {
+        return view('docs.penilaian');
+    }
 }

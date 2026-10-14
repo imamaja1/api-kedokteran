@@ -165,6 +165,8 @@ Route::prefix("api/staff")
                     ]);
                     Route::post("/", [ProgramStudiController::class, "store"]);
                     Route::put("/", [ProgramStudiController::class, "update"]);
+                    Route::get("kaprodi", [ProgramStudiController::class, "getKaprodi"]);
+                    Route::put("kaprodi", [ProgramStudiController::class, "setKaprodi"]);
                     Route::delete("/{code?}", [
                         ProgramStudiController::class,
                         "destroy",
@@ -347,6 +349,7 @@ Route::prefix("api/staff")
                     Route::post("/", [AssessmentDosenController::class, "store"]);
                     Route::put("/assign", [AssessmentDosenController::class, "assignDosen"]);
                     Route::get("/assignments", [AssessmentDosenController::class, "getAssignments"]);
+                    Route::get("/tree", [AssessmentDosenController::class, "getAssignments"]);
                 });
             });
 

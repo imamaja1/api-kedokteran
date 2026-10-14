@@ -85,5 +85,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin,staff'])
     Route::get('kurikulum/{kode}', [KurikulumController::class, 'show'])->name('kurikulum.show');
 
     Route::get('/docs', [DocsController::class, 'index'])->name('docs');
+    Route::get('/docs/penilaian', [DocsController::class, 'penilaian'])->name('docs.penilaian');
+    Route::get('/doc/penilaian', [DocsController::class, 'penilaian']);
     Route::get('/tester', [DocsController::class, 'tester'])->name('tester');
 });

@@ -67,7 +67,9 @@ Route::prefix('api')
             Route::get('/my-nodes', [AssessmentDosenController::class, 'myNodes']);
             Route::get('/mahasiswa', [AssessmentDosenController::class, 'mahasiswaByNode']);
             Route::get('/detail', [AssessmentDosenController::class, 'detailMahasiswa']);
+            Route::post('/input-score', [AssessmentDosenController::class, 'inputScore']);
             Route::post('/validasi', [AssessmentDosenController::class, 'validasi']);
+            Route::post('/validasi-bulk', [AssessmentDosenController::class, 'validasiBulk']);
             Route::post('/revisi', [AssessmentDosenController::class, 'revisi']);
         });
 

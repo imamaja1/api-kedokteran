@@ -9,7 +9,7 @@ class ServiceProgramStudi
 {
     public function getAllProgramStudi(): JsonResponse
     {
-        $paginator = ProgramStudi::paginate(20);
+        $paginator = ProgramStudi::with('kaprodi')->paginate(20);
 
         $paginator->getCollection()->transform(function ($item, $index) {
             return [
@@ -18,6 +18,8 @@ class ServiceProgramStudi
                 'nama_program_studi' => $item->nama_program_studi,
                 'singkatan_program_studi' => $item->singkatan_program_studi,
                 'kompetensi' => $item->kompetensi,
+                'code_dosen_kaprodi' => $item->kaprodi?->toCode(),
+                'nama_kaprodi' => $item->kaprodi?->nama_dosen,
             ];
         });
 
@@ -38,7 +40,7 @@ class ServiceProgramStudi
 
     public function getOneProgramStudi(string $id): JsonResponse
     {
-        $data = ProgramStudi::find($id);
+        $data = ProgramStudi::with('kaprodi')->find($id);
 
         if (! $data) {
             return response()->json([
@@ -56,6 +58,8 @@ class ServiceProgramStudi
                 'nama_program_studi' => $data->nama_program_studi,
                 'singkatan_program_studi' => $data->singkatan_program_studi,
                 'kompetensi' => $data->kompetensi,
+                'code_dosen_kaprodi' => $data->kaprodi?->toCode(),
+                'nama_kaprodi' => $data->kaprodi?->nama_dosen,
             ],
         ]);
     }
@@ -64,6 +68,7 @@ class ServiceProgramStudi
     {
         try {
             $programStudi = ProgramStudi::create($object);
+            $programStudi->load('kaprodi');
         } catch (\Throwable) {
             return response()->json([
                 'status' => false,
@@ -80,6 +85,8 @@ class ServiceProgramStudi
                 'nama_program_studi' => $programStudi->nama_program_studi,
                 'singkatan_program_studi' => $programStudi->singkatan_program_studi,
                 'kompetensi' => $programStudi->kompetensi,
+                'code_dosen_kaprodi' => $programStudi->kaprodi?->toCode(),
+                'nama_kaprodi' => $programStudi->kaprodi?->nama_dosen,
             ],
         ], 201);
     }
@@ -98,6 +105,7 @@ class ServiceProgramStudi
 
         try {
             $programStudi->update($object);
+            $programStudi->load('kaprodi');
         } catch (\Throwable) {
             return response()->json([
                 'status' => false,
@@ -114,6 +122,101 @@ class ServiceProgramStudi
                 'nama_program_studi' => $programStudi->nama_program_studi,
                 'singkatan_program_studi' => $programStudi->singkatan_program_studi,
                 'kompetensi' => $programStudi->kompetensi,
+                'code_dosen_kaprodi' => $programStudi->kaprodi?->toCode(),
+                'nama_kaprodi' => $programStudi->kaprodi?->nama_dosen,
+            ],
+        ]);
+    }
+
+    public function getKaprodi(string $id): JsonResponse
+    {
+        $programStudi = ProgramStudi::with('kaprodi')->find($id);
+
+        if (! $programStudi) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Program Studi tidak ditemukan',
+                'data' => null,
+            ], 404);
+        }
+
+        if (! $programStudi->kaprodi) {
+            return response()->json([
+                'status' => true,
+                'message' => 'Program Studi belum memiliki Kaprodi',
+                'data' => [
+                    'nama_program_studi' => $programStudi->nama_program_studi,
+                    'code_program_studi' => $programStudi->toCode(),
+                    'kaprodi' => null,
+                ],
+            ]);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Data Kaprodi Program Studi',
+            'data' => [
+                'nama_program_studi' => $programStudi->nama_program_studi,
+                'code_program_studi' => $programStudi->toCode(),
+                'kaprodi' => [
+                    'code' => $programStudi->kaprodi->toCode(),
+                    'nama_dosen' => $programStudi->kaprodi->nama_dosen,
+                    'nik' => $programStudi->kaprodi->nik,
+                    'alamat_email' => $programStudi->kaprodi->alamat_email,
+                    'no_telp' => $programStudi->kaprodi->no_telp,
+                    'field_studi' => $programStudi->kaprodi->field_studi,
+                    'alumni' => $programStudi->kaprodi->alumni,
+                    'homebase' => $programStudi->nama_program_studi,
+                    'aktif' => $programStudi->kaprodi->aktif,
+                ],
+            ],
+        ]);
+    }
+
+    public function setKaprodi(string $id, ?int $kodeDosen): JsonResponse
+    {
+        $programStudi = ProgramStudi::find($id);
+
+        if (! $programStudi) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Program Studi tidak ditemukan',
+                'data' => null,
+            ], 404);
+        }
+
+        if ($kodeDosen) {
+            $dosen = \App\Models\Dosen::find($kodeDosen);
+            if (! $dosen) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Dosen yang dipilih tidak ditemukan',
+                    'data' => null,
+                ], 404);
+            }
+        }
+
+        try {
+            $programStudi->update([
+                'kode_dosen_kaprodi' => $kodeDosen,
+            ]);
+            $programStudi->load('kaprodi');
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Gagal mengatur Kaprodi: ' . $e->getMessage(),
+                'data' => null,
+            ], 500);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => $kodeDosen ? 'Kaprodi berhasil ditugaskan' : 'Jabatan Kaprodi berhasil dikosongkan',
+            'data' => [
+                'code' => $programStudi->toCode(),
+                'nama_program_studi' => $programStudi->nama_program_studi,
+                'code_dosen_kaprodi' => $programStudi->kaprodi?->toCode(),
+                'nama_kaprodi' => $programStudi->kaprodi?->nama_dosen,
             ],
         ]);
     }
