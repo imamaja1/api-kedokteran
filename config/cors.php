@@ -13,9 +13,17 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => array_filter(explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:8000,http://127.0.0.1:5173'))),
+    'allowed_origins' => array_values(array_filter(array_unique(array_merge(
+        explode(',', (string) env('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:8000,http://127.0.0.1:5173')),
+        array_filter([
+            env('APP_URL'),
+            'https://api-kedokteran.ubg.ac.id',
+            'https://api-kedokteran-test.ubg.ac.id',
+            'https://siska.ubg.ac.id',
+        ])
+    )))),
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => ['*.ubg.ac.id'],
 
     'allowed_headers' => ['*'],
 

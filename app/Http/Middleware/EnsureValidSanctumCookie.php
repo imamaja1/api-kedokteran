@@ -18,6 +18,7 @@ class EnsureValidSanctumCookie
         $user = Auth::guard('mahasiswa_web')->user()
             ?? Auth::guard('dosen_web')->user()
             ?? Auth::guard('staff_web')->user()
+            ?? Auth::guard('web')->user()
             ?? Auth::guard('sanctum')->user()
             ?? $request->user();
 
@@ -25,6 +26,7 @@ class EnsureValidSanctumCookie
             return response()->json([
                 'status' => false,
                 'message' => 'Unauthorized. Silakan login terlebih dahulu.',
+                'error' => 'UNAUTHENTICATED',
             ], 401);
         }
 

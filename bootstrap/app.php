@@ -33,6 +33,8 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->trustProxies(at: '*');
+
         // Exclude semua route login dari CSRF verification
         // sehingga login bisa langsung tanpa fetch /sanctum/csrf-cookie terlebih dahulu
         $middleware->statefulApi();

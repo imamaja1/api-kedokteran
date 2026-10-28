@@ -21,10 +21,18 @@ return [
     |   APP_URL=https://api-kedokteran.ubg.ac.id
     |   SESSION_SECURE_COOKIE=true      ← wajib HTTPS
     */
-    'stateful' => explode(',', env(
-        'SANCTUM_STATEFUL_DOMAINS',
-        'localhost,localhost:3000,localhost:8000,localhost:8080,127.0.0.1,127.0.0.1:3000,127.0.0.1:8000,127.0.0.1:8080,127.0.0.1:5173'
-    )),
+    'stateful' => array_values(array_filter(array_unique(array_merge(
+        explode(',', (string) env(
+            'SANCTUM_STATEFUL_DOMAINS',
+            'localhost,localhost:3000,localhost:8000,localhost:8080,127.0.0.1,127.0.0.1:3000,127.0.0.1:8000,127.0.0.1:8080,127.0.0.1:5173'
+        )),
+        array_filter([
+            parse_url((string) env('APP_URL', ''), PHP_URL_HOST),
+            'siska.ubg.ac.id',
+            'api-kedokteran.ubg.ac.id',
+            'api-kedokteran-test.ubg.ac.id',
+        ])
+    )))),
 
     /*
     |--------------------------------------------------------------------------

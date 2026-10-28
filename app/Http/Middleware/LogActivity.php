@@ -20,7 +20,7 @@ class LogActivity
         }
 
         try {
-            foreach (['mahasiswa_web', 'dosen_web', 'staff_web'] as $guard) {
+            foreach (['mahasiswa_web', 'dosen_web', 'staff_web', 'web'] as $guard) {
                 if (! auth()->guard($guard)->check()) {
                     continue;
                 }
@@ -30,7 +30,7 @@ class LogActivity
                 [$userType, $userId] = match ($guard) {
                     'mahasiswa_web' => ['mahasiswa', $user->nim ?? null],
                     'dosen_web'     => ['dosen',     $user->kode_dosen ?? null],
-                    'staff_web'     => ['staff',     (string) ($user->id ?? null)],
+                    'staff_web', 'web' => ['staff',  (string) ($user->id ?? null)],
                     default         => [null, null],
                 };
 

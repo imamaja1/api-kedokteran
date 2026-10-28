@@ -28,13 +28,14 @@ use Illuminate\Support\Facades\Route;
 Route::prefix("api/staff")
     ->middleware([
         "sanctum.spa",
-        "auth:staff_web",
+        "auth:staff_web,web",
         "sanctum.cookie",
         "log.activity",
     ])
     ->group(function () {
         // Auth
         Route::get("me", [AuthController::class, "me_staff"]);
+        Route::post("logout", [AuthController::class, "logout"]);
         Route::get("tahun-angkatan", [
             DefaultController::class,
             "tahun_angkatan",
@@ -346,6 +347,7 @@ Route::prefix("api/staff")
 
                 // AssessmentDosen (multi-level validation setup)
                 Route::prefix("dosen")->group(function () {
+                    Route::get("/", [AssessmentDosenController::class, "getAssignments"]);
                     Route::post("/", [AssessmentDosenController::class, "store"]);
                     Route::put("/assign", [AssessmentDosenController::class, "assignDosen"]);
                     Route::get("/assignments", [AssessmentDosenController::class, "getAssignments"]);

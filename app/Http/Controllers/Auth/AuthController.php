@@ -92,9 +92,9 @@ class AuthController extends Controller
         $email = $request->email;
         $password = $request->password;
 
-        // Optimized: Select only needed columns
+        // Optimized: Select only needed columns (staff or admin role)
         $user = User::where('email', $email)
-            ->where('role', 'staff')
+            ->whereIn('role', ['staff', 'admin'])
             ->select(['id', 'name', 'email', 'password', 'role'])
             ->first();
 
@@ -107,8 +107,9 @@ class AuthController extends Controller
             ], 401);
         }
 
-        // Authenticate dengan guard staff_web
+        // Authenticate dengan guard staff_web dan web
         Auth::guard('staff_web')->login($user);
+        Auth::guard('web')->login($user);
         
         // Optimized: Only regenerate session once (not on every login)
         if (!$request->session()->isStarted()) {
