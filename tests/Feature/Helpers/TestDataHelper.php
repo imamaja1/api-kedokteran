@@ -4,6 +4,7 @@ namespace Tests\Feature\Helpers;
 
 use App\Models\Dosen;
 use App\Models\Mahasiswa;
+use App\Models\NamaKurikulum;
 use App\Models\ProgramStudi;
 use App\Models\TahunAkademik;
 use App\Models\User;
@@ -24,7 +25,7 @@ class TestDataHelper
     {
         $prodi = ProgramStudi::first() ?? self::createProgramStudi();
         $count = Mahasiswa::count() + 1;
-        $nim = $overrides['nim'] ?? '2023010'.str_pad($count, 4, '0', STR_PAD_LEFT);
+        $nim = $overrides['nim'] ?? ($count === 1 ? '2023010001' : '2023010'.str_pad($count, 3, '0', STR_PAD_LEFT));
 
         return Mahasiswa::create(array_merge([
             'nim' => $nim,
@@ -51,7 +52,7 @@ class TestDataHelper
             'nama_dosen' => $overrides['nama_dosen'] ?? "Dosen Test {$count}",
             'nik' => $overrides['nik'] ?? '1234567'.str_pad($count, 3, '0', STR_PAD_LEFT),
             'no_telp' => $overrides['no_telp'] ?? '0812345678'.str_pad($count, 2, '0', STR_PAD_LEFT),
-            'alamat_email' => $overrides['alamat_email'] ?? "dosen{$count}@test.com",
+            'alamat_email' => $overrides['alamat_email'] ?? $overrides['email'] ?? ($count === 1 ? 'dosen@test.com' : "dosen{$count}@test.com"),
             'field_studi' => 'Kedokteran',
             'alumni' => '-',
             'homebase' => $prodi->kode_program_studi,
@@ -82,6 +83,15 @@ class TestDataHelper
             'tanggal_mulai' => '2024-09-01',
             'tanggal_berakhir' => '2025-01-15',
             'status' => 'A',
+        ], $overrides));
+    }
+
+    public static function createNamaKurikulum(array $overrides = []): NamaKurikulum
+    {
+        $prodi = ProgramStudi::first() ?? self::createProgramStudi();
+        return NamaKurikulum::create(array_merge([
+            'nama_kurikulum' => 'Kurikulum ' . rand(2020, 2030),
+            'kode_program_studi' => $prodi->kode_program_studi,
         ], $overrides));
     }
 

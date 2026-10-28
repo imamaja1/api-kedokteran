@@ -67,10 +67,10 @@ test('GET /api/dosen/me returns authenticated user', function () {
     $response->assertStatus(200)
         ->assertJson([
             'status' => true,
-            'message' => 'Profil dosen retrieved successfully.',
+            'message' => 'Profil dosen berhasil diambil.',
         ])
         ->assertJsonStructure([
-            'data' => ['code', 'nik', 'no_telp', 'nama_dosen', 'alamat_email', 'status_dosen', 'homebase', 'nama_program_studi'],
+            'data' => ['code', 'nik', 'no_telp', 'nama_dosen', 'alamat_email', 'status_dosen', 'nama_program_studi'],
         ]);
 });
 
@@ -132,7 +132,7 @@ test('GET /api/dosen returns paginated list', function () {
     $response->assertStatus(200)
         ->assertJson([
             'status' => true,
-            'message' => 'Data dosen retrieved successfully.',
+            'message' => 'Data dosen berhasil diambil.',
         ])
         ->assertJsonStructure([
             'data',
@@ -151,7 +151,7 @@ test('GET /api/dosen/detail returns dosen by code', function () {
     $response->assertStatus(200)
         ->assertJson([
             'status' => true,
-            'message' => 'Data dosen retrieved successfully.',
+            'message' => 'Data dosen berhasil diambil.',
         ])
         ->assertJsonPath('data.nama_dosen', $dosen->nama_dosen);
 });
@@ -227,7 +227,7 @@ test('GET /api/dosen/kurikulum/detail returns 422 without code', function () {
 test('GET /api/dosen/perwalian/jumlah returns count', function () {
     $ctx = actingAsDosen();
 
-    $response = $ctx->instance->getJson('/api/dosen/perwalian/jumlah');
+    $response = $ctx->instance->getJson('/api/dosen/perwalian/jumlah?semester=1');
 
     $response->assertStatus(200)
         ->assertJson(['status' => true]);
@@ -238,7 +238,7 @@ test('GET /api/dosen/perwalian/jumlah returns count', function () {
 test('GET /api/dosen/perwalian/daftar returns list', function () {
     $ctx = actingAsDosen();
 
-    $response = $ctx->instance->getJson('/api/dosen/perwalian/daftar');
+    $response = $ctx->instance->getJson('/api/dosen/perwalian/daftar?semester=1');
 
     $response->assertStatus(200)
         ->assertJson(['status' => true]);
@@ -268,8 +268,15 @@ test('GET /api/dosen/perwalian/krs returns 422 without code', function () {
 test('GET /api/dosen/perwalian/krs returns krs detail', function () {
     $ctx = actingAsDosen();
     $mhs = TestDataHelper::createMahasiswa();
+    $ta = TestDataHelper::createTahunAkademik();
+    $krs = \App\Models\Krs::create([
+        'nim' => $mhs->nim,
+        'kode_tahun_akademik' => $ta->kode_tahun_akademik,
+        'semester' => '1',
+        'status' => 'A',
+    ]);
 
-    $response = $ctx->instance->getJson('/api/dosen/perwalian/krs', ['code' => $mhs->toCode()]);
+    $response = $ctx->instance->getJson('/api/dosen/perwalian/krs?code=' . $krs->toCode());
 
     $response->assertStatus(200)
         ->assertJson(['status' => true]);

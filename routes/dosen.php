@@ -43,6 +43,7 @@ Route::prefix('api')
 
         // ─── Penilaian Dosen (6 endpoints) ────────────────────────────────
         Route::prefix('/dosen/penilaian')->group(function () {
+            Route::get('/', [PenilaianDosenController::class, 'getKelasPenilaian']);
             Route::get('/kelas', [PenilaianDosenController::class, 'getKelasPenilaian']);
             Route::get('/mahasiswa', [PenilaianDosenController::class, 'getMahasiswaPenilaian']);
             Route::get('/template', [PenilaianDosenController::class, 'getTemplate']);
@@ -82,11 +83,4 @@ Route::prefix('api')
             Route::post('/validasi-bulk', [AssessmentDosenController::class, 'validasiBulk']);
             Route::post('/revisi', [AssessmentDosenController::class, 'revisi']);
         });
-
-        // ─── Fallback ─────────────────────────────────────────────────────
-        Route::fallback(fn () => response()->json([
-            'status' => false,
-            'message' => 'Endpoint tidak ditemukan.',
-            'error' => 'NOT_FOUND',
-        ], 404));
     });

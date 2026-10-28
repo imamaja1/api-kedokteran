@@ -14,6 +14,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Validation\ValidationException;
 
 class AssessmentTemplateController extends Controller
 {
@@ -138,6 +139,8 @@ class AssessmentTemplateController extends Controller
             }
 
             return ApiResponse::error('Terjadi kesalahan database. Silakan coba lagi.', 500);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             report($e);
             return ApiResponse::error('Terjadi kesalahan saat membuat template. Silakan coba lagi.', 500);
@@ -182,6 +185,8 @@ class AssessmentTemplateController extends Controller
             ], 'Template berhasil diambil.');
         } catch (DecryptException) {
             return ApiResponse::validation(['code' => ['Format kode tidak valid.']]);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             report($e);
             return ApiResponse::error('Terjadi kesalahan saat mengambil template. Silakan coba lagi.', 500);
@@ -239,6 +244,8 @@ class AssessmentTemplateController extends Controller
             }
 
             return ApiResponse::error('Terjadi kesalahan database. Silakan coba lagi.', 500);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             report($e);
             return ApiResponse::error('Terjadi kesalahan saat memperbarui template. Silakan coba lagi.', 500);

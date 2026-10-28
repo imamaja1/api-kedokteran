@@ -59,6 +59,8 @@ class AssessmentScoreController extends Controller
             ], 'Score saved successfully.', 201);
         } catch (\Illuminate\Contracts\Encryption\DecryptException) {
             return ApiResponse::validation(['code' => 'Format code tidak valid']);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             return ApiResponse::error('Error: ' . $e->getMessage(), 422);
         }

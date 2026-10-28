@@ -10,6 +10,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Validation\ValidationException;
 
 class SksRuleController extends Controller
 {
@@ -100,6 +101,8 @@ class SksRuleController extends Controller
             }
 
             return ApiResponse::error('Terjadi kesalahan database. Silakan coba lagi.', 500);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             report($e);
             return ApiResponse::error('Terjadi kesalahan saat membuat SKS rule. Silakan coba lagi.', 500);
@@ -135,6 +138,8 @@ class SksRuleController extends Controller
             ], 'SKS rule berhasil diambil.');
         } catch (DecryptException) {
             return ApiResponse::validation(['code' => ['Format kode tidak valid.']]);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             report($e);
             return ApiResponse::error('Terjadi kesalahan saat mengambil SKS rule. Silakan coba lagi.', 500);
@@ -202,6 +207,8 @@ class SksRuleController extends Controller
             }
 
             return ApiResponse::error('Terjadi kesalahan database. Silakan coba lagi.', 500);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             report($e);
             return ApiResponse::error('Terjadi kesalahan saat memperbarui SKS rule. Silakan coba lagi.', 500);
@@ -238,6 +245,8 @@ class SksRuleController extends Controller
             }
 
             return ApiResponse::error('Terjadi kesalahan database. Silakan coba lagi.', 500);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             report($e);
             return ApiResponse::error('Terjadi kesalahan saat menghapus SKS rule. Silakan coba lagi.', 500);

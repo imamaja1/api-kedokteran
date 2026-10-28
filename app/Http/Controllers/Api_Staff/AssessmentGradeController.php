@@ -11,6 +11,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Validation\ValidationException;
 
 class AssessmentGradeController extends Controller
 {
@@ -51,6 +52,8 @@ class AssessmentGradeController extends Controller
             ]);
 
             return ApiResponse::paginated($paginator, 'Daftar grade berhasil diambil.');
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             report($e);
             return ApiResponse::error('Terjadi kesalahan saat mengambil data grade. Silakan coba lagi.', 500);
@@ -105,6 +108,8 @@ class AssessmentGradeController extends Controller
             }
 
             return ApiResponse::error('Terjadi kesalahan database. Silakan coba lagi.', 500);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             report($e);
             return ApiResponse::error('Terjadi kesalahan saat membuat grade. Silakan coba lagi.', 500);
@@ -141,6 +146,8 @@ class AssessmentGradeController extends Controller
             ], 'Grade berhasil diambil.');
         } catch (DecryptException) {
             return ApiResponse::validation(['code' => ['Format kode tidak valid.']]);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             report($e);
             return ApiResponse::error('Terjadi kesalahan saat mengambil grade. Silakan coba lagi.', 500);
@@ -210,6 +217,8 @@ class AssessmentGradeController extends Controller
             }
 
             return ApiResponse::error('Terjadi kesalahan database. Silakan coba lagi.', 500);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             report($e);
             return ApiResponse::error('Terjadi kesalahan saat memperbarui grade. Silakan coba lagi.', 500);
@@ -246,6 +255,8 @@ class AssessmentGradeController extends Controller
             }
 
             return ApiResponse::error('Terjadi kesalahan database. Silakan coba lagi.', 500);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             report($e);
             return ApiResponse::error('Terjadi kesalahan saat menghapus grade. Silakan coba lagi.', 500);

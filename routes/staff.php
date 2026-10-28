@@ -437,16 +437,4 @@ Route::prefix("api/staff")
             Route::get("pull/mahasiswa/{nim}", [AuditFeederController::class, "pullMahasiswa"]);
             Route::get("audit/mahasiswa/{nim}", [AuditFeederController::class, "auditMahasiswa"]);
         });
-
-        // fallback dalam group — return 404 bukan 401
-        Route::fallback(
-            fn() => response()->json(
-                [
-                    "status" => false,
-                    "message" => "Endpoint tidak ditemukan.",
-                    "error" => "NOT_FOUND",
-                ],
-                404,
-            ),
-        );
     });

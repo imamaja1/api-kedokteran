@@ -401,10 +401,10 @@ test('POST /api/staff/master-data/matakuliah stores successfully', function () {
         'sks_teori' => 3,
         'sks_praktik' => 0,
         'block' => 0,
-        'kode_program_studi' => TestDataHelper::encryptCode($prodi->kode_program_studi),
+        'code_program_studi' => $prodi->toCode(),
     ]);
 
-    $response->assertStatus(200)
+    $response->assertStatus(201)
         ->assertJson(['status' => true]);
 });
 
@@ -438,7 +438,7 @@ test('GET /api/staff/master-data/matakuliah/show returns matakuliah detail', fun
         'kode_program_studi' => $prodi->kode_program_studi,
     ]);
 
-    $response = staffGet('/api/staff/master-data/matakuliah/show', ['code' => TestDataHelper::encryptCode($mk->kode_matakuliah)]);
+    $response = staffGet('/api/staff/master-data/matakuliah/show', ['code' => $mk->toCode()]);
 
     $response->assertStatus(200)
         ->assertJson(['status' => true]);
@@ -461,7 +461,7 @@ test('POST /api/staff/master-data/program-studi stores successfully', function (
         'singkatan_program_studi' => 'IK',
     ]);
 
-    $response->assertStatus(200)
+    $response->assertStatus(201)
         ->assertJson(['status' => true]);
 });
 
@@ -545,7 +545,7 @@ test('POST /api/staff/master-data/dosen stores successfully', function () {
         'sandi_pengguna' => 'password123',
     ]);
 
-    $response->assertStatus(200)
+    $response->assertStatus(201)
         ->assertJson(['status' => true]);
 });
 
@@ -560,10 +560,10 @@ test('PATCH /api/staff/master-data/dosen/{code}/restore restores soft deleted do
     $kode = TestDataHelper::encryptCode($dosen->kode_dosen);
 
     // Soft delete
-    staffDelete("/api/staff/master-data/dosen/{$dosen->kode_dosen}");
+    staffDelete("/api/staff/master-data/dosen/{$kode}");
 
     // Restore
-    $response = staffPatch("/api/staff/master-data/dosen/{$dosen->kode_dosen}/restore");
+    $response = staffPatch("/api/staff/master-data/dosen/{$kode}/restore");
 
     $response->assertStatus(200)
         ->assertJson(['status' => true]);
@@ -571,12 +571,13 @@ test('PATCH /api/staff/master-data/dosen/{code}/restore restores soft deleted do
 
 test('DELETE /api/staff/master-data/dosen/{code}/force force deletes dosen', function () {
     $dosen = TestDataHelper::createDosen(['kode_dosen' => 99]);
+    $kode = TestDataHelper::encryptCode($dosen->kode_dosen);
 
     // Soft delete first
-    staffDelete("/api/staff/master-data/dosen/{$dosen->kode_dosen}");
+    staffDelete("/api/staff/master-data/dosen/{$kode}");
 
     // Force delete
-    $response = staffDelete("/api/staff/master-data/dosen/{$dosen->kode_dosen}/force");
+    $response = staffDelete("/api/staff/master-data/dosen/{$kode}/force");
 
     $response->assertStatus(200)
         ->assertJson(['status' => true]);
@@ -604,22 +605,22 @@ test('GET /api/staff/master-data/nama-kurikulum/show validates code', function (
 });
 
 test('GET /api/staff/master-data/nama-kurikulum/show returns kurikulum detail', function () {
-    $nk = NamaKurikulum::create([
+    $nk = TestDataHelper::createNamaKurikulum([
         'nama_kurikulum' => 'Kurikulum 2024',
     ]);
 
-    $response = staffGet('/api/staff/master-data/nama-kurikulum/show', ['code' => TestDataHelper::encryptCode($nk->id)]);
+    $response = staffGet('/api/staff/master-data/nama-kurikulum/show', ['code' => $nk->toCode()]);
 
     $response->assertStatus(200)
         ->assertJson(['status' => true]);
 });
 
 test('DELETE /api/staff/master-data/nama-kurikulum/{code} deletes kurikulum', function () {
-    $nk = NamaKurikulum::create([
+    $nk = TestDataHelper::createNamaKurikulum([
         'nama_kurikulum' => 'Kurikulum Hapus',
     ]);
 
-    $response = staffDelete("/api/staff/master-data/nama-kurikulum/{$nk->id}");
+    $response = staffDelete("/api/staff/master-data/nama-kurikulum/{$nk->toCode()}");
 
     $response->assertStatus(200)
         ->assertJson(['status' => true]);
@@ -645,7 +646,7 @@ test('POST /api/staff/master-data/tahun-akademik stores successfully', function 
         'status' => 'A',
     ]);
 
-    $response->assertStatus(200)
+    $response->assertStatus(201)
         ->assertJson(['status' => true]);
 });
 
@@ -664,7 +665,7 @@ test('GET /api/staff/master-data/tahun-akademik/show validates code', function (
 test('GET /api/staff/master-data/tahun-akademik/show returns tahun akademik detail', function () {
     $ta = TestDataHelper::createTahunAkademik();
 
-    $response = staffGet('/api/staff/master-data/tahun-akademik/show', ['code' => TestDataHelper::encryptCode($ta->id)]);
+    $response = staffGet('/api/staff/master-data/tahun-akademik/show', ['code' => $ta->toCode()]);
 
     $response->assertStatus(200)
         ->assertJson(['status' => true]);
@@ -679,7 +680,7 @@ test('DELETE /api/staff/master-data/tahun-akademik/{code} deletes tahun akademik
         'status' => 'A',
     ]);
 
-    $response = staffDelete("/api/staff/master-data/tahun-akademik/{$ta->id}");
+    $response = staffDelete("/api/staff/master-data/tahun-akademik/{$ta->toCode()}");
 
     $response->assertStatus(200)
         ->assertJson(['status' => true]);
@@ -708,26 +709,26 @@ test('GET /api/staff/master-data/kurikulum-angkatan/show validates code', functi
 
 test('GET /api/staff/master-data/kurikulum-angkatan/show returns kurikulum angkatan detail', function () {
     $ta = TestDataHelper::createTahunAkademik();
-    $nk = NamaKurikulum::create(['nama_kurikulum' => 'Kurikulum Test']);
+    $nk = TestDataHelper::createNamaKurikulum(['nama_kurikulum' => 'Kurikulum Test']);
     $ka = KurikulumAngkatan::create([
-        'kode_nama_kurikulum' => $nk->id,
+        'kode_nama_kurikulum' => $nk->kode_nama_kurikulum,
         'tahun' => '2024',
     ]);
 
-    $response = staffGet('/api/staff/master-data/kurikulum-angkatan/show', ['code' => TestDataHelper::encryptCode($ka->id)]);
+    $response = staffGet('/api/staff/master-data/kurikulum-angkatan/show', ['code' => $ka->toCode()]);
 
     $response->assertStatus(200)
         ->assertJson(['status' => true]);
 });
 
 test('DELETE /api/staff/master-data/kurikulum-angkatan/{code} deletes kurikulum angkatan', function () {
-    $nk = NamaKurikulum::create(['nama_kurikulum' => 'Kurikulum Hapus']);
+    $nk = TestDataHelper::createNamaKurikulum(['nama_kurikulum' => 'Kurikulum Hapus']);
     $ka = KurikulumAngkatan::create([
-        'kode_nama_kurikulum' => $nk->id,
+        'kode_nama_kurikulum' => $nk->kode_nama_kurikulum,
         'tahun' => '2025',
     ]);
 
-    $response = staffDelete("/api/staff/master-data/kurikulum-angkatan/{$ka->id}");
+    $response = staffDelete("/api/staff/master-data/kurikulum-angkatan/{$ka->toCode()}");
 
     $response->assertStatus(200)
         ->assertJson(['status' => true]);
@@ -799,7 +800,7 @@ test('POST /api/staff/master-data/mahasiswa stores successfully', function () {
         'status_pendaftaran' => 'B',
     ]);
 
-    $response->assertStatus(200)
+    $response->assertStatus(201)
         ->assertJson(['status' => true]);
 });
 
@@ -813,10 +814,10 @@ test('PATCH /api/staff/master-data/mahasiswa/{code}/restore restores soft delete
     $mhs = TestDataHelper::createMahasiswa(['nim' => '2023010003']);
 
     // Soft delete
-    staffDelete("/api/staff/master-data/mahasiswa/{$mhs->nim}");
+    staffDelete("/api/staff/master-data/mahasiswa/{$mhs->toCode()}");
 
     // Restore
-    $response = staffPatch("/api/staff/master-data/mahasiswa/{$mhs->nim}/restore");
+    $response = staffPatch("/api/staff/master-data/mahasiswa/{$mhs->toCode()}/restore");
 
     $response->assertStatus(200)
         ->assertJson(['status' => true]);
@@ -826,10 +827,10 @@ test('DELETE /api/staff/master-data/mahasiswa/{code}/force force deletes mahasis
     $mhs = TestDataHelper::createMahasiswa(['nim' => '2023010004']);
 
     // Soft delete first
-    staffDelete("/api/staff/master-data/mahasiswa/{$mhs->nim}");
+    staffDelete("/api/staff/master-data/mahasiswa/{$mhs->toCode()}");
 
     // Force delete
-    $response = staffDelete("/api/staff/master-data/mahasiswa/{$mhs->nim}/force");
+    $response = staffDelete("/api/staff/master-data/mahasiswa/{$mhs->toCode()}/force");
 
     $response->assertStatus(200)
         ->assertJson(['status' => true]);

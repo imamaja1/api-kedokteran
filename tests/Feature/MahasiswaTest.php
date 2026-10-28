@@ -145,7 +145,7 @@ test('PUT /api/mhs/profile/update changes password', function () {
 
 test('GET /api/mhs/semester returns semester list', function () {
     $mhs = TestDataHelper::createMahasiswa();
-    TahunAkademik::create([
+    $ta = TestDataHelper::createTahunAkademik([
         'tahun_akademik' => '2024/2025',
         'semester' => '1',
         'tanggal_mulai' => '2024-09-01',
@@ -154,7 +154,7 @@ test('GET /api/mhs/semester returns semester list', function () {
     ]);
     Krs::create([
         'nim' => $mhs->nim,
-        'kode_tahun_akademik' => 1,
+        'kode_tahun_akademik' => $ta->kode_tahun_akademik,
         'semester' => 1,
         'sks_semester' => 0,
         'status_krs' => 'A',
@@ -176,6 +176,11 @@ test('GET /api/mhs/semester returns semester list', function () {
 
 test('GET /api/mhs/kurikulum returns kurikulum or empty', function () {
     $mhs = TestDataHelper::createMahasiswa();
+    $nk = TestDataHelper::createNamaKurikulum(['kode_program_studi' => $mhs->program_studi_kode]);
+    \App\Models\KurikulumAngkatan::create([
+        'kode_nama_kurikulum' => $nk->kode_nama_kurikulum,
+        'angkatan' => '20' . substr($mhs->nim, 0, 2),
+    ]);
 
     $response = test()->actingAs($mhs, 'mahasiswa_web')
         ->getJson('/api/mhs/kurikulum');
@@ -188,6 +193,13 @@ test('GET /api/mhs/kurikulum returns kurikulum or empty', function () {
 
 test('GET /api/mhs/krs returns krs or empty data', function () {
     $mhs = TestDataHelper::createMahasiswa();
+    $ta = TestDataHelper::createTahunAkademik();
+    Krs::create([
+        'nim' => $mhs->nim,
+        'kode_tahun_akademik' => $ta->kode_tahun_akademik,
+        'semester' => '1',
+        'status' => 'A',
+    ]);
 
     $response = test()->actingAs($mhs, 'mahasiswa_web')
         ->getJson('/api/mhs/krs');
@@ -198,6 +210,13 @@ test('GET /api/mhs/krs returns krs or empty data', function () {
 
 test('GET /api/mhs/krs filters by semester', function () {
     $mhs = TestDataHelper::createMahasiswa();
+    $ta = TestDataHelper::createTahunAkademik();
+    Krs::create([
+        'nim' => $mhs->nim,
+        'kode_tahun_akademik' => $ta->kode_tahun_akademik,
+        'semester' => '1',
+        'status' => 'A',
+    ]);
 
     $response = test()->actingAs($mhs, 'mahasiswa_web')
         ->getJson('/api/mhs/krs?semester=1');
@@ -222,6 +241,11 @@ test('GET /api/mhs/khs returns khs or empty data', function () {
 
 test('GET /api/mhs/petikan-nilai returns transcript or empty', function () {
     $mhs = TestDataHelper::createMahasiswa();
+    $nk = TestDataHelper::createNamaKurikulum(['kode_program_studi' => $mhs->program_studi_kode]);
+    \App\Models\KurikulumAngkatan::create([
+        'kode_nama_kurikulum' => $nk->kode_nama_kurikulum,
+        'angkatan' => '20' . substr($mhs->nim, 0, 2),
+    ]);
 
     $response = test()->actingAs($mhs, 'mahasiswa_web')
         ->getJson('/api/mhs/petikan-nilai');

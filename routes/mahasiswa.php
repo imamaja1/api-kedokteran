@@ -39,11 +39,4 @@ Route::prefix('api/mhs')
         Route::get('petikan-nilai', [ApiMhsPetikanNilaiController::class, 'petikan_nilai']);
         // jadwal kuliah
         Route::get('jadwal', [ApiMhsJadwalController::class, 'index']);
-
-        // fallback dalam group — return 404 bukan 401
-        Route::fallback(fn () => response()->json([
-            'status' => false,
-            'message' => 'Endpoint tidak ditemukan.',
-            'error' => 'NOT_FOUND',
-        ], 404));
     });
