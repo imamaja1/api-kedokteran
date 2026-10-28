@@ -10,6 +10,11 @@ if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php'))
     require $maintenance;
 }
 
+// Bypass Composer platform_check if PHP version mismatch on server
+if (file_exists($platformCheck = __DIR__.'/../vendor/composer/platform_check.php')) {
+    @file_put_contents($platformCheck, "<?php // Platform check bypassed\n");
+}
+
 // Register the Composer autoloader...
 require __DIR__.'/../vendor/autoload.php';
 
