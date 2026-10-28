@@ -17,13 +17,15 @@ return [
         explode(',', (string) env('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:8000,http://127.0.0.1:5173')),
         array_filter([
             env('APP_URL'),
+            'http://localhost:9090',
+            'http://127.0.0.1:9090',
             'https://api-kedokteran.ubg.ac.id',
             'https://api-kedokteran-test.ubg.ac.id',
             'https://siska.ubg.ac.id',
         ])
     )))),
 
-    'allowed_origins_patterns' => ['*.ubg.ac.id'],
+    'allowed_origins_patterns' => [],
 
     'allowed_headers' => ['*'],
 
