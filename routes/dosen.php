@@ -73,6 +73,16 @@ Route::prefix('api')
             Route::post('/revisi', [AssessmentDosenController::class, 'revisi']);
         });
 
+        Route::prefix('/dosen/assessment/dosen')->group(function () {
+            Route::get('/my-nodes', [AssessmentDosenController::class, 'myNodes']);
+            Route::get('/mahasiswa', [AssessmentDosenController::class, 'mahasiswaByNode']);
+            Route::get('/detail', [AssessmentDosenController::class, 'detailMahasiswa']);
+            Route::post('/input-score', [AssessmentDosenController::class, 'inputScore']);
+            Route::post('/validasi', [AssessmentDosenController::class, 'validasi']);
+            Route::post('/validasi-bulk', [AssessmentDosenController::class, 'validasiBulk']);
+            Route::post('/revisi', [AssessmentDosenController::class, 'revisi']);
+        });
+
         // ─── Fallback ─────────────────────────────────────────────────────
         Route::fallback(fn () => response()->json([
             'status' => false,
