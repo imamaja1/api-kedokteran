@@ -48,17 +48,10 @@ class AssessmentDosenController extends Controller
      */
     public function getAssignments(Request $request): JsonResponse
     {
-        $codeKelas = $request->query('code_kelas')
-            ?? $request->input('code_kelas')
-            ?? $request->route('code_kelas');
+        $validated = $request->validate([
+            'code_kelas' => 'required|string',
+        ]);
 
-        if (! $codeKelas) {
-            $validated = $request->validate([
-                'code_kelas' => 'required|string',
-            ]);
-            $codeKelas = $validated['code_kelas'];
-        }
-
-        return $this->service->getAssignments($codeKelas);
+        return $this->service->getAssignments($validated['code_kelas']);
     }
 }
