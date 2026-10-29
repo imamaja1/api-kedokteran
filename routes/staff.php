@@ -350,6 +350,7 @@ Route::prefix("api/staff")
                     Route::get("/", [AssessmentDosenController::class, "getAssignments"]);
                     Route::post("/", [AssessmentDosenController::class, "store"]);
                     Route::put("/assign", [AssessmentDosenController::class, "assignDosen"]);
+                    Route::put("/update", [AssessmentDosenController::class, "assignDosen"]);
                     Route::get("/assignments", [AssessmentDosenController::class, "getAssignments"]);
                     Route::get("/tree", [AssessmentDosenController::class, "getAssignments"]);
                 });

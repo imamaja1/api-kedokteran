@@ -240,4 +240,88 @@ class StaffAssessmentDosenTest extends TestCase
 
         $response->assertStatus(422);
     }
+
+    public function test_get_assignments_accepts_camel_case_code_kelas(): void
+    {
+        $response = $this->actingAs($this->staff, 'staff_web')
+            ->getJson('/api/staff/assessment/dosen/assignments?codeKelas=' . $this->kelas->toCode());
+
+        $response->assertStatus(200)
+            ->assertJsonPath('status', true)
+            ->assertJsonPath('data.assessment_dosen_id', $this->assessment->id);
+    }
+
+    public function test_get_assignments_accepts_shorthand_code(): void
+    {
+        $response = $this->actingAs($this->staff, 'staff_web')
+            ->getJson('/api/staff/assessment/dosen/assignments?code=' . $this->kelas->toCode());
+
+        $response->assertStatus(200)
+            ->assertJsonPath('status', true)
+            ->assertJsonPath('data.assessment_dosen_id', $this->assessment->id);
+    }
+
+    public function test_get_assignments_accepts_fallback_from_server_request_uri(): void
+    {
+        // Simulate Nginx dropping query_string from PHP $_GET but retaining original REQUEST_URI
+        $token = $this->kelas->toCode();
+        $_SERVER['REQUEST_URI'] = '/api/staff/assessment/dosen/assignments?code_kelas=' . $token;
+
+        $response = $this->actingAs($this->staff, 'staff_web')
+            ->getJson('/api/staff/assessment/dosen/assignments');
+
+        unset($_SERVER['REQUEST_URI']);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('status', true)
+            ->assertJsonPath('data.assessment_dosen_id', $this->assessment->id);
+    }
+
+    public function test_get_assignments_returns_422_when_code_kelas_is_truly_missing(): void
+    {
+        $response = $this->actingAs($this->staff, 'staff_web')
+            ->withServerVariables([
+                'REQUEST_URI' => '/api/staff/assessment/dosen/assignments',
+                'QUERY_STRING' => '',
+            ])
+            ->getJson('/api/staff/assessment/dosen/assignments');
+
+        $response->assertStatus(422)
+            ->assertJsonPath('status', false)
+            ->assertJsonValidationErrors(['code_kelas']);
+    }
+
+    public function test_assign_dosen_accepts_camel_case_and_update_route_alias(): void
+    {
+        $response = $this->actingAs($this->staff, 'staff_web')
+            ->putJson('/api/staff/assessment/dosen/update', [
+                'assessmentDosenId' => $this->assessment->id,
+                'assignments'       => [
+                    [
+                        'nodeKey'   => 'cbt',
+                        'kodeDosen' => $this->dosen->kode_dosen,
+                    ],
+                ],
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('status', true);
+    }
+
+    public function test_assign_dosen_resolves_id_from_code_kelas(): void
+    {
+        $response = $this->actingAs($this->staff, 'staff_web')
+            ->putJson('/api/staff/assessment/dosen/assign', [
+                'code_kelas'  => $this->kelas->toCode(),
+                'assignments' => [
+                    [
+                        'node_key'   => 'cbt',
+                        'kode_dosen' => $this->dosen->kode_dosen,
+                    ],
+                ],
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('status', true);
+    }
 }
