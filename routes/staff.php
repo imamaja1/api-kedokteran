@@ -347,13 +347,35 @@ Route::prefix("api/staff")
 
                 // AssessmentDosen (multi-level validation setup)
                 Route::prefix("dosen")->group(function () {
+                    Route::get("/check", [AssessmentDosenController::class, "checkStatus"]);
+                    Route::get("/status", [AssessmentDosenController::class, "checkStatus"]);
+                    Route::get("/check/{code}", [AssessmentDosenController::class, "checkStatus"]);
                     Route::get("/", [AssessmentDosenController::class, "getAssignments"]);
+                    Route::get("/show", [AssessmentDosenController::class, "getAssignments"]);
+                    Route::get("/assignments", [AssessmentDosenController::class, "getAssignments"]);
+                    Route::get("/tree", [AssessmentDosenController::class, "getAssignments"]);
+                    Route::get("/{code}", [AssessmentDosenController::class, "getAssignments"]);
                     Route::post("/", [AssessmentDosenController::class, "store"]);
                     Route::put("/assign", [AssessmentDosenController::class, "assignDosen"]);
                     Route::put("/update", [AssessmentDosenController::class, "assignDosen"]);
-                    Route::get("/assignments", [AssessmentDosenController::class, "getAssignments"]);
-                    Route::get("/tree", [AssessmentDosenController::class, "getAssignments"]);
                 });
+            });
+
+        // ─── Alias direct: assessment-dosen ────────────────────────────
+        Route::prefix("assessment-dosen")
+            ->middleware(["throttle:60,1"])
+            ->group(function () {
+                Route::get("/check", [AssessmentDosenController::class, "checkStatus"]);
+                Route::get("/status", [AssessmentDosenController::class, "checkStatus"]);
+                Route::get("/check/{code}", [AssessmentDosenController::class, "checkStatus"]);
+                Route::get("/", [AssessmentDosenController::class, "getAssignments"]);
+                Route::get("/show", [AssessmentDosenController::class, "getAssignments"]);
+                Route::get("/assignments", [AssessmentDosenController::class, "getAssignments"]);
+                Route::get("/tree", [AssessmentDosenController::class, "getAssignments"]);
+                Route::get("/{code}", [AssessmentDosenController::class, "getAssignments"]);
+                Route::post("/", [AssessmentDosenController::class, "store"]);
+                Route::put("/assign", [AssessmentDosenController::class, "assignDosen"]);
+                Route::put("/update", [AssessmentDosenController::class, "assignDosen"]);
             });
 
 

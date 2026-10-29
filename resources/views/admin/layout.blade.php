@@ -302,6 +302,10 @@
                 class="{{ request()->routeIs('admin.endpoints.*') ? 'active' : '' }}">
                 <i class="bi bi-code-slash"></i> <span class="nav-link-text">Endpoints</span>
             </a>
+            <a href="{{ route('admin.backup.index') }}"
+                class="{{ request()->routeIs('admin.backup.*') ? 'active' : '' }}">
+                <i class="bi bi-cloud-arrow-down-fill"></i> <span class="nav-link-text">Backup &amp; Restore</span>
+            </a>
 
             @if(auth()->user()->isAdmin())
             <div class="nav-section-label">Manajemen</div>

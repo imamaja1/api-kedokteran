@@ -132,11 +132,87 @@ class ServiceAssessmentDosen
         return ApiResponse::success($assigned, 'Dosen berhasil ditugaskan ke node.');
     }
 
+    /**
+     * Cek kesiapan assessment kelas (apakah kelas ada, template ada, dan assessment_dosen sudah dibuat).
+     * Mengembalikan HTTP 200 dengan payload status lengkap agar aman dari intercept Nginx 404.
+     */
+    public function checkStatus(string $codeKelas): JsonResponse
+    {
+        $kelas = Kelas::findByCode($codeKelas);
+        if (! $kelas) {
+            return ApiResponse::success([
+                'exists'              => false,
+                'has_template'        => false,
+                'has_assessment'      => false,
+                'can_assign'          => false,
+                'action_needed'       => 'check_kelas_code',
+                'description'         => 'Data kelas tidak ditemukan. Pastikan code_kelas valid.',
+                'kelas'               => null,
+                'template'            => null,
+                'assessment_dosen_id' => null,
+                'assignments_count'   => 0,
+            ], 'Data kelas tidak ditemukan.');
+        }
+
+        $template = AssessmentTemplate::where('id_matakuliah', $kelas->id_matakuliah)
+            ->active()
+            ->orderByDesc('versi')
+            ->first();
+
+        $assessment = AssessmentDosen::with(['template', 'assignments.dosen'])
+            ->where('kelas_id', $kelas->kelas_id)
+            ->active()
+            ->orderByDesc('id')
+            ->first();
+
+        $hasTemplate = $template !== null;
+        $hasAssessment = $assessment !== null;
+
+        $actionNeeded = match (true) {
+            $hasAssessment => 'ready',
+            $hasTemplate   => 'init_assessment',
+            default        => 'create_template',
+        };
+
+        $description = match ($actionNeeded) {
+            'ready'           => 'Assessment dosen sudah aktif dan siap untuk penugasan.',
+            'init_assessment' => 'Template aktif tersedia. Siap diinisialisasi atau otomatis dibuat saat membuka view penugasan.',
+            'create_template' => "Mata kuliah '{$kelas->matakuliah?->nama_matakuliah}' belum memiliki template assessment aktif. Silakan buat template terlebih dahulu pada menu Assessment Template.",
+        };
+
+        return ApiResponse::success([
+            'exists'              => true,
+            'has_template'        => $hasTemplate,
+            'has_assessment'      => $hasAssessment,
+            'can_assign'          => $hasAssessment,
+            'action_needed'       => $actionNeeded,
+            'description'         => $description,
+            'kelas' => [
+                'kelas_id'        => $kelas->kelas_id,
+                'code_kelas'      => $kelas->toCode(),
+                'nama_kelas'      => $kelas->namaKelas?->nama_kelas,
+                'semester'        => $kelas->semester,
+                'matakuliah'      => $kelas->matakuliah?->nama_matakuliah,
+                'kode_matakuliah' => $kelas->matakuliah?->kode_matakuliah,
+            ],
+            'template' => $template ? [
+                'id'         => $template->id,
+                'versi'      => $template->versi,
+                'root_key'   => $template->root_key,
+                'root_name'  => $template->root_name,
+            ] : null,
+            'assessment_dosen_id' => $assessment?->id,
+            'assignments_count'   => $assessment ? $assessment->assignments->count() : 0,
+        ], 'Status assessment kelas berhasil diperiksa.');
+    }
+
     public function getAssignments(string $codeKelas): JsonResponse
     {
         $kelas = Kelas::findByCode($codeKelas);
         if (! $kelas) {
-            return ApiResponse::notFound('Kelas tidak ditemukan.');
+            return ApiResponse::error('Kelas tidak ditemukan.', 422, [
+                'code_kelas' => ['Kelas tidak ditemukan atau kode kelas tidak valid.'],
+            ]);
         }
 
         $assessment = AssessmentDosen::with(['template', 'assignments.dosen'])
@@ -146,7 +222,24 @@ class ServiceAssessmentDosen
             ->first();
 
         if (! $assessment) {
-            return ApiResponse::notFound('AssessmentDosen belum dibuat untuk kelas ini.');
+            // Auto-initialize jika template aktif tersedia untuk matakuliah kelas ini
+            $template = AssessmentTemplate::where('id_matakuliah', $kelas->id_matakuliah)
+                ->active()
+                ->orderByDesc('versi')
+                ->first();
+
+            if ($template) {
+                $assessment = AssessmentDosen::create([
+                    'template_id' => $template->id,
+                    'kelas_id'    => $kelas->kelas_id,
+                    'status'      => 'aktif',
+                ]);
+                $assessment->load(['template', 'assignments.dosen']);
+            } else {
+                return ApiResponse::error('AssessmentDosen belum dibuat dan template assessment belum tersedia untuk matakuliah kelas ini.', 422, [
+                    'template' => ['Template assessment belum tersedia untuk matakuliah ini.'],
+                ]);
+            }
         }
 
         $assignedMap = [];

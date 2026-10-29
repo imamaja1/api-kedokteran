@@ -324,4 +324,131 @@ class StaffAssessmentDosenTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonPath('status', true);
     }
+
+    public function test_get_assignments_via_show_endpoint_and_path_parameter(): void
+    {
+        $token = $this->kelas->toCode();
+
+        // 1. Via /show?code=...
+        $this->actingAs($this->staff, 'staff_web')
+            ->getJson('/api/staff/assessment/dosen/show?code=' . $token)
+            ->assertStatus(200)
+            ->assertJsonPath('status', true);
+
+        // 2. Via /{code} path parameter
+        $this->actingAs($this->staff, 'staff_web')
+            ->getJson('/api/staff/assessment/dosen/' . $token)
+            ->assertStatus(200)
+            ->assertJsonPath('status', true);
+
+        // 3. Via direct alias /api/staff/assessment-dosen/show?code=...
+        $this->actingAs($this->staff, 'staff_web')
+            ->getJson('/api/staff/assessment-dosen/show?code=' . $token)
+            ->assertStatus(200)
+            ->assertJsonPath('status', true);
+
+        // 4. Via direct alias /api/staff/assessment-dosen/{code}
+        $this->actingAs($this->staff, 'staff_web')
+            ->getJson('/api/staff/assessment-dosen/' . $token)
+            ->assertStatus(200)
+            ->assertJsonPath('status', true);
+    }
+
+    public function test_get_assignments_auto_creates_when_assessment_not_yet_created(): void
+    {
+        // Hapus assessment dosen yang dibuat di setUp
+        $this->assessment->forceDelete();
+        $this->assertDatabaseMissing('assessment_dosen', ['kelas_id' => $this->kelas->kelas_id]);
+
+        $token = $this->kelas->toCode();
+
+        $response = $this->actingAs($this->staff, 'staff_web')
+            ->getJson('/api/staff/assessment/dosen/assignments?code_kelas=' . $token);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('status', true);
+
+        // Pastikan sekarang terbuat otomatis di database
+        $this->assertDatabaseHas('assessment_dosen', ['kelas_id' => $this->kelas->kelas_id]);
+    }
+
+    public function test_get_assignments_with_numeric_id_and_space_in_token(): void
+    {
+        // 1. Menggunakan ID numerik langsung
+        $this->actingAs($this->staff, 'staff_web')
+            ->getJson('/api/staff/assessment/dosen/assignments?code_kelas=' . $this->kelas->kelas_id)
+            ->assertStatus(200)
+            ->assertJsonPath('status', true);
+
+        // 2. Menggunakan token yang '+' diubah menjadi spasi oleh query string parser
+        $token = $this->kelas->toCode();
+        $tokenWithSpace = str_replace('+', ' ', $token);
+        $this->actingAs($this->staff, 'staff_web')
+            ->getJson('/api/staff/assessment/dosen/assignments?code_kelas=' . $tokenWithSpace)
+            ->assertStatus(200)
+            ->assertJsonPath('status', true);
+    }
+
+    public function test_check_status_returns_diagnostic_information_without_404(): void
+    {
+        $token = $this->kelas->toCode();
+
+        // 1. Cek kelas yang sudah siap (assessment ada)
+        $response = $this->actingAs($this->staff, 'staff_web')
+            ->getJson('/api/staff/assessment/dosen/check?code_kelas=' . $token);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('status', true)
+            ->assertJsonPath('data.exists', true)
+            ->assertJsonPath('data.has_template', true)
+            ->assertJsonPath('data.has_assessment', true)
+            ->assertJsonPath('data.can_assign', true)
+            ->assertJsonPath('data.action_needed', 'ready');
+
+        // 2. Akses via alias /status dan path param /check/{code}
+        $this->actingAs($this->staff, 'staff_web')
+            ->getJson('/api/staff/assessment/dosen/status?code=' . $token)
+            ->assertStatus(200)
+            ->assertJsonPath('data.action_needed', 'ready');
+
+        $this->actingAs($this->staff, 'staff_web')
+            ->getJson('/api/staff/assessment-dosen/check/' . $token)
+            ->assertStatus(200)
+            ->assertJsonPath('data.action_needed', 'ready');
+
+        // 3. Cek kelas yang belum memiliki template
+        $mkTanpaTemplate = \App\Models\Matakuliah::create([
+            'kode_matakuliah'    => 'NON-TEMPLATE',
+            'nama_matakuliah'    => 'Bahasa Asing',
+            'jenis'              => 1,
+            'sks_teori'          => 2,
+            'sks_praktik'        => 0,
+            'block'              => 0,
+            'kode_program_studi' => $this->kelas->kode_program_studi,
+        ]);
+
+        $kelasTanpaTemplate = \App\Models\Kelas::create([
+            'nama_kelas_id'       => $this->kelas->nama_kelas_id,
+            'semester'            => '1',
+            'kode_tahun_akademik' => $this->kelas->kode_tahun_akademik,
+            'kode_program_studi'  => $this->kelas->kode_program_studi,
+            'id_matakuliah'       => $mkTanpaTemplate->id_matakuliah,
+        ]);
+
+        $resTanpaTemplate = $this->actingAs($this->staff, 'staff_web')
+            ->getJson('/api/staff/assessment/dosen/check?code_kelas=' . $kelasTanpaTemplate->toCode());
+
+        $resTanpaTemplate->assertStatus(200)
+            ->assertJsonPath('status', true)
+            ->assertJsonPath('data.has_template', false)
+            ->assertJsonPath('data.action_needed', 'create_template');
+
+        // 4. Cek kelas yang tidak ada / token invalid (tidak melempar 404, melainkan 200 dengan status info)
+        $resInvalid = $this->actingAs($this->staff, 'staff_web')
+            ->getJson('/api/staff/assessment/dosen/check?code_kelas=invalid_token');
+
+        $resInvalid->assertStatus(200)
+            ->assertJsonPath('data.exists', false)
+            ->assertJsonPath('data.action_needed', 'check_kelas_code');
+    }
 }

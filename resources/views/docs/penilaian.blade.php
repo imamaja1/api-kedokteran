@@ -207,8 +207,9 @@
                         <ul class="text-xs text-on-surface-variant space-y-2 mt-3 list-disc list-inside">
                             <li><strong class="text-white">Membuat & Edit Template Blok</strong> (Hanya Staff!)</li>
                             <li>Membuka Kelas Kuliah & plot mahasiswa</li>
-                            <li>Mengaitkan Template ke Kelas (<code class="font-mono text-primary text-[10px]">POST /assessment/dosen</code>)</li>
-                            <li>Menugaskan Dosen per node kategori</li>
+                            <li><strong class="text-tertiary">Pre-check Kesiapan Assessment</strong> (<code class="font-mono text-tertiary text-[10px]">GET /assessment/dosen/check</code>) anti-404</li>
+                            <li>Mengaitkan Template ke Kelas (<code class="font-mono text-primary text-[10px]">POST /assessment/dosen</code> atau auto-init)</li>
+                            <li>Menugaskan Dosen per node kategori (<code class="font-mono text-primary text-[10px]">PUT /assign</code>)</li>
                             <li>Bisa input/override nilai jika diperlukan via Staff Score</li>
                         </ul>
                     </div>
@@ -372,11 +373,16 @@ sequenceDiagram
     Staff->>Sys: POST /api/staff/kelas (Buka Kelas Perkuliahan)
     Sys->>DB: Simpan kelas & enroll mahasiswa KRS (kelas_mahasiswa)
 
-    Staff->>Sys: POST /api/staff/assessment/dosen (Bind Kelas ke Template)
-    Sys->>DB: Buat instance assessment_dosen (status: aktif)
+    Staff->>Sys: GET /api/staff/assessment/dosen/check?code_kelas=... (Pre-check Kesiapan Kelas & Template Anti-404)
+    Sys-->>Staff: Return Status Kesiapan (ready / create_template / init_assessment)
+
+    opt Inisialisasi Manual (Opsional, sistem sekarang auto-create di GET assignments)
+        Staff->>Sys: POST /api/staff/assessment/dosen (Bind Kelas ke Template)
+        Sys->>DB: Buat instance assessment_dosen (status: aktif)
+    end
 
     Staff->>Sys: GET /api/staff/assessment/dosen/assignments (Lihat View Tree, Nodes & Dosen Kelas)
-    Sys-->>Staff: Return available_nodes, dosen_pengajar & payload_sample_put
+    Sys-->>Staff: Return available_nodes, dosen_pengajar & payload_sample_put (Auto-create jika template aktif ada)
 
     Staff->>Sys: PUT /api/staff/assessment/dosen/assign (Plotting Dosen ke Node Kategori & Root)
     Sys->>DB: Simpan ke assessment_dosen_assignments
@@ -508,14 +514,15 @@ graph TD
                         <div class="flex items-center gap-3">
                             <span class="w-8 h-8 rounded-full bg-secondary-container text-white font-mono font-bold flex items-center justify-center shrink-0">2</span>
                             <div>
-                                <h4 class="text-base font-bold text-white">Pembukaan Kelas & Pemasangan Template (Assessment Class)</h4>
-                                <span class="text-xs text-secondary font-mono font-semibold">POST /api/staff/kelas & POST /api/staff/assessment/dosen • Role: Staff Akademik</span>
+                                <h4 class="text-base font-bold text-white">Pre-check Kesiapan, Buka Kelas &amp; Binding Template</h4>
+                                <span class="text-xs text-secondary font-mono font-semibold">GET /check &amp; POST /api/staff/assessment/dosen • Role: Staff Akademik</span>
                             </div>
                         </div>
-                        <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-surface-container-high text-outline border border-[#222d45]">Class Level</span>
+                        <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-surface-container-high text-outline border border-[#222d45]">Class Level &amp; Anti-404</span>
                     </div>
                     <div class="mt-4 text-xs text-on-surface-variant space-y-2 leading-relaxed">
-                        <p>Staff membuka kelas perkuliahan (misal Kelas A) di semester berjalan. Kemudian Staff memanggil <code class="text-white font-mono">POST /api/staff/assessment/dosen</code> dengan payload <code class="text-white font-mono">{"code_kelas": "..."}</code>. Sistem secara otomatis mencari Template aktif dari mata kuliah blok tersebut dan mengaitkannya ke tabel <code class="text-secondary font-mono">assessment_dosen</code>.</p>
+                        <p><strong class="text-white">1. Pre-check Kesiapan (Anti-404):</strong> Staff memanggil <code class="text-tertiary font-mono">GET /api/staff/assessment/dosen/check?code_kelas=...</code> untuk mengecek apakah data kelas valid, apakah template aktif matakuliah sudah dibuat di sistem, dan apakah instance assessment sudah ada. Endpoint ini selalu merespons HTTP 200 dengan payload diagnostik ramah frontend.</p>
+                        <p><strong class="text-white">2. Buka Kelas &amp; Binding:</strong> Staff membuka kelas perkuliahan di semester berjalan. Kemudian Staff memanggil <code class="text-white font-mono">POST /api/staff/assessment/dosen</code> dengan payload <code class="text-white font-mono">{"code_kelas": "..."}</code> (atau cukup buka langsung <code class="text-secondary font-mono">GET /assignments</code> yang secara otomatis menginisialisasi assessment jika template aktif tersedia).</p>
                         <div class="p-3 rounded-lg bg-surface-container-lowest font-mono text-[11px] text-outline border border-[#222d45]">
                             <strong>Tabel Terlibat:</strong> <code class="text-primary">kelas</code>, <code class="text-secondary">kelas_mahasiswa</code>, <code class="text-tertiary">assessment_dosen</code> (template_id, kelas_id, status='aktif').
                         </div>
@@ -535,8 +542,8 @@ graph TD
                         <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-surface-container-high text-outline border border-[#222d45]">Assignment View &amp; Mapping</span>
                     </div>
                     <div class="mt-4 text-xs text-on-surface-variant space-y-2 leading-relaxed">
-                        <p>Staff memanggil <code class="text-white font-mono">GET /api/staff/assessment/dosen/assignments?code_kelas=...</code> untuk melihat struktur pohon template (<code class="text-secondary font-mono">tree_view</code>), daftar node yang dapat ditugaskan (<code class="text-secondary font-mono">available_nodes</code>), daftar dosen pengajar yang valid untuk kelas (<code class="text-tertiary font-mono">dosen_pengajar</code>), serta contoh payload PUT siap pakai (<code class="text-primary font-mono">payload_sample_put</code>).</p>
-                        <p>Setelah memilih dosen untuk node wewenang, Staff memanggil <code class="text-white font-mono">PUT /api/staff/assessment/dosen/assign</code>. Dosen wajib terdaftar di tabel <code class="text-white font-mono">mengajar</code> untuk kelas tersebut, dan node yang ditugaskan harus bertipe kategori atau root (bukan input node).</p>
+                        <p>Staff memanggil <code class="text-white font-mono">GET /api/staff/assessment/dosen/assignments?code_kelas=...</code> untuk melihat struktur pohon template (<code class="text-secondary font-mono">tree_view</code>), daftar node yang dapat ditugaskan (<code class="text-secondary font-mono">available_nodes</code>), daftar dosen pengajar yang valid untuk kelas (<code class="text-tertiary font-mono">dosen_pengajar</code>), serta contoh payload PUT siap pakai (<code class="text-primary font-mono">payload_sample_put</code>). Sistem secara otomatis menginisialisasi record assessment jika belum pernah dibuat dan template aktif tersedia. Jika template belum tersedia, mengembalikan respons HTTP 422 terstruktur.</p>
+                        <p>Setelah memilih dosen untuk node wewenang, Staff memanggil <code class="text-white font-mono">PUT /api/staff/assessment/dosen/assign</code>. Dosen wajib terdaftar di tabel <code class="text-white font-mono">mengajar</code> untuk kelas tersebut, dan node yang ditugaskan harus bertipe kategori atau root (bukan input node). Mendukung camelCase dan resolusi via code_kelas.</p>
                         <div class="p-3 rounded-lg bg-surface-container-lowest font-mono text-[11px] text-outline border border-[#222d45]">
                             <strong>Tabel Terlibat:</strong> <code class="text-primary">assessment_dosen_assignments</code> (assessment_dosen_id, node_key, kode_dosen), <code class="text-secondary">mengajar</code> (kelas_id, kode_dosen).
                         </div>

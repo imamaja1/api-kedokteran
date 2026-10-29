@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\ApiConnectionController;
 use App\Http\Controllers\Admin\ApiEndpointController;
 use App\Http\Controllers\Admin\ApiSectionController;
+use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DosenController;
 use App\Http\Controllers\Admin\FeederConfigController;
@@ -88,4 +89,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin,staff'])
     Route::get('/docs/penilaian', [DocsController::class, 'penilaian'])->name('docs.penilaian');
     Route::get('/doc/penilaian', [DocsController::class, 'penilaian']);
     Route::get('/tester', [DocsController::class, 'tester'])->name('tester');
+
+    // Backup & Restore (Database & Dokumentasi)
+    Route::get('backup', [BackupController::class, 'index'])->name('backup.index');
+    Route::get('backup/export/db', [BackupController::class, 'exportDb'])->name('backup.export.db');
+    Route::get('backup/export/docs', [BackupController::class, 'exportDocs'])->name('backup.export.docs');
+    Route::post('backup/import/db', [BackupController::class, 'importDb'])->name('backup.import.db');
+    Route::post('backup/import/docs', [BackupController::class, 'importDocs'])->name('backup.import.docs');
 });

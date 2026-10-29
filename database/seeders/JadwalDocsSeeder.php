@@ -377,7 +377,61 @@ class JadwalDocsSeeder extends Seeder
             }
         }
 
-        // 6. Sinkronisasi urutan seluruh seksi agar Staff & Dosen konsisten dan rapi
+        // 6. Update Section: Staff - Assessment Dosen (Setup)
+        $sectionAssessmentSetupId = DB::table('api_sections')->where('title', 'Staff - Assessment Dosen (Setup)')->value('id');
+        if ($sectionAssessmentSetupId) {
+            $endpointsAssessmentSetup = [
+                [
+                    'title' => 'Pre-check Kesiapan Assessment & Template Kelas',
+                    'description' => 'Memeriksa status kesiapan kelas untuk assessment (validitas data kelas, ketersediaan template aktif mata kuliah, dan status instance AssessmentDosen). Mengembalikan HTTP 200 dengan flag diagnostik lengkap (anti-404 Nginx). Mendukung query param `?code_kelas=...`, `?code=...`, `?kelas_id=...`, route param `/{code}`, serta alias URL `/api/staff/assessment/dosen/status`.',
+                    'method' => 'GET',
+                    'url' => '/api/staff/assessment/dosen/check',
+                    'headers' => "Accept: application/json\nCookie: laravel-session",
+                    'body' => "{\n    \"code_kelas\": \"{code_kelas}|required|string\"\n}",
+                    'response_example' => "{\n    \"status\": true,\n    \"message\": \"Status assessment kelas berhasil diperiksa.\",\n    \"data\": {\n        \"exists\": true,\n        \"has_template\": true,\n        \"has_assessment\": true,\n        \"can_assign\": true,\n        \"action_needed\": \"ready\",\n        \"description\": \"Assessment dosen sudah aktif dan siap untuk penugasan.\",\n        \"kelas\": {\n            \"kelas_id\": 11609,\n            \"code_kelas\": \"eyJpdiI6...\",\n            \"nama_kelas\": \"A\",\n            \"semester\": \"5\",\n            \"matakuliah\": \"Blok Biomedik 1\",\n            \"kode_matakuliah\": \"KSKI1502\"\n        },\n        \"template\": {\n            \"id\": 1,\n            \"versi\": 1,\n            \"root_key\": \"pneilian_tutotiral\",\n            \"root_name\": \"Pneilian tutotiral\"\n        },\n        \"assessment_dosen_id\": 2,\n        \"assignments_count\": 0\n    }\n}",
+                    'sort_order' => 1,
+                ],
+                [
+                    'title' => 'Inisialisasi AssessmentDosen (Bind Kelas ke Template)',
+                    'description' => 'Mengikat template assessment aktif dari mata kuliah ke kelas perkuliahan. Mendukung parameter `code_kelas`, `code`, maupun `kelas_id`.',
+                    'method' => 'POST',
+                    'url' => '/api/staff/assessment/dosen',
+                    'headers' => "Content-Type: application/json\nAccept: application/json\nCookie: laravel-session",
+                    'body' => "{\n    \"code_kelas\": \"{code_kelas}|required|string\"\n}",
+                    'response_example' => "{\n    \"status\": true,\n    \"message\": \"AssessmentDosen berhasil dibuat.\",\n    \"data\": {\n        \"id\": 3,\n        \"assessment_dosen_id\": 3,\n        \"code_kelas\": \"eyJpdiI6...\",\n        \"nama_kelas\": \"A\",\n        \"matakuliah\": \"Blok Biomedik 1\"\n    }\n}",
+                    'sort_order' => 2,
+                ],
+                [
+                    'title' => 'Lihat Struktur Pohon & Penugasan Dosen (Tree View)',
+                    'description' => 'Mendapatkan struktur pohon (`tree_view`), daftar node wewenang yang tersedia (`available_nodes`), daftar dosen pengajar kelas yang valid (`dosen_pengajar`), dan contoh payload PUT siap pakai. Otomatis membuat record AssessmentDosen jika template aktif tersedia. Jika template belum tersedia, mengembalikan HTTP 422 terstruktur (bebas error 404 Nginx). Mendukung parameter `code_kelas`, `code`, `kelas_id`, path param `/{code}`, serta endpoint `/show`.',
+                    'method' => 'GET',
+                    'url' => '/api/staff/assessment/dosen/assignments',
+                    'headers' => "Accept: application/json\nCookie: laravel-session",
+                    'body' => "{\n    \"code_kelas\": \"{code_kelas}|required|string\"\n}",
+                    'response_example' => "{\n    \"status\": true,\n    \"message\": \"Daftar assignment berhasil diambil.\",\n    \"data\": {\n        \"assessment_dosen_id\": 2,\n        \"kelas\": {\n            \"code_kelas\": \"eyJpdiI6...\",\n            \"nama_kelas\": \"A\",\n            \"semester\": \"5\",\n            \"matakuliah\": \"Blok Biomedik 1\",\n            \"kode_matakuliah\": \"KSKI1502\"\n        },\n        \"template\": {\n            \"versi\": 1,\n            \"root_key\": \"pneilian_tutotiral\",\n            \"root_name\": \"Pneilian tutotiral\"\n        },\n        \"dosen_pengajar\": [\n            {\"kode_dosen\": 434, \"nama_dosen\": \"dr. Evan Christian Sumarno, M.Biomed\"}\n        ],\n        \"available_nodes\": [...],\n        \"tree_view\": {...},\n        \"payload_sample_put\": {\n            \"assessment_dosen_id\": 2,\n            \"assignments\": [\n                {\"node_key\": \"komponen_1\", \"kode_dosen\": 434}\n            ]\n        }\n    }\n}",
+                    'sort_order' => 3,
+                ],
+                [
+                    'title' => 'Penugasan Dosen ke Node Kategori / Root (Plotting Dosen)',
+                    'description' => 'Menugaskan dosen pengajar kelas ke node wewenang (kategori atau root). Dosen wajib terdaftar di tabel `mengajar` kelas tersebut. Mendukung nama field camelCase (`assessmentDosenId`, `nodeKey`, `kodeDosen`) dan resolusi ID otomatis via `code_kelas`.',
+                    'method' => 'PUT',
+                    'url' => '/api/staff/assessment/dosen/assign',
+                    'headers' => "Content-Type: application/json\nAccept: application/json\nCookie: laravel-session",
+                    'body' => "{\n    \"assessment_dosen_id\": \"2|required|integer\",\n    \"assignments\": [\n        {\n            \"node_key\": \"komponen_1|required|string\",\n            \"kode_dosen\": \"434|required|integer\"\n        }\n    ]\n}",
+                    'response_example' => "{\n    \"status\": true,\n    \"message\": \"Dosen berhasil ditugaskan ke node.\",\n    \"data\": [\n        {\n            \"id\": 1,\n            \"node_key\": \"komponen_1\",\n            \"kode_dosen\": 434,\n            \"nama_dosen\": \"dr. Evan Christian Sumarno, M.Biomed\"\n        }\n    ]\n}",
+                    'sort_order' => 4,
+                ],
+            ];
+
+            foreach ($endpointsAssessmentSetup as $ep) {
+                DB::table('api_endpoints')->updateOrInsert(
+                    ['api_section_id' => $sectionAssessmentSetupId, 'url' => $ep['url'], 'method' => $ep['method']],
+                    array_merge($ep, ['api_section_id' => $sectionAssessmentSetupId, 'updated_at' => now(), 'created_at' => now()])
+                );
+            }
+        }
+
+        // 7. Sinkronisasi urutan seluruh seksi agar Staff & Dosen konsisten dan rapi
         $sectionOrderMap = [
             'Auth - Mahasiswa' => 1,
             'Auth - Staff' => 2,

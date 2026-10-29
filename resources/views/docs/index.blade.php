@@ -153,6 +153,15 @@
                 <span class="sm:hidden font-medium">Penilaian Blok</span>
                 <span class="material-symbols-outlined text-[14px] text-outline group-hover:text-primary group-hover:translate-x-0.5 transition-all">arrow_forward</span>
             </a>
+            @auth
+            <a href="{{ route('admin.backup.index') }}" 
+               class="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 rounded-full bg-surface-container-high hover:bg-tertiary-container/20 text-on-surface hover:text-tertiary border border-[#222d45] hover:border-tertiary/50 transition-all duration-200 text-[11px] sm:text-[12px] font-semibold group shadow-sm"
+               title="Backup & Restore (Import & Export Database / Dokumentasi)">
+                <span class="material-symbols-outlined text-[15px] text-tertiary group-hover:rotate-180 transition-transform duration-500">sync_saved_locally</span>
+                <span class="hidden md:inline tracking-tight">Backup &amp; Restore</span>
+                <span class="md:hidden font-medium">Backup</span>
+            </a>
+            @endauth
         </div>
 
 

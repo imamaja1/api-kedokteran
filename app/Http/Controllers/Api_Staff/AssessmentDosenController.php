@@ -50,10 +50,36 @@ class AssessmentDosenController extends Controller
     }
 
     /**
-     * GET /api/staff/assessment/dosen/assignments?code_kelas=
+     * GET /api/staff/assessment/dosen/check?code_kelas=
+     * GET /api/staff/assessment/dosen/status?code_kelas=
+     * GET /api/staff/assessment/dosen/check/{code}
      */
-    public function getAssignments(Request $request): JsonResponse
+    public function checkStatus(Request $request, ?string $code = null): JsonResponse
     {
+        if ($code && ! $request->filled('code_kelas')) {
+            $request->merge(['code_kelas' => $code]);
+        }
+
+        $this->ensureCodeKelasInput($request);
+
+        $validated = $request->validate([
+            'code_kelas' => 'required|string',
+        ]);
+
+        return $this->service->checkStatus($validated['code_kelas']);
+    }
+
+    /**
+     * GET /api/staff/assessment/dosen/assignments?code_kelas=
+     * GET /api/staff/assessment/dosen/show?code=
+     * GET /api/staff/assessment/dosen/{code}
+     */
+    public function getAssignments(Request $request, ?string $code = null): JsonResponse
+    {
+        if ($code && ! $request->filled('code_kelas')) {
+            $request->merge(['code_kelas' => $code]);
+        }
+
         $this->ensureCodeKelasInput($request);
 
         $validated = $request->validate([
