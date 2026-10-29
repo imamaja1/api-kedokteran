@@ -96,7 +96,13 @@ class AdminBackupTest extends TestCase
         $jsonPayload = [
             'export_type' => 'api_documentation',
             'api_sections' => [
-                ['id' => 901, 'title' => 'Imported Section', 'sort_order' => 1],
+                [
+                    'id'         => 901,
+                    'title'      => 'Imported Section',
+                    'sort_order' => 1,
+                    'created_at' => '2026-09-22T14:27:46.000000Z',
+                    'updated_at' => '2026-10-29T12:10:23.000000Z',
+                ],
             ],
             'api_endpoints' => [
                 [
@@ -106,6 +112,8 @@ class AdminBackupTest extends TestCase
                     'method'         => 'POST',
                     'url'            => '/api/imported',
                     'sort_order'     => 1,
+                    'created_at'     => '2026-09-22T14:27:46.000000Z',
+                    'updated_at'     => '2026-10-29T12:10:23.000000Z',
                 ],
             ],
             'api_endpoint_parameters' => [

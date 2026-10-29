@@ -192,25 +192,18 @@
                             <h6 class="fw-bold mb-0">Import Dokumentasi API (.json)</h6>
                         </div>
                         <p class="text-muted small mb-3">
-                            Unggah file <code>.json</code> untuk memperbarui atau menyinkronkan seluruh dokumentasi API di panel ini.
+                            Unggah file <code>.json</code> dokumentasi. Sistem akan mengosongkan (<strong>Truncate</strong>) tabel dokumentasi lama secara otomatis dan memasukkan seluruh data dokumentasi baru secara bersih dan presisi.
                         </p>
-                        <form action="{{ route('admin.backup.import.docs') }}" method="POST" enctype="multipart/form-data" onsubmit="return confirm('Import dokumentasi akan memperbarui data dokumentasi API. Lanjutkan?');">
+                        <form action="{{ route('admin.backup.import.docs') }}" method="POST" enctype="multipart/form-data" onsubmit="return confirm('PERINGATAN: Import ini akan mengosongkan (TRUNCATE) seluruh data seksi, endpoint, parameter, dan workflow lama lalu memasukkan data dari file JSON. Lanjutkan?');">
                             @csrf
                             <div class="mb-3">
-                                <label class="form-label small fw-semibold">Pilih File JSON:</label>
+                                <label class="form-label small fw-semibold">Pilih File JSON Dokumentasi:</label>
                                 <input type="file" name="json_file" class="form-control" accept=".json" required>
                                 <div class="form-text small text-muted">Format: <code>.json</code> (Maks. 20 MB).</div>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label small fw-semibold">Metode Import:</label>
-                                <select name="mode" class="form-select form-select-sm">
-                                    <option value="replace" selected>Replace Fresh (Bersihkan data lama &amp; timpa baru secara utuh)</option>
-                                    <option value="upsert">Merge / Upsert (Perbarui yang cocok, tambahkan yang baru)</option>
-                                </select>
-                            </div>
                             <button type="submit" class="btn btn-info text-white d-flex align-items-center justify-content-center gap-2 w-100 py-2">
                                 <i class="bi bi-cloud-arrow-up-fill"></i>
-                                <span>Proses Import Dokumentasi</span>
+                                <span>Proses Import Dokumentasi (Truncate &amp; Insert)</span>
                             </button>
                         </form>
                     </div>

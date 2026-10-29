@@ -7,6 +7,7 @@ use App\Models\ApiEndpoint;
 use App\Models\ApiEndpointParameter;
 use App\Models\ApiSection;
 use App\Models\ApiWorkflow;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -191,12 +192,12 @@ class BackupController extends Controller
 
     /**
      * Import / Restore Dokumentasi API dari file .json
+     * Melakukan Truncate bersih pada tabel dokumentasi lama lalu memasukkan data baru
      */
     public function importDocs(Request $request)
     {
         $request->validate([
             'json_file' => 'required|file|max:20480', // Max 20MB
-            'mode'      => 'nullable|string|in:replace,upsert',
         ]);
 
         $file = $request->file('json_file');
@@ -212,37 +213,39 @@ class BackupController extends Controller
             return redirect()->route('admin.backup.index')->with('error', 'File JSON tidak valid atau rusak.');
         }
 
-        $mode = $request->input('mode', 'replace');
-
         try {
-            DB::transaction(function () use ($data, $mode) {
-                $this->disableForeignKeys();
+            $this->disableForeignKeys();
 
-                if ($mode === 'replace') {
-                    // Bersihkan data dokumentasi lama
-                    DB::table('api_endpoint_parameters')->delete();
-                    DB::table('api_endpoints')->delete();
-                    DB::table('api_sections')->delete();
-                    DB::table('api_workflows')->delete();
-                }
+            // Truncate tabel dokumentasi lama secara berurutan
+            $this->truncateTable('api_endpoint_parameters');
+            $this->truncateTable('api_endpoints');
+            $this->truncateTable('api_sections');
+            $this->truncateTable('api_workflows');
 
-                // 1. Import Sections
-                $sections = $data['api_sections'] ?? $data['sections'] ?? [];
+            // 1. Insert Sections
+            $sections = $data['api_sections'] ?? $data['sections'] ?? [];
+            if (! empty($sections)) {
+                $sectionInserts = [];
                 foreach ($sections as $s) {
-                    $secData = [
+                    $sectionInserts[] = [
                         'id'         => $s['id'],
                         'title'      => $s['title'],
                         'sort_order' => $s['sort_order'] ?? 0,
-                        'created_at' => $s['created_at'] ?? now(),
-                        'updated_at' => $s['updated_at'] ?? now(),
+                        'created_at' => $this->parseDateTime($s['created_at'] ?? null),
+                        'updated_at' => $this->parseDateTime($s['updated_at'] ?? null),
                     ];
-                    DB::table('api_sections')->updateOrInsert(['id' => $s['id']], $secData);
                 }
+                foreach (array_chunk($sectionInserts, 100) as $chunk) {
+                    DB::table('api_sections')->insert($chunk);
+                }
+            }
 
-                // 2. Import Endpoints
-                $endpoints = $data['api_endpoints'] ?? $data['endpoints'] ?? [];
+            // 2. Insert Endpoints
+            $endpoints = $data['api_endpoints'] ?? $data['endpoints'] ?? [];
+            if (! empty($endpoints)) {
+                $endpointInserts = [];
                 foreach ($endpoints as $ep) {
-                    $epData = [
+                    $endpointInserts[] = [
                         'id'               => $ep['id'],
                         'api_section_id'   => $ep['api_section_id'],
                         'title'            => $ep['title'],
@@ -253,16 +256,21 @@ class BackupController extends Controller
                         'body'             => $ep['body'] ?? null,
                         'response_example' => $ep['response_example'] ?? null,
                         'sort_order'       => $ep['sort_order'] ?? 0,
-                        'created_at'       => $ep['created_at'] ?? now(),
-                        'updated_at'       => $ep['updated_at'] ?? now(),
+                        'created_at'       => $this->parseDateTime($ep['created_at'] ?? null),
+                        'updated_at'       => $this->parseDateTime($ep['updated_at'] ?? null),
                     ];
-                    DB::table('api_endpoints')->updateOrInsert(['id' => $ep['id']], $epData);
                 }
+                foreach (array_chunk($endpointInserts, 100) as $chunk) {
+                    DB::table('api_endpoints')->insert($chunk);
+                }
+            }
 
-                // 3. Import Parameters
-                $parameters = $data['api_endpoint_parameters'] ?? $data['parameters'] ?? [];
+            // 3. Insert Parameters
+            $parameters = $data['api_endpoint_parameters'] ?? $data['parameters'] ?? [];
+            if (! empty($parameters)) {
+                $paramInserts = [];
                 foreach ($parameters as $p) {
-                    $paramData = [
+                    $paramInserts[] = [
                         'id'                 => $p['id'],
                         'api_endpoint_id'    => $p['api_endpoint_id'],
                         'name'               => $p['name'],
@@ -275,16 +283,21 @@ class BackupController extends Controller
                         'source_note'        => $p['source_note'] ?? null,
                         'example'            => $p['example'] ?? null,
                         'sort_order'         => $p['sort_order'] ?? 0,
-                        'created_at'         => $p['created_at'] ?? now(),
-                        'updated_at'         => $p['updated_at'] ?? now(),
+                        'created_at'         => $this->parseDateTime($p['created_at'] ?? null),
+                        'updated_at'         => $this->parseDateTime($p['updated_at'] ?? null),
                     ];
-                    DB::table('api_endpoint_parameters')->updateOrInsert(['id' => $p['id']], $paramData);
                 }
+                foreach (array_chunk($paramInserts, 100) as $chunk) {
+                    DB::table('api_endpoint_parameters')->insert($chunk);
+                }
+            }
 
-                // 4. Import Workflows
-                $workflows = $data['api_workflows'] ?? $data['workflows'] ?? [];
+            // 4. Insert Workflows
+            $workflows = $data['api_workflows'] ?? $data['workflows'] ?? [];
+            if (! empty($workflows)) {
+                $workflowInserts = [];
                 foreach ($workflows as $wf) {
-                    $wfData = [
+                    $workflowInserts[] = [
                         'id'         => $wf['id'],
                         'title'      => $wf['title'],
                         'badge'      => $wf['badge'] ?? null,
@@ -295,24 +308,43 @@ class BackupController extends Controller
                         'phases'     => is_array($wf['phases']) ? json_encode($wf['phases']) : ($wf['phases'] ?? '[]'),
                         'sort_order' => $wf['sort_order'] ?? 0,
                         'is_active'  => (bool) ($wf['is_active'] ?? true),
-                        'created_at' => $wf['created_at'] ?? now(),
-                        'updated_at' => $wf['updated_at'] ?? now(),
+                        'created_at' => $this->parseDateTime($wf['created_at'] ?? null),
+                        'updated_at' => $this->parseDateTime($wf['updated_at'] ?? null),
                     ];
-                    DB::table('api_workflows')->updateOrInsert(['id' => $wf['id']], $wfData);
                 }
+                foreach (array_chunk($workflowInserts, 50) as $chunk) {
+                    DB::table('api_workflows')->insert($chunk);
+                }
+            }
 
-                $this->enableForeignKeys();
-            });
+            $this->enableForeignKeys();
 
-            $secCount = count($data['api_sections'] ?? $data['sections'] ?? []);
-            $epCount = count($data['api_endpoints'] ?? $data['endpoints'] ?? []);
-            $paramCount = count($data['api_endpoint_parameters'] ?? $data['parameters'] ?? []);
-            $wfCount = count($data['api_workflows'] ?? $data['workflows'] ?? []);
+            $secCount = count($sections);
+            $epCount = count($endpoints);
+            $paramCount = count($parameters);
+            $wfCount = count($workflows);
 
-            return redirect()->route('admin.backup.index')->with('success', "Dokumentasi API berhasil dipulihkan! ({$secCount} Seksi, {$epCount} Endpoint, {$paramCount} Parameter, dan {$wfCount} Workflow).");
+            return redirect()->route('admin.backup.index')->with('success', "Dokumentasi API berhasil dipulihkan secara bersih (Truncate & Insert)! Berhasil memasukkan {$secCount} Seksi, {$epCount} Endpoint, {$paramCount} Parameter, dan {$wfCount} Workflow.");
         } catch (\Throwable $e) {
             $this->enableForeignKeys();
             return redirect()->route('admin.backup.index')->with('error', 'Gagal mengimpor dokumentasi: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Parse string datetime menjadi format MySQL yang valid (Y-m-d H:i:s)
+     * Mengatasi format ISO 8601 seperti '2026-09-22T14:27:46.000000Z'
+     */
+    private function parseDateTime(mixed $date): string
+    {
+        if (empty($date)) {
+            return now()->format('Y-m-d H:i:s');
+        }
+
+        try {
+            return Carbon::parse($date)->format('Y-m-d H:i:s');
+        } catch (\Throwable) {
+            return now()->format('Y-m-d H:i:s');
         }
     }
 
@@ -331,6 +363,18 @@ class BackupController extends Controller
         $tables = DB::select('SHOW TABLES');
         $prop = 'Tables_in_' . $dbName;
         return array_map(fn($t) => $t->$prop, $tables);
+    }
+
+    /**
+     * Kosongkan tabel secara kompatibel (MySQL TRUNCATE / SQLite DELETE)
+     */
+    private function truncateTable(string $table): void
+    {
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            DB::table($table)->delete();
+        } else {
+            DB::statement("TRUNCATE TABLE `{$table}`");
+        }
     }
 
     private function disableForeignKeys(): void
