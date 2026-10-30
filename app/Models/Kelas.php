@@ -56,4 +56,11 @@ class Kelas extends Model
     {
         return $this->hasOne(AssessmentDosen::class, 'kelas_id', 'kelas_id')->latestOfMany();
     }
+
+    public function assessmentTemplate()
+    {
+        return $this->hasOne(AssessmentTemplate::class, 'id_matakuliah', 'id_matakuliah')
+            ->where('is_active', true)
+            ->latestOfMany('versi');
+    }
 }

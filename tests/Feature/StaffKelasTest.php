@@ -230,22 +230,43 @@ class StaffKelasTest extends TestCase
     {
         $template = $this->createAssessmentTemplate();
 
+        $mkTanpaTemplate = Matakuliah::create([
+            'kode_matakuliah' => 'MK999',
+            'nama_matakuliah' => 'Tanpa Template',
+            'jenis' => 1,
+            'sks_teori' => 2,
+            'sks_praktik' => 0,
+            'kode_program_studi' => $this->prodi->kode_program_studi,
+            'block' => 0,
+            'tipe' => 'W',
+        ]);
+
         $namaA = NamaKelas::create(['nama_kelas' => 'A']);
         $namaB = NamaKelas::create(['nama_kelas' => 'B']);
         $namaC = NamaKelas::create(['nama_kelas' => 'C']);
+        $namaD = NamaKelas::create(['nama_kelas' => 'D']);
 
-        // Kelas 1: No template
-        $kelas1 = Kelas::create([
+        // Kelas 0: Matakuliah belum punya template
+        $kelas0 = Kelas::create([
             'nama_kelas_id' => $namaA->nama_kelas_id,
+            'semester' => '1',
+            'kode_tahun_akademik' => $this->ta->kode_tahun_akademik,
+            'kode_program_studi' => $this->prodi->kode_program_studi,
+            'id_matakuliah' => $mkTanpaTemplate->id_matakuliah,
+        ]);
+
+        // Kelas 1: Matakuliah punya template, tapi belum diambil ke kelas
+        $kelas1 = Kelas::create([
+            'nama_kelas_id' => $namaB->nama_kelas_id,
             'semester' => '1',
             'kode_tahun_akademik' => $this->ta->kode_tahun_akademik,
             'kode_program_studi' => $this->prodi->kode_program_studi,
             'id_matakuliah' => $this->mk->id_matakuliah,
         ]);
 
-        // Kelas 2: Has template, no assignment setup
+        // Kelas 2: Has template diambil ke kelas, no assignment setup
         $kelas2 = Kelas::create([
-            'nama_kelas_id' => $namaB->nama_kelas_id,
+            'nama_kelas_id' => $namaC->nama_kelas_id,
             'semester' => '1',
             'kode_tahun_akademik' => $this->ta->kode_tahun_akademik,
             'kode_program_studi' => $this->prodi->kode_program_studi,
@@ -259,7 +280,7 @@ class StaffKelasTest extends TestCase
 
         // Kelas 3: Has template AND assignment setup
         $kelas3 = Kelas::create([
-            'nama_kelas_id' => $namaC->nama_kelas_id,
+            'nama_kelas_id' => $namaD->nama_kelas_id,
             'semester' => '1',
             'kode_tahun_akademik' => $this->ta->kode_tahun_akademik,
             'kode_program_studi' => $this->prodi->kode_program_studi,
@@ -283,13 +304,24 @@ class StaffKelasTest extends TestCase
 
         $items = collect($response->json('data'))->keyBy('kelas_id');
 
-        $this->assertFalse($items[$kelas1->kelas_id]['template_assignments']);
+        // Kelas 0: Belum ada template sama sekali
+        $this->assertFalse($items[$kelas0->kelas_id]['template_matakuliah']);
+        $this->assertFalse($items[$kelas0->kelas_id]['template_kelas']);
+        $this->assertFalse($items[$kelas0->kelas_id]['setup_assignments']);
+
+        // Kelas 1: Template matakuliah ada, kelas belum ambil
+        $this->assertTrue($items[$kelas1->kelas_id]['template_matakuliah']);
+        $this->assertFalse($items[$kelas1->kelas_id]['template_kelas']);
         $this->assertFalse($items[$kelas1->kelas_id]['setup_assignments']);
 
-        $this->assertTrue($items[$kelas2->kelas_id]['template_assignments']);
+        // Kelas 2: Template matakuliah ada, kelas sudah ambil, dosen belum plot
+        $this->assertTrue($items[$kelas2->kelas_id]['template_matakuliah']);
+        $this->assertTrue($items[$kelas2->kelas_id]['template_kelas']);
         $this->assertFalse($items[$kelas2->kelas_id]['setup_assignments']);
 
-        $this->assertTrue($items[$kelas3->kelas_id]['template_assignments']);
+        // Kelas 3: Selesai lengkap (template matakuliah ada, kelas ambil, dosen plot)
+        $this->assertTrue($items[$kelas3->kelas_id]['template_matakuliah']);
+        $this->assertTrue($items[$kelas3->kelas_id]['template_kelas']);
         $this->assertTrue($items[$kelas3->kelas_id]['setup_assignments']);
     }
 
@@ -320,7 +352,8 @@ class StaffKelasTest extends TestCase
             ->getJson('/api/staff/kelas/show?kelas_id=' . $kelas->kelas_id);
 
         $response->assertStatus(200)
-            ->assertJsonPath('data.kelas.template_assignments', true)
+            ->assertJsonPath('data.kelas.template_matakuliah', true)
+            ->assertJsonPath('data.kelas.template_kelas', true)
             ->assertJsonPath('data.kelas.setup_assignments', true);
     }
 
@@ -363,7 +396,8 @@ class StaffKelasTest extends TestCase
             ->getJson('/api/staff/kelas/matakuliah-konfigurasi?kode_tahun_akademik=' . $this->ta->kode_tahun_akademik);
 
         $response->assertStatus(200)
-            ->assertJsonPath('data.0.kelas.0.template_assignments', true)
+            ->assertJsonPath('data.0.kelas.0.template_matakuliah', true)
+            ->assertJsonPath('data.0.kelas.0.template_kelas', true)
             ->assertJsonPath('data.0.kelas.0.setup_assignments', true);
     }
 }

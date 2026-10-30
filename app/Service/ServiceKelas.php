@@ -104,6 +104,7 @@ class ServiceKelas
 
         $kelasMap = Kelas::with([
             'namaKelas',
+            'assessmentTemplate',
             'assessmentDosen' => fn ($q) => $q->withCount('assignments'),
         ])
             ->withCount(['kelasMahasiswa', 'mengajar'])
@@ -131,6 +132,8 @@ class ServiceKelas
                     'nama_kelas' => $k->namaKelas?->nama_kelas,
                     'jumlah_mahasiswa' => $k->kelas_mahasiswa_count,
                     'jumlah_dosen' => $k->mengajar_count,
+                    'template_matakuliah' => (bool) ($k->assessmentTemplate !== null),
+                    'template_kelas' => (bool) ($k->assessmentDosen !== null && $k->assessmentDosen->template_id !== null),
                     'template_assignments' => (bool) ($k->assessmentDosen !== null && $k->assessmentDosen->template_id !== null),
                     'setup_assignments' => (bool) ($k->assessmentDosen && $k->assessmentDosen->assignments_count > 0),
                 ])->values(),
@@ -149,6 +152,7 @@ class ServiceKelas
             'namaKelas:nama_kelas_id,nama_kelas',
             'matakuliah:id_matakuliah,kode_matakuliah,nama_matakuliah,sks_teori,sks_praktik',
             'tahunAkademik:kode_tahun_akademik,tahun_akademik,semester',
+            'assessmentTemplate',
             'assessmentDosen' => fn ($q) => $q->withCount('assignments'),
         ])->withCount(['kelasMahasiswa', 'mengajar']);
 
@@ -177,6 +181,8 @@ class ServiceKelas
             'nama_matakuliah' => $k->matakuliah?->nama_matakuliah,
             'jumlah_mahasiswa' => $k->kelas_mahasiswa_count,
             'jumlah_dosen' => $k->mengajar_count,
+            'template_matakuliah' => (bool) ($k->assessmentTemplate !== null),
+            'template_kelas' => (bool) ($k->assessmentDosen !== null && $k->assessmentDosen->template_id !== null),
             'template_assignments' => (bool) ($k->assessmentDosen !== null && $k->assessmentDosen->template_id !== null),
             'setup_assignments' => (bool) ($k->assessmentDosen && $k->assessmentDosen->assignments_count > 0),
         ])->values()->toArray();
@@ -248,6 +254,7 @@ class ServiceKelas
             'matakuliah:id_matakuliah,kode_matakuliah,nama_matakuliah,sks_teori,sks_praktik',
             'tahunAkademik:kode_tahun_akademik,tahun_akademik,semester',
             'programStudi:kode_program_studi,nama_program_studi',
+            'assessmentTemplate',
             'assessmentDosen' => fn ($q) => $q->withCount('assignments'),
         ])->find($kelasId);
 
@@ -299,6 +306,8 @@ class ServiceKelas
                 'code_matakuliah' => $this->encryptId($kelas->id_matakuliah),
                 'kode_matakuliah' => $kelas->matakuliah?->kode_matakuliah,
                 'nama_matakuliah' => $kelas->matakuliah?->nama_matakuliah,
+                'template_matakuliah' => (bool) ($kelas->assessmentTemplate !== null),
+                'template_kelas' => (bool) ($kelas->assessmentDosen !== null && $kelas->assessmentDosen->template_id !== null),
                 'template_assignments' => (bool) ($kelas->assessmentDosen !== null && $kelas->assessmentDosen->template_id !== null),
                 'setup_assignments' => (bool) ($kelas->assessmentDosen && $kelas->assessmentDosen->assignments_count > 0),
             ],

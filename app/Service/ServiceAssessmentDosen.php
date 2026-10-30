@@ -198,8 +198,8 @@ class ServiceAssessmentDosen
             'template' => $template ? [
                 'id'         => $template->id,
                 'versi'      => $template->versi,
-                'root_key'   => $template->root_key,
-                'root_name'  => $template->root_name,
+                'root_key'   => $template->structure['key'] ?? null,
+                'root_name'  => $template->structure['name'] ?? null,
             ] : null,
             'assessment_dosen_id' => $assessment?->id,
             'assignments_count'   => $assessment ? $assessment->assignments->count() : 0,
