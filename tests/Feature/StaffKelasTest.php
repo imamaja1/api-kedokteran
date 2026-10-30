@@ -306,22 +306,22 @@ class StaffKelasTest extends TestCase
 
         // Kelas 0: Belum ada template sama sekali
         $this->assertFalse($items[$kelas0->kelas_id]['template_matakuliah']);
-        $this->assertFalse($items[$kelas0->kelas_id]['template_kelas']);
+        $this->assertFalse($items[$kelas0->kelas_id]['template_assignments']);
         $this->assertFalse($items[$kelas0->kelas_id]['setup_assignments']);
 
         // Kelas 1: Template matakuliah ada, kelas belum ambil
         $this->assertTrue($items[$kelas1->kelas_id]['template_matakuliah']);
-        $this->assertFalse($items[$kelas1->kelas_id]['template_kelas']);
+        $this->assertFalse($items[$kelas1->kelas_id]['template_assignments']);
         $this->assertFalse($items[$kelas1->kelas_id]['setup_assignments']);
 
         // Kelas 2: Template matakuliah ada, kelas sudah ambil, dosen belum plot
         $this->assertTrue($items[$kelas2->kelas_id]['template_matakuliah']);
-        $this->assertTrue($items[$kelas2->kelas_id]['template_kelas']);
+        $this->assertTrue($items[$kelas2->kelas_id]['template_assignments']);
         $this->assertFalse($items[$kelas2->kelas_id]['setup_assignments']);
 
         // Kelas 3: Selesai lengkap (template matakuliah ada, kelas ambil, dosen plot)
         $this->assertTrue($items[$kelas3->kelas_id]['template_matakuliah']);
-        $this->assertTrue($items[$kelas3->kelas_id]['template_kelas']);
+        $this->assertTrue($items[$kelas3->kelas_id]['template_assignments']);
         $this->assertTrue($items[$kelas3->kelas_id]['setup_assignments']);
     }
 
@@ -353,7 +353,7 @@ class StaffKelasTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonPath('data.kelas.template_matakuliah', true)
-            ->assertJsonPath('data.kelas.template_kelas', true)
+            ->assertJsonPath('data.kelas.template_assignments', true)
             ->assertJsonPath('data.kelas.setup_assignments', true);
     }
 
@@ -397,7 +397,7 @@ class StaffKelasTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonPath('data.0.kelas.0.template_matakuliah', true)
-            ->assertJsonPath('data.0.kelas.0.template_kelas', true)
+            ->assertJsonPath('data.0.kelas.0.template_assignments', true)
             ->assertJsonPath('data.0.kelas.0.setup_assignments', true);
     }
 }

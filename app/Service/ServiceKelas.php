@@ -133,7 +133,6 @@ class ServiceKelas
                     'jumlah_mahasiswa' => $k->kelas_mahasiswa_count,
                     'jumlah_dosen' => $k->mengajar_count,
                     'template_matakuliah' => (bool) ($k->assessmentTemplate !== null),
-                    'template_kelas' => (bool) ($k->assessmentDosen !== null && $k->assessmentDosen->template_id !== null),
                     'template_assignments' => (bool) ($k->assessmentDosen !== null && $k->assessmentDosen->template_id !== null),
                     'setup_assignments' => (bool) ($k->assessmentDosen && $k->assessmentDosen->assignments_count > 0),
                 ])->values(),
@@ -182,7 +181,6 @@ class ServiceKelas
             'jumlah_mahasiswa' => $k->kelas_mahasiswa_count,
             'jumlah_dosen' => $k->mengajar_count,
             'template_matakuliah' => (bool) ($k->assessmentTemplate !== null),
-            'template_kelas' => (bool) ($k->assessmentDosen !== null && $k->assessmentDosen->template_id !== null),
             'template_assignments' => (bool) ($k->assessmentDosen !== null && $k->assessmentDosen->template_id !== null),
             'setup_assignments' => (bool) ($k->assessmentDosen && $k->assessmentDosen->assignments_count > 0),
         ])->values()->toArray();
@@ -307,7 +305,6 @@ class ServiceKelas
                 'kode_matakuliah' => $kelas->matakuliah?->kode_matakuliah,
                 'nama_matakuliah' => $kelas->matakuliah?->nama_matakuliah,
                 'template_matakuliah' => (bool) ($kelas->assessmentTemplate !== null),
-                'template_kelas' => (bool) ($kelas->assessmentDosen !== null && $kelas->assessmentDosen->template_id !== null),
                 'template_assignments' => (bool) ($kelas->assessmentDosen !== null && $kelas->assessmentDosen->template_id !== null),
                 'setup_assignments' => (bool) ($kelas->assessmentDosen && $kelas->assessmentDosen->assignments_count > 0),
             ],
