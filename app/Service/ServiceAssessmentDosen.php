@@ -512,17 +512,8 @@ class ServiceAssessmentDosen
         ], 'Detail nilai berhasil diambil.');
     }
 
-    public function inputScore(int $assessmentId, string $nodeKey, array $mahasiswaList, int $kodeDosen): JsonResponse
+    public function inputScore(int $assessmentId, ?string $nodeKey, array $mahasiswaList, int $kodeDosen): JsonResponse
     {
-        $assignment = AssessmentDosenAssignment::where('assessment_dosen_id', $assessmentId)
-            ->where('node_key', $nodeKey)
-            ->where('kode_dosen', $kodeDosen)
-            ->first();
-
-        if (! $assignment) {
-            return ApiResponse::error('Anda tidak ditugaskan di node ini.', 403);
-        }
-
         $assessment = AssessmentDosen::with('kelas')->find($assessmentId);
         if (! $assessment) {
             return ApiResponse::notFound('AssessmentDosen tidak ditemukan.');
@@ -532,13 +523,62 @@ class ServiceAssessmentDosen
         }
 
         $template = $assessment->template;
-        $assignedNode = $this->treeService->findNode($template, $nodeKey);
-        if (! $assignedNode) {
-            return ApiResponse::notFound("Node '{$nodeKey}' tidak ditemukan di template.");
+        if (! $template) {
+            return ApiResponse::notFound('Template assessment tidak ditemukan.');
         }
 
-        // Ambil semua valid input node keys di bawah cabang node yang ditugaskan kepada dosen ini
-        $allowedInputKeys = $this->getChildNodeKeys($assignedNode);
+        // Tentukan wewenang input keys (bisa scoped ke 1 node_key atau ke seluruh template jika single penilai)
+        if ($nodeKey !== null && $nodeKey !== '') {
+            $assignedNode = $this->treeService->findNode($template, $nodeKey);
+            if (! $assignedNode) {
+                return ApiResponse::notFound("Node '{$nodeKey}' tidak ditemukan di template.");
+            }
+
+            $isAssigned = AssessmentDosenAssignment::where('assessment_dosen_id', $assessmentId)
+                ->where('node_key', $nodeKey)
+                ->where('kode_dosen', $kodeDosen)
+                ->exists();
+
+            $isPengajar = Mengajar::where('kelas_id', $assessment->kelas_id)
+                ->where('kode_dosen', $kodeDosen)
+                ->exists();
+
+            if (! $isAssigned && ! $isPengajar) {
+                return ApiResponse::error('Anda tidak ditugaskan di node ini atau bukan pengajar kelas ini.', 403);
+            }
+
+            $allowedInputKeys = $this->getChildNodeKeys($assignedNode);
+        } else {
+            // Mode Multi-Komponen (misal satu penilai untuk seluruh template)
+            $dosenAssignments = AssessmentDosenAssignment::where('assessment_dosen_id', $assessmentId)
+                ->where('kode_dosen', $kodeDosen)
+                ->get();
+
+            $isPengajar = Mengajar::where('kelas_id', $assessment->kelas_id)
+                ->where('kode_dosen', $kodeDosen)
+                ->exists();
+
+            if ($dosenAssignments->isEmpty() && ! $isPengajar) {
+                return ApiResponse::error('Anda tidak memiliki akses penugasan di kelas ini.', 403);
+            }
+
+            $rootKey = $template->structure['key'] ?? '';
+            if ($isPengajar || $dosenAssignments->contains('node_key', $rootKey)) {
+                // Pengajar kelas atau koordinator root memiliki wewenang untuk semua leaf nodes template
+                $leafNodes = $this->treeService->getLeafNodes($template);
+                $allowedInputKeys = array_column($leafNodes, 'key');
+            } else {
+                // Dosen hanya memiliki wewenang pada cabang node yang ditugaskan kepadanya
+                $allowedInputKeys = [];
+                foreach ($dosenAssignments as $asgn) {
+                    $n = $this->treeService->findNode($template, $asgn->node_key);
+                    if ($n) {
+                        $allowedInputKeys = array_merge($allowedInputKeys, $this->getChildNodeKeys($n));
+                    }
+                }
+                $allowedInputKeys = array_values(array_unique($allowedInputKeys));
+            }
+        }
 
         $results = [];
         $savedCount = 0;
@@ -573,23 +613,44 @@ class ServiceAssessmentDosen
                 }
 
                 // Cek apakah node ini sudah pernah divalidasi
-                $existingVal = AssessmentNodeValidation::where('assessment_dosen_id', $assessmentId)
-                    ->where('node_key', $nodeKey)
-                    ->where('nim', $mahasiswa->nim)
-                    ->first();
+                if ($nodeKey !== null && $nodeKey !== '') {
+                    $existingVal = AssessmentNodeValidation::where('assessment_dosen_id', $assessmentId)
+                        ->where('node_key', $nodeKey)
+                        ->where('nim', $mahasiswa->nim)
+                        ->first();
 
-                if ($existingVal && $existingVal->status === 'validasi') {
-                    $results[] = [
-                        'code_mahasiswa' => $codeMahasiswa,
-                        'nim'            => $mahasiswa->nim,
-                        'status'         => 'gagal',
-                        'message'        => 'Node ini sudah divalidasi, tidak bisa diubah nilainya kecuali direvisi.',
-                    ];
-                    continue;
+                    if ($existingVal && $existingVal->status === 'validasi') {
+                        $results[] = [
+                            'code_mahasiswa' => $codeMahasiswa,
+                            'nim'            => $mahasiswa->nim,
+                            'status'         => 'gagal',
+                            'message'        => 'Node ini sudah divalidasi, tidak bisa diubah nilainya kecuali direvisi.',
+                        ];
+                        continue;
+                    }
+                } else {
+                    $rootKey = $template->structure['key'] ?? null;
+                    if ($rootKey) {
+                        $rootVal = AssessmentNodeValidation::where('assessment_dosen_id', $assessmentId)
+                            ->where('node_key', $rootKey)
+                            ->where('nim', $mahasiswa->nim)
+                            ->first();
+
+                        if ($rootVal && $rootVal->status === 'validasi') {
+                            $results[] = [
+                                'code_mahasiswa' => $codeMahasiswa,
+                                'nim'            => $mahasiswa->nim,
+                                'status'         => 'gagal',
+                                'message'        => 'Assessment mahasiswa ini sudah divalidasi final, tidak bisa diubah nilainya kecuali direvisi.',
+                            ];
+                            continue;
+                        }
+                    }
                 }
 
                 $scoresInput = $mhsItem['scores'] ?? [];
                 $scoresSaved = 0;
+                $savedKeys   = [];
 
                 foreach ($scoresInput as $sItem) {
                     $targetKey = $sItem['node_key'] ?? null;
@@ -607,26 +668,49 @@ class ServiceAssessmentDosen
                         ],
                         [
                             'score'            => $scoreVal,
-                            'notes'            => $sItem['notes'] ?? null,
+                            'notes'            => $sItem['notes'] ?? $sItem['catatan'] ?? null,
                             'dosen_kode_dosen' => $kodeDosen,
                         ]
                     );
                     $scoresSaved++;
+                    $savedKeys[] = $targetKey;
                 }
 
                 if ($scoresSaved > 0) {
-                    // Update status validation ke 'proses' jika belum validasi
-                    if (! $existingVal || in_array($existingVal->status, ['belum_input', 'revisi'], true)) {
-                        AssessmentNodeValidation::updateOrCreate(
-                            [
-                                'assessment_dosen_id' => $assessmentId,
-                                'node_key'            => $nodeKey,
-                                'nim'                 => $mahasiswa->nim,
-                            ],
-                            [
-                                'status' => 'proses',
-                            ]
-                        );
+                    // Update status validation ke 'proses' untuk kategori terkait
+                    $nodesToUpdate = [];
+                    if ($nodeKey !== null && $nodeKey !== '') {
+                        $nodesToUpdate[] = $nodeKey;
+                    } else {
+                        foreach ($savedKeys as $sKey) {
+                            $path = $this->treeService->getPath($template, $sKey);
+                            foreach ($path as $pNode) {
+                                if (($pNode['type'] ?? '') !== 'input') {
+                                    $nodesToUpdate[$pNode['key']] = true;
+                                }
+                            }
+                        }
+                        $nodesToUpdate = array_keys($nodesToUpdate);
+                    }
+
+                    foreach ($nodesToUpdate as $nKeyToUpdate) {
+                        $valRecord = AssessmentNodeValidation::where('assessment_dosen_id', $assessmentId)
+                            ->where('node_key', $nKeyToUpdate)
+                            ->where('nim', $mahasiswa->nim)
+                            ->first();
+
+                        if (! $valRecord || in_array($valRecord->status, ['belum_input', 'revisi'], true)) {
+                            AssessmentNodeValidation::updateOrCreate(
+                                [
+                                    'assessment_dosen_id' => $assessmentId,
+                                    'node_key'            => $nKeyToUpdate,
+                                    'nim'                 => $mahasiswa->nim,
+                                ],
+                                [
+                                    'status' => 'proses',
+                                ]
+                            );
+                        }
                     }
 
                     PenilaianStatus::updateOrCreate(
@@ -638,6 +722,7 @@ class ServiceAssessmentDosen
                             'template_id'    => $template->id,
                             'status'         => 'proses',
                             'dosen_input_by' => $kodeDosen,
+                            'catatan_dosen'  => $mhsItem['catatan'] ?? null,
                         ]
                     );
 
@@ -655,10 +740,11 @@ class ServiceAssessmentDosen
             DB::commit();
 
             return ApiResponse::success([
-                'node_key'      => $nodeKey,
-                'total_diproses'=> count($mahasiswaList),
-                'total_berhasil'=> $savedCount,
-                'detail'        => $results,
+                'assessment_dosen_id' => $assessmentId,
+                'node_key'            => $nodeKey,
+                'total_diproses'      => count($mahasiswaList),
+                'total_berhasil'      => $savedCount,
+                'detail'              => $results,
             ], 'Input nilai berhasil disimpan.');
         } catch (\Exception $e) {
             DB::rollBack();
@@ -668,13 +754,31 @@ class ServiceAssessmentDosen
 
     public function validasiNode(int $assessmentId, string $nodeKey, string $codeMahasiswa, int $kodeDosen, ?string $catatan): JsonResponse
     {
+        $assessment = AssessmentDosen::with(['kelas', 'template'])->find($assessmentId);
+        if (! $assessment) {
+            return ApiResponse::notFound('AssessmentDosen tidak ditemukan.');
+        }
+
+        $template = $assessment->template;
+        $rootKey = $template?->structure['key'] ?? null;
+        $isRootNode = ($nodeKey === $rootKey);
+
+        $isKaprodi = \App\Models\ProgramStudi::where('kode_program_studi', $assessment->kelas?->kode_program_studi)
+            ->where('kode_dosen_kaprodi', $kodeDosen)
+            ->exists();
+
         $assignment = AssessmentDosenAssignment::where('assessment_dosen_id', $assessmentId)
             ->where('node_key', $nodeKey)
             ->where('kode_dosen', $kodeDosen)
             ->first();
 
-        if (! $assignment) {
-            return ApiResponse::error('Anda tidak ditugaskan di node ini.', 403);
+        // Validasi final ke KHS (Root Node) WAJIB dilakukan oleh Kaprodi
+        if ($isRootNode && ! $isKaprodi) {
+            return ApiResponse::error('Hanya Ketua Program Studi (Kaprodi) yang berwenang mengesahkan nilai akhir ke KHS.', 403);
+        }
+
+        if (! $assignment && ! $isKaprodi) {
+            return ApiResponse::error('Anda tidak ditugaskan di node ini atau bukan Kaprodi kelas ini.', 403);
         }
 
         $mahasiswa = Mahasiswa::findByCode($codeMahasiswa);
@@ -682,11 +786,9 @@ class ServiceAssessmentDosen
             return ApiResponse::notFound('Mahasiswa tidak ditemukan.');
         }
 
-        $assessment = AssessmentDosen::find($assessmentId);
         if (! $assessment->isOpen()) {
             return ApiResponse::error('Periode penilaian sudah ditutup.', 422);
         }
-        $template   = $assessment->template;
 
         $node = $this->treeService->findNode($template, $nodeKey);
         $canValidate = $this->canValidateNode($assessmentId, $node, $mahasiswa->nim, $template);
@@ -731,23 +833,36 @@ class ServiceAssessmentDosen
 
     public function validasiBulk(int $assessmentId, string $nodeKey, int $kodeDosen, ?string $catatan): JsonResponse
     {
+        $assessment = AssessmentDosen::with(['kelas', 'template'])->find($assessmentId);
+        if (! $assessment) {
+            return ApiResponse::notFound('AssessmentDosen tidak ditemukan.');
+        }
+
+        $template = $assessment->template;
+        $rootKey = $template?->structure['key'] ?? null;
+        $isRootNode = ($nodeKey === $rootKey);
+
+        $isKaprodi = \App\Models\ProgramStudi::where('kode_program_studi', $assessment->kelas?->kode_program_studi)
+            ->where('kode_dosen_kaprodi', $kodeDosen)
+            ->exists();
+
         $assignment = AssessmentDosenAssignment::where('assessment_dosen_id', $assessmentId)
             ->where('node_key', $nodeKey)
             ->where('kode_dosen', $kodeDosen)
             ->first();
 
-        if (! $assignment) {
-            return ApiResponse::error('Anda tidak ditugaskan di node ini.', 403);
+        // Validasi massal final ke KHS (Root Node) WAJIB dilakukan oleh Kaprodi
+        if ($isRootNode && ! $isKaprodi) {
+            return ApiResponse::error('Hanya Ketua Program Studi (Kaprodi) yang berwenang mengesahkan nilai akhir ke KHS.', 403);
         }
 
-        $assessment = AssessmentDosen::find($assessmentId);
-        if (! $assessment) {
-            return ApiResponse::notFound('AssessmentDosen tidak ditemukan.');
+        if (! $assignment && ! $isKaprodi) {
+            return ApiResponse::error('Anda tidak ditugaskan di node ini atau bukan Kaprodi kelas ini.', 403);
         }
+
         if (! $assessment->isOpen()) {
             return ApiResponse::error('Periode penilaian sudah ditutup.', 422);
         }
-        $template = $assessment->template;
         $node = $this->treeService->findNode($template, $nodeKey);
         if (! $node) {
             return ApiResponse::notFound("Node '{$nodeKey}' tidak ditemukan.");
@@ -821,13 +936,22 @@ class ServiceAssessmentDosen
 
     public function revisiNode(int $assessmentId, string $nodeKey, string $codeMahasiswa, int $kodeDosen, string $catatan): JsonResponse
     {
+        $assessment = AssessmentDosen::with(['kelas', 'template'])->find($assessmentId);
+        if (! $assessment) {
+            return ApiResponse::notFound('AssessmentDosen tidak ditemukan.');
+        }
+
+        $isKaprodi = \App\Models\ProgramStudi::where('kode_program_studi', $assessment->kelas?->kode_program_studi)
+            ->where('kode_dosen_kaprodi', $kodeDosen)
+            ->exists();
+
         $assignment = AssessmentDosenAssignment::where('assessment_dosen_id', $assessmentId)
             ->where('node_key', $nodeKey)
             ->where('kode_dosen', $kodeDosen)
             ->first();
 
-        if (! $assignment) {
-            return ApiResponse::error('Anda tidak ditugaskan di node ini.', 403);
+        if (! $assignment && ! $isKaprodi) {
+            return ApiResponse::error('Anda tidak ditugaskan di node ini atau bukan Kaprodi kelas ini.', 403);
         }
 
         $mahasiswa = Mahasiswa::findByCode($codeMahasiswa);
@@ -835,11 +959,10 @@ class ServiceAssessmentDosen
             return ApiResponse::notFound('Mahasiswa tidak ditemukan.');
         }
 
-        $assessment = AssessmentDosen::find($assessmentId);
         if (! $assessment->isOpen()) {
             return ApiResponse::error('Periode penilaian sudah ditutup.', 422);
         }
-        $template   = $assessment->template;
+        $template = $assessment->template;
 
         DB::beginTransaction();
         try {

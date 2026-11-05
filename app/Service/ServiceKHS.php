@@ -183,4 +183,72 @@ class ServiceKHS
 
         return ApiResponse::success($data, 'Detail KHS berhasil diambil.');
     }
+
+    /**
+     * Direct input nilai langsung ke KHS oleh Staff Akademik (Bypass Kaprodi)
+     */
+    public function directInputKhs(array $payload)
+    {
+        $codeKrsDetail = $payload['code_krs_detail'] ?? null;
+        $krsDetail = null;
+
+        if ($codeKrsDetail) {
+            $krsDetail = \App\Models\KrsDetail::findByCode($codeKrsDetail);
+        }
+
+        if (! $krsDetail) {
+            return ApiResponse::notFound('Data KRS Detail tidak ditemukan.');
+        }
+
+        $krsDetail->load(['krs.mahasiswa', 'matakuliah']);
+        $prodiKode = $krsDetail->krs?->mahasiswa?->program_studi_kode;
+
+        $nilaiAkhir = isset($payload['nilai_akhir']) ? (float) $payload['nilai_akhir'] : null;
+        $grade = $payload['grade'] ?? null;
+        $score = isset($payload['score']) ? (float) $payload['score'] : null;
+
+        if ($nilaiAkhir !== null) {
+            $serviceGrade = new ServiceGrade();
+            $gradeData = $serviceGrade->konversi($nilaiAkhir, $prodiKode);
+            $grade = $gradeData['grade'] ?? $grade;
+            $score = $gradeData['score'] ?? $score;
+        } elseif ($grade !== null) {
+            $gradeRecord = \App\Models\GradeNilai::where('grade', strtoupper($grade))->first();
+            if ($gradeRecord) {
+                $score = (float) $gradeRecord->skor;
+                if ($nilaiAkhir === null) {
+                    $nilaiAkhir = (float) $gradeRecord->nilai_min;
+                }
+            } else {
+                $standardMap = [
+                    'A' => 4.0, 'B+' => 3.5, 'B' => 3.0, 'C+' => 2.5, 'C' => 2.0, 'D' => 1.0, 'E' => 0.0,
+                ];
+                $score = $standardMap[strtoupper($grade)] ?? 0.0;
+            }
+        } else {
+            return ApiResponse::error('Field nilai_akhir atau grade wajib diisi.', 422);
+        }
+
+        $khsDetail = \App\Models\KhsDetail::updateOrCreate(
+            ['kode_krs_detail' => $krsDetail->kode_krs_detail],
+            [
+                'nilai_akhir'  => $nilaiAkhir,
+                'grade'        => $grade,
+                'score'        => $score,
+                'tidak_berhak' => 'A',
+            ]
+        );
+
+        return ApiResponse::success([
+            'kode_krs_detail' => $krsDetail->kode_krs_detail,
+            'code_krs_detail' => $krsDetail->toCode(),
+            'nim'             => $krsDetail->krs?->nim,
+            'nama_mahasiswa'  => $krsDetail->krs?->mahasiswa?->nama_mahasiswa,
+            'matakuliah'      => $krsDetail->matakuliah?->nama_matakuliah,
+            'nilai_akhir'     => $nilaiAkhir,
+            'grade'           => $grade,
+            'score'           => $score,
+            'status'          => 'berhasil_diterbitkan_khs',
+        ], 'Nilai berhasil langsung diterbitkan ke KHS oleh Staff.');
+    }
 }

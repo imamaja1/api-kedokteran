@@ -77,18 +77,20 @@ class AssessmentDosenController extends Controller
 
         $validated = $request->validate([
             'assessment_dosen_id'           => 'required|integer',
-            'node_key'                      => 'required|string',
+            'node_key'                      => 'nullable|string',
             'mahasiswa'                     => 'required|array|min:1',
             'mahasiswa.*.code_mahasiswa'    => 'required|string',
             'mahasiswa.*.scores'            => 'required|array|min:1',
             'mahasiswa.*.scores.*.node_key' => 'required|string',
             'mahasiswa.*.scores.*.score'    => 'required|numeric|min:0|max:100',
             'mahasiswa.*.scores.*.notes'    => 'nullable|string',
+            'mahasiswa.*.scores.*.catatan'  => 'nullable|string',
+            'mahasiswa.*.catatan'           => 'nullable|string',
         ]);
 
         return $this->service->inputScore(
             $validated['assessment_dosen_id'],
-            $validated['node_key'],
+            $validated['node_key'] ?? null,
             $validated['mahasiswa'],
             $this->getKodeDosen()
         );
@@ -96,40 +98,94 @@ class AssessmentDosenController extends Controller
 
     /**
      * Normalisasi payload request agar mendukung:
-     * 1. Flat Format per mahasiswa: { mahasiswa: [ { code_mahasiswa, score, notes } ] }
-     * 2. Shared Batch Format: { mahasiswa_codes: [...], score: 85 } atau { mahasiswa: ["code1", "code2"], score: 85 }
-     * 3. Nested Format asli (backward-compatible): { mahasiswa: [ { code_mahasiswa, scores: [...] } ] }
+     * 1. Multi-component per mahasiswa (Best Practice): { assessment_dosen_id, mahasiswa: [ { code_mahasiswa, scores: [{node_key, score}], catatan } ] }
+     * 2. Key-Value Map scores: { assessment_dosen_id, mahasiswa: [ { code_mahasiswa, scores: { "tugas": 85, "uts": 80 } } ] }
+     * 3. Flat Format per mahasiswa: { assessment_dosen_id, node_key, mahasiswa: [ { code_mahasiswa, score, notes } ] }
+     * 4. Self-Contained Item Format: { mahasiswa: [ { assessment_dosen_id, node_key, code_mahasiswa, score } ] }
+     * 5. Shared Batch Format: { assessment_dosen_id, node_key, mahasiswa_codes: [...], score: 85 }
+     * 6. Code Kelas Fallback: { code_kelas, ... } -> otomatis resolve assessment_dosen_id
      */
     private function normalizeBatchInputScoreRequest(Request $request): void
     {
+        // 1. Fallback & Hoist assessment_dosen_id jika belum ada di root
+        if (! $request->has('assessment_dosen_id') || empty($request->input('assessment_dosen_id'))) {
+            $firstMhs = $request->input('mahasiswa.0');
+            if (is_array($firstMhs) && ! empty($firstMhs['assessment_dosen_id'])) {
+                $request->merge(['assessment_dosen_id' => (int) $firstMhs['assessment_dosen_id']]);
+            } elseif ($request->has('code_kelas') && ! empty($request->input('code_kelas'))) {
+                $kelas = \App\Models\Kelas::findByCode($request->input('code_kelas'));
+                if ($kelas) {
+                    $assess = \App\Models\AssessmentDosen::where('kelas_id', $kelas->kelas_id)->active()->first();
+                    if ($assess) {
+                        $request->merge(['assessment_dosen_id' => $assess->id]);
+                    }
+                }
+            }
+        }
+
+        // 2. Hoist node_key dari elemen mahasiswa jika di root belum ada
+        if (! $request->has('node_key') || empty($request->input('node_key'))) {
+            $firstMhs = $request->input('mahasiswa.0');
+            if (is_array($firstMhs) && ! empty($firstMhs['node_key'])) {
+                $request->merge(['node_key' => (string) $firstMhs['node_key']]);
+            }
+        }
+
         $rootNodeKey = $request->input('node_key');
 
-        // Kasus A: Flat format per mahasiswa di mana setiap mahasiswa memiliki 'score' sendiri langsung di objeknya
+        // Kasus A: Format per mahasiswa (Nested, Dictionary Map, atau Flat)
         if ($request->has('mahasiswa') && is_array($request->input('mahasiswa'))) {
             $firstItem = $request->input('mahasiswa.0');
-            // Jika elemen mahasiswa berbentuk array/object (bukan array string)
             if (is_array($firstItem)) {
                 $mahasiswa = $request->input('mahasiswa');
                 $modified = false;
 
                 foreach ($mahasiswa as &$item) {
                     if (is_array($item)) {
-                        // Jika mahasiswa memiliki field 'score' langsung tanpa pembungkus 'scores'
-                        if (isset($item['score']) && (! isset($item['scores']) || ! is_array($item['scores']))) {
+                        // Sub-kasus A1: scores berupa Dictionary/Map { "tugas": 85, "uts": 80 }
+                        if (isset($item['scores']) && is_array($item['scores']) && ! array_is_list($item['scores'])) {
+                            $convertedScores = [];
+                            foreach ($item['scores'] as $nKey => $sVal) {
+                                if (is_array($sVal)) {
+                                    $convertedScores[] = [
+                                        'node_key' => $sVal['node_key'] ?? (string) $nKey,
+                                        'score'    => $sVal['score'] ?? 0,
+                                        'notes'    => $sVal['notes'] ?? $sVal['catatan'] ?? null,
+                                    ];
+                                } else {
+                                    $convertedScores[] = [
+                                        'node_key' => (string) $nKey,
+                                        'score'    => $sVal,
+                                        'notes'    => null,
+                                    ];
+                                }
+                            }
+                            $item['scores'] = $convertedScores;
+                            $modified = true;
+                        }
+                        // Sub-kasus A2: Flat score langsung di object mahasiswa { code_mahasiswa, score, notes/catatan }
+                        elseif (isset($item['score']) && (! isset($item['scores']) || ! is_array($item['scores']))) {
                             $item['scores'] = [
                                 [
                                     'node_key' => $item['node_key'] ?? $rootNodeKey,
                                     'score'    => $item['score'],
-                                    'notes'    => $item['notes'] ?? null,
+                                    'notes'    => $item['notes'] ?? $item['catatan'] ?? null,
                                 ],
                             ];
                             $modified = true;
-                        } elseif (isset($item['scores']) && is_array($item['scores'])) {
-                            // Lengkapi node_key jika di dalam item scores kosong
+                        }
+                        // Sub-kasus A3: scores sudah array list of objects, normalisasi notes/catatan dan default node_key
+                        elseif (isset($item['scores']) && is_array($item['scores'])) {
                             foreach ($item['scores'] as &$s) {
-                                if (is_array($s) && empty($s['node_key']) && ! empty($rootNodeKey)) {
-                                    $s['node_key'] = $rootNodeKey;
-                                    $modified = true;
+                                if (is_array($s)) {
+                                    if (empty($s['node_key']) && ! empty($rootNodeKey)) {
+                                        $s['node_key'] = $rootNodeKey;
+                                        $modified = true;
+                                    }
+                                    if (isset($s['catatan']) && (! isset($s['notes']) || $s['notes'] === null)) {
+                                        $s['notes'] = $s['catatan'];
+                                        $modified = true;
+                                    }
                                 }
                             }
                             unset($s);
@@ -142,7 +198,6 @@ class AssessmentDosenController extends Controller
                     $request->merge(['mahasiswa' => $mahasiswa]);
                 }
 
-                // Format per-mahasiswa sudah dinormalisasi, selesai
                 return;
             }
         }
@@ -165,7 +220,6 @@ class AssessmentDosenController extends Controller
 
         $codes = is_array($rawCodes) ? $rawCodes : [$rawCodes];
 
-        // Ambil scores seragam (bisa dari array 'scores' atau field tunggal 'score' di root)
         $scores = null;
         if ($request->has('scores') && is_array($request->input('scores'))) {
             $scores = $request->input('scores');
@@ -174,15 +228,20 @@ class AssessmentDosenController extends Controller
                 [
                     'node_key' => $rootNodeKey,
                     'score'    => $request->input('score'),
-                    'notes'    => $request->input('notes'),
+                    'notes'    => $request->input('notes') ?? $request->input('catatan'),
                 ],
             ];
         }
 
         if ($scores !== null) {
             foreach ($scores as &$sItem) {
-                if (is_array($sItem) && empty($sItem['node_key']) && ! empty($rootNodeKey)) {
-                    $sItem['node_key'] = $rootNodeKey;
+                if (is_array($sItem)) {
+                    if (empty($sItem['node_key']) && ! empty($rootNodeKey)) {
+                        $sItem['node_key'] = $rootNodeKey;
+                    }
+                    if (isset($sItem['catatan']) && (! isset($sItem['notes']) || $sItem['notes'] === null)) {
+                        $sItem['notes'] = $sItem['catatan'];
+                    }
                 }
             }
             unset($sItem);

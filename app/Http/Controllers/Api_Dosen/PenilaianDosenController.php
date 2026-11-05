@@ -70,6 +70,13 @@ class PenilaianDosenController extends Controller
 
     public function inputNilai(Request $request): JsonResponse
     {
+        if (! $request->has('code_kelas') && $request->has('assessment_dosen_id')) {
+            $assess = \App\Models\AssessmentDosen::find($request->input('assessment_dosen_id'));
+            if ($assess && $assess->kelas) {
+                $request->merge(['code_kelas' => $assess->kelas->toCode()]);
+            }
+        }
+
         $validated = $request->validate([
             'code_kelas' => 'required|string',
             'mahasiswa' => 'required|array|min:1',
@@ -85,6 +92,13 @@ class PenilaianDosenController extends Controller
 
     public function updateNilai(Request $request): JsonResponse
     {
+        if (! $request->has('code_kelas') && $request->has('assessment_dosen_id')) {
+            $assess = \App\Models\AssessmentDosen::find($request->input('assessment_dosen_id'));
+            if ($assess && $assess->kelas) {
+                $request->merge(['code_kelas' => $assess->kelas->toCode()]);
+            }
+        }
+
         $validated = $request->validate([
             'code_kelas' => 'required|string',
             'mahasiswa' => 'required|array|min:1',

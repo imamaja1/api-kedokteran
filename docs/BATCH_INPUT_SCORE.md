@@ -26,10 +26,42 @@ Setiap mahasiswa memiliki **nilainya sendiri-sendiri** (*individual score*) sesu
 
 ## 📦 Format Request (Payload)
 
-### ⭐ Format Utama yang Direkomendasikan: Flat Format Per-Mahasiswa
-Setiap objek mahasiswa langsung memuat nilai (`score`) dan catatan (`notes` opsional) masing-masing secara ringkas dan praktis:
+Endpoint ini sangat fleksibel dan mendukung 3 format payload sekaligus sesuai kebutuhan UI Frontend:
 
-**Endpoint:** `POST /api/dosen/assessment-dosen/input-score`
+### ⭐ Format 1: Multi-Component Matrix (Input Semua Komponen Sekaligus)
+Format ini digunakan saat dosen pengampu/penilai tunggal menginput **seluruh nilai komponen sekaligus** (misalnya Tugas, UTS, UAS, Praktikum) untuk seluruh mahasiswa di kelas dalam satu layar tabel matriks:
+
+```json
+{
+  "assessment_dosen_id": 12,
+  "mahasiswa": [
+    {
+      "code_mahasiswa": "eyJpdiI6IlhYWC4uLiIs...",
+      "scores": [
+        { "node_key": "tugas", "score": 85 },
+        { "node_key": "uts", "score": 80 },
+        { "node_key": "uas", "score": 90 }
+      ],
+      "catatan": "Catatan evaluasi menyeluruh untuk mahasiswa ini"
+    },
+    {
+      "code_mahasiswa": "eyJpdiI6IllZWS4uLiIs...",
+      "scores": [
+        { "node_key": "tugas", "score": 90 },
+        { "node_key": "uts", "score": 88 },
+        { "node_key": "uas", "score": 92 }
+      ]
+    }
+  ]
+}
+```
+
+> 💡 **Auto-resolution `code_kelas`:** Jika frontend hanya memiliki `code_kelas`, frontend dapat mengirim `"code_kelas": "..."` sebagai pengganti `assessment_dosen_id`. Sistem backend akan otomatis mencari `assessment_dosen_id` terkait.
+
+---
+
+### ⭐ Format 2: Flat Single-Component (Input Per Kolom Nilai)
+Digunakan jika UI dosen menginput nilai per satu komponen tertentu (misalnya hanya menginput nilai UTS untuk seluruh mahasiswa sekelas):
 
 ```json
 {
@@ -45,11 +77,27 @@ Setiap objek mahasiswa langsung memuat nilai (`score`) dan catatan (`notes` opsi
       "code_mahasiswa": "eyJpdiI6IllZWS4uLiIs...",
       "score": 85,
       "notes": "Bagus dan terstruktur"
-    },
+    }
+  ]
+}
+```
+
+---
+
+### ⭐ Format 3: Dictionary / Map Format
+Format ringkas di mana komponen nilai dikirim dalam bentuk key-value object:
+
+```json
+{
+  "assessment_dosen_id": 12,
+  "mahasiswa": [
     {
-      "code_mahasiswa": "eyJpdiI6IlpaWi4uLiIs...",
-      "score": 92,
-      "notes": "Sangat memuaskan"
+      "code_mahasiswa": "eyJpdiI6IlhYWC4uLiIs...",
+      "scores": {
+        "tugas": 85,
+        "uts": 80,
+        "uas": 90
+      }
     }
   ]
 }
@@ -220,4 +268,18 @@ simpanNilaiTabelKelas(12, 'uts', dataTabelMahasiswa);
 ## ⚙️ Keuntungan Arsitektur Flat Bulk Input
 1. **Performa Tinggi**: Hanya 1 round-trip HTTP request untuk seluruh mahasiswa di kelas.
 2. **Transaksi Database Atomik**: Menggunakan `DB::beginTransaction()`. Jika koneksi terputus saat proses berjalan, database tidak akan menyimpan sebagian data secara acak.
-3. **Fleksibilitas Frontend**: Frontend tidak perlu repot menyusun array bertingkat `scores: [{ node_key, score }]` untuk setiap baris tabel.
+---
+
+## 🏛️ Alur Pasca Input: Validasi & Pengesahan KHS oleh Kaprodi
+
+Setelah dosen selesai menginput seluruh skor menggunakan endpoint ini, status penilaian mahasiswa berada pada status `proses`. 
+
+### Aturan Wewenang Pengesahan:
+1. **Dosen Pengajar**: Hanya bertugas menginput skor / revisi catatan. Validasi yang dapat dilakukan dosen pengajar terbatas pada node sub-komponen non-root.
+2. **Ketua Program Studi (Kaprodi)**: Memegang wewenang **mutlak** untuk validasi final pada Root Node dan penerbitan nilai ke Kartu Hasil Studi (KHS).
+   - **Endpoint Validasi Individual:** `POST /api/dosen/kaprodi/assessment-dosen/validasi`
+   - **Endpoint Validasi Massal Sekelas:** `POST /api/dosen/kaprodi/assessment-dosen/validasi-bulk`
+   - **Endpoint Revisi Nilai:** `POST /api/dosen/kaprodi/assessment-dosen/revisi`
+3. **Staff Akademik (Jalur Direct Input Tanpa Kaprodi)**:
+   - Jika nilai ingin langsung dimasukkan ke KHS tanpa melalui alur dosen & Kaprodi (misal untuk kebutuhan administrasi khusus / susulan), staff menggunakan:
+   - **Endpoint:** `POST /api/staff/akademik/khs/direct-input`

@@ -52,7 +52,7 @@ Route::prefix('api')
             Route::put('/update', [PenilaianDosenController::class, 'updateNilai']);
         });
 
-        // ─── Kaprodi (5 endpoints, dengan middleware kaprodi) ──────────────
+        // ─── Kaprodi (dengan middleware kaprodi) ─────────────────────────
         Route::prefix('/dosen/kaprodi')
             ->middleware('kaprodi')
             ->group(function () {
@@ -61,6 +61,14 @@ Route::prefix('api')
                 Route::get('/penilaian/detail', [PenilaianKaprodiController::class, 'getDetailNilaiMahasiswa']);
                 Route::post('/penilaian/validasi', [PenilaianKaprodiController::class, 'validasi']);
                 Route::post('/penilaian/revisi', [PenilaianKaprodiController::class, 'revisi']);
+
+                // Assessment Dosen Validation & Revisi (Resmi Dipindahkan ke Kaprodi)
+                Route::post('/assessment-dosen/validasi', [AssessmentDosenController::class, 'validasi']);
+                Route::post('/assessment-dosen/validasi-bulk', [AssessmentDosenController::class, 'validasiBulk']);
+                Route::post('/assessment-dosen/revisi', [AssessmentDosenController::class, 'revisi']);
+                Route::post('/assessment/dosen/validasi', [AssessmentDosenController::class, 'validasi']);
+                Route::post('/assessment/dosen/validasi-bulk', [AssessmentDosenController::class, 'validasiBulk']);
+                Route::post('/assessment/dosen/revisi', [AssessmentDosenController::class, 'revisi']);
             });
 
         // ─── AssessmentDosen (multi-level validation) ────────────────────

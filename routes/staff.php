@@ -103,6 +103,10 @@ Route::prefix("api/staff")
                     "krs_matakuliah_tahun_akademik",
                 ]);
                 Route::get("khs", [AkademikController::class, "khs"]);
+                Route::post("khs/direct-input", [
+                    AkademikController::class,
+                    "directInputKhs",
+                ]);
                 Route::get("khs-detail", [
                     AkademikController::class,
                     "khs_detail",

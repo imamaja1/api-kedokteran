@@ -120,6 +120,24 @@ class AkademikController extends Controller
         return $this->khsService->getKHSDetail($kode_krs);
     }
 
+    public function directInputKhs(Request $request): JsonResponse
+    {
+        $code = $request->input('code_krs_detail')
+            ?? $request->input('kode_krs_detail')
+            ?? $request->input('codeKrsDetail');
+
+        $request->merge(['code_krs_detail' => $code]);
+
+        $validated = $request->validate([
+            'code_krs_detail' => ['required', 'string'],
+            'nilai_akhir'     => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'grade'           => ['nullable', 'string', 'max:2'],
+            'catatan'         => ['nullable', 'string'],
+        ]);
+
+        return $this->khsService->directInputKhs($validated);
+    }
+
     public function petikan_nilai(Request $request): JsonResponse
     {
         $validated = $request->validate([
