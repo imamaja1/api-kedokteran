@@ -213,7 +213,11 @@ class ServiceKHS
             $grade = $gradeData['grade'] ?? $grade;
             $score = $gradeData['score'] ?? $score;
         } elseif ($grade !== null) {
-            $gradeRecord = \App\Models\GradeNilai::where('grade', strtoupper($grade))->first();
+            $gradeRecord = \App\Models\Grade::where('huruf', strtoupper($grade))
+                ->when($prodiKode, fn ($q) => $q->where('kode_program_studi', $prodiKode))
+                ->first()
+                ?? \App\Models\Grade::where('huruf', strtoupper($grade))->whereNull('kode_program_studi')->first();
+
             if ($gradeRecord) {
                 $score = (float) $gradeRecord->skor;
                 if ($nilaiAkhir === null) {

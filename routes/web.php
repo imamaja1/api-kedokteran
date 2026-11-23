@@ -34,6 +34,7 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout')->midd
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin,staff'])->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::resource('sections', ApiSectionController::class)->except(['show']);
+    Route::post('endpoints/sync-docs', [ApiEndpointController::class, 'syncDocs'])->name('endpoints.sync-docs');
     Route::resource('endpoints', ApiEndpointController::class)->except(['show']);
     Route::resource('users', UserController::class)->except(['show']);
     Route::resource('connections', ApiConnectionController::class)->except(['show']);

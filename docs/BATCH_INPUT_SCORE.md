@@ -270,16 +270,18 @@ simpanNilaiTabelKelas(12, 'uts', dataTabelMahasiswa);
 2. **Transaksi Database Atomik**: Menggunakan `DB::beginTransaction()`. Jika koneksi terputus saat proses berjalan, database tidak akan menyimpan sebagian data secara acak.
 ---
 
-## 🏛️ Alur Pasca Input: Validasi & Pengesahan KHS oleh Kaprodi
+## 🏛️ Alur Pasca Input: Validasi Dosen Kelas & Pengesahan KHS oleh Kaprodi
 
 Setelah dosen selesai menginput seluruh skor menggunakan endpoint ini, status penilaian mahasiswa berada pada status `proses`. 
 
 ### Aturan Wewenang Pengesahan:
-1. **Dosen Pengajar**: Hanya bertugas menginput skor / revisi catatan. Validasi yang dapat dilakukan dosen pengajar terbatas pada node sub-komponen non-root.
-2. **Ketua Program Studi (Kaprodi)**: Memegang wewenang **mutlak** untuk validasi final pada Root Node dan penerbitan nilai ke Kartu Hasil Studi (KHS).
-   - **Endpoint Validasi Individual:** `POST /api/dosen/kaprodi/assessment-dosen/validasi`
-   - **Endpoint Validasi Massal Sekelas:** `POST /api/dosen/kaprodi/assessment-dosen/validasi-bulk`
-   - **Endpoint Revisi Nilai:** `POST /api/dosen/kaprodi/assessment-dosen/revisi`
+1. **Dosen Pengajar / Koordinator Node**: Menginput skor, memvalidasi, atau merevisi nilai komponen/mahasiswa di kelasnya (tanpa langsung menerbitkan ke KHS):
+   - **Endpoint Validasi Individual:** `POST /api/dosen/assessment-dosen/validasi`
+   - **Endpoint Validasi Massal Sekelas:** `POST /api/dosen/assessment-dosen/validasi-bulk`
+   - **Endpoint Revisi Nilai:** `POST /api/dosen/assessment-dosen/revisi`
+2. **Ketua Program Studi (Kaprodi)**: Memegang wewenang **khusus** untuk mengesahkan nilai akhir kelas ke Kartu Hasil Studi (KHS):
+   - **Endpoint Validasi KHS (Kaprodi):** `POST /api/dosen/kaprodi/penilaian/validasi`
+   - **Endpoint Revisi KHS (Kaprodi):** `POST /api/dosen/kaprodi/penilaian/revisi`
 3. **Staff Akademik (Jalur Direct Input Tanpa Kaprodi)**:
    - Jika nilai ingin langsung dimasukkan ke KHS tanpa melalui alur dosen & Kaprodi (misal untuk kebutuhan administrasi khusus / susulan), staff menggunakan:
    - **Endpoint:** `POST /api/staff/akademik/khs/direct-input`

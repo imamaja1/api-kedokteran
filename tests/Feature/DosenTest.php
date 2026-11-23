@@ -170,18 +170,15 @@ test('GET /api/dosen/detail returns 422 without code', function () {
 
 // ─── PUT /api/dosen ──────────────────────────────────────────────────────────
 
-test('PUT /api/dosen updates dosen data', function () {
-    $dosen = TestDataHelper::createDosen();
+test('PUT /api/dosen updates own dosen data and forbids updating another dosen', function () {
+    $ctx = actingAsDosen();
+    $otherDosen = TestDataHelper::createDosen(['kode_dosen' => 999]);
 
-    $response = dosenGet('/api/dosen', []);
-    $payload = [
-        'code' => $dosen->toCode(),
+    $response = $ctx->instance->putJson('/api/dosen', [
+        'code' => $ctx->user->toCode(),
         'nama_dosen' => 'Nama Dosen Diupdate',
         'no_telp' => '08999999999',
-    ];
-
-    $ctx = actingAsDosen();
-    $response = $ctx->instance->putJson('/api/dosen', $payload);
+    ]);
 
     $response->assertStatus(200)
         ->assertJson([
@@ -189,6 +186,13 @@ test('PUT /api/dosen updates dosen data', function () {
             'message' => 'Data dosen berhasil diupdate.',
         ])
         ->assertJsonPath('data.nama_dosen', 'Nama Dosen Diupdate');
+
+    $forbidden = $ctx->instance->putJson('/api/dosen', [
+        'code' => $otherDosen->toCode(),
+        'nama_dosen' => 'Hijack',
+    ]);
+
+    $forbidden->assertStatus(403);
 });
 
 // ─── GET /api/dosen/kurikulum ────────────────────────────────────────────────
@@ -265,10 +269,17 @@ test('GET /api/dosen/perwalian/krs returns 422 without code', function () {
     $response->assertStatus(422);
 });
 
-test('GET /api/dosen/perwalian/krs returns krs detail', function () {
+test('GET /api/dosen/perwalian/krs returns krs detail for advisee and forbids non-advisee', function () {
     $ctx = actingAsDosen();
     $mhs = TestDataHelper::createMahasiswa();
+    $otherMhs = TestDataHelper::createMahasiswa();
     $ta = TestDataHelper::createTahunAkademik();
+
+    \App\Models\Perwalian::create([
+        'nim' => $mhs->nim,
+        'kode_dosen' => $ctx->user->kode_dosen,
+    ]);
+
     $krs = \App\Models\Krs::create([
         'nim' => $mhs->nim,
         'kode_tahun_akademik' => $ta->kode_tahun_akademik,
@@ -276,10 +287,18 @@ test('GET /api/dosen/perwalian/krs returns krs detail', function () {
         'status' => 'A',
     ]);
 
-    $response = $ctx->instance->getJson('/api/dosen/perwalian/krs?code=' . $krs->toCode());
+    $otherKrs = \App\Models\Krs::create([
+        'nim' => $otherMhs->nim,
+        'kode_tahun_akademik' => $ta->kode_tahun_akademik,
+        'semester' => '1',
+        'status' => 'A',
+    ]);
 
-    $response->assertStatus(200)
-        ->assertJson(['status' => true]);
+    $response = $ctx->instance->getJson('/api/dosen/perwalian/krs?code=' . $krs->toCode());
+    $response->assertStatus(200)->assertJson(['status' => true]);
+
+    $forbidden = $ctx->instance->getJson('/api/dosen/perwalian/krs?code=' . $otherKrs->toCode());
+    $forbidden->assertStatus(403);
 });
 
 // ─── POST /api/dosen/perwalian/validasi ──────────────────────────────────────

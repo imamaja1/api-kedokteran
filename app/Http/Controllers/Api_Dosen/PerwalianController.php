@@ -75,6 +75,21 @@ class PerwalianController extends Controller
             return response()->json(['status' => false, 'message' => 'KRS tidak ditemukan.'], 404);
         }
 
+        $kodeDosen = $this->getKodeDosen();
+        $isPembimbing = Perwalian::where('nim', $krs->nim)
+            ->where(function ($q) use ($kodeDosen) {
+                $q->where('kode_dosen', $kodeDosen)
+                    ->orWhere('kode_dosen_perwakilan', $kodeDosen);
+            })
+            ->exists();
+
+        if (! $isPembimbing) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Anda bukan pembimbing akademik mahasiswa ini.',
+            ], 403);
+        }
+
         return $this->serviceKRS->getKRSDetail($krs->kode_krs);
     }
 
@@ -115,6 +130,7 @@ class PerwalianController extends Controller
 
         $payload = [
             'kode_perwalian_krs_validasi' => $validasi->kode_perwalian_krs_validasi,
+            'kode_dosen_validator' => $this->getKodeDosen(),
             'catatan' => $validated['catatan'] ?? null,
         ];
 

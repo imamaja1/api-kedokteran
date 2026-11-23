@@ -50,17 +50,25 @@ class ServicePenilaianKaprodi
         }
 
         $kelasList = $query->orderBy('kelas_id', 'desc')->get();
+        $kelasIds = $kelasList->pluck('kelas_id')->filter()->values();
 
-        $data = $kelasList->map(function ($kelas) use ($programStudi) {
-            $totalMhs = KelasMahasiswa::where('kelas_id', $kelas->kelas_id)->count();
+        $totalMhsMap = KelasMahasiswa::whereIn('kelas_id', $kelasIds)
+            ->selectRaw('kelas_id, COUNT(*) as total')
+            ->groupBy('kelas_id')
+            ->pluck('total', 'kelas_id');
 
-            $proses = PenilaianStatus::where('kelas_id', $kelas->kelas_id)
-                ->where('status', 'proses')
-                ->count();
+        $statusCounts = PenilaianStatus::whereIn('kelas_id', $kelasIds)
+            ->whereIn('status', ['proses', 'validasi'])
+            ->selectRaw('kelas_id, status, COUNT(*) as total')
+            ->groupBy('kelas_id', 'status')
+            ->get()
+            ->groupBy('kelas_id');
 
-            $validasi = PenilaianStatus::where('kelas_id', $kelas->kelas_id)
-                ->where('status', 'validasi')
-                ->count();
+        $data = $kelasList->map(function ($kelas) use ($programStudi, $totalMhsMap, $statusCounts) {
+            $totalMhs = (int) $totalMhsMap->get($kelas->kelas_id, 0);
+            $kelasStatuses = $statusCounts->get($kelas->kelas_id, collect())->pluck('total', 'status');
+            $proses = (int) $kelasStatuses->get('proses', 0);
+            $validasi = (int) $kelasStatuses->get('validasi', 0);
 
             return [
                 'code_kelas' => $kelas->toCode(),
@@ -116,23 +124,27 @@ class ServicePenilaianKaprodi
             return $km->krsDetail?->krs?->mahasiswa?->nim;
         })->filter()->unique()->values()->toArray();
 
-        $validations = ValidationStudentScore::where('template_id', $template->id)
-            ->whereIn('nim', $nimList)
-            ->get()
-            ->keyBy('nim');
+        $validations = $template
+            ? ValidationStudentScore::where('template_id', $template->id)
+                ->whereIn('nim', $nimList)
+                ->get()
+                ->keyBy('nim')
+            : collect();
 
         $penilaianStatuses = PenilaianStatus::where('kelas_id', $kelas->kelas_id)
             ->whereIn('nim', $nimList)
             ->get()
             ->keyBy('nim');
 
-        $scoreCounts = StudentScore::where('template_id', $template->id)
-            ->whereIn('nim', $nimList)
-            ->whereNotNull('score')
-            ->groupBy('nim')
-            ->selectRaw('nim, COUNT(*) as count')
-            ->get()
-            ->pluck('count', 'nim');
+        $scoreCounts = $template
+            ? StudentScore::where('template_id', $template->id)
+                ->whereIn('nim', $nimList)
+                ->whereNotNull('score')
+                ->groupBy('nim')
+                ->selectRaw('nim, COUNT(*) as count')
+                ->get()
+                ->pluck('count', 'nim')
+            : collect();
 
         $leafNodes = $template ? $this->treeService->getLeafNodes($template) : [];
         $totalNodes = count($leafNodes);

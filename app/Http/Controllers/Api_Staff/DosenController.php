@@ -26,8 +26,8 @@ class DosenController extends Controller
 
         return $this->service->getAllDosen(
             $this->decryptQuery($request, 'kode_program_studi'),
-            $this->decryptQuery($request, 'nama_dosen'),
-            $this->decryptQuery($request, 'alamat_email'),
+            $request->query('nama_dosen'),
+            $request->query('alamat_email'),
         );
     }
 
@@ -168,8 +168,8 @@ class DosenController extends Controller
 
         return $this->service->getDosenTrash(
             $this->decryptQuery($request, 'kode_program_studi'),
-            $this->decryptQuery($request, 'nama_dosen'),
-            $this->decryptQuery($request, 'alamat_email'),
+            $request->query('nama_dosen'),
+            $request->query('alamat_email'),
         );
     }
 

@@ -167,6 +167,14 @@ class DosenController extends Controller
             return response()->json(['status' => false, 'message' => 'Dosen tidak ditemukan.'], 404);
         }
 
+        $authUser = Auth::guard('dosen_web')->user();
+        if (! $authUser || (int) $authUser->kode_dosen !== (int) $dosen->kode_dosen) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Anda tidak memiliki izin untuk mengubah data dosen lain.',
+            ], 403);
+        }
+
         $validated = $request->validate([
             'nama_dosen'   => 'sometimes|string|max:125',
             'field_studi'  => 'sometimes|string|max:100',

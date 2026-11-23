@@ -34,8 +34,7 @@ class LogActivity
                     default         => [null, null],
                 };
 
-                // Optimized: Use insert() instead of create() to avoid model events
-                \DB::table('activity_logs')->insert([
+                $logData = [
                     'guard'       => $guard,
                     'user_id'     => $userId,
                     'user_type'   => $userType,
@@ -46,7 +45,16 @@ class LogActivity
                     'status_code' => $response->getStatusCode(),
                     'created_at'  => now(),
                     'updated_at'  => now(),
-                ]);
+                ];
+
+                // Defer insert hingga setelah response terkirim agar tidak menambah latensi request
+                app()->terminating(function () use ($logData): void {
+                    try {
+                        \DB::table('activity_logs')->insert($logData);
+                    } catch (\Throwable) {
+                        // Kegagalan logging tidak boleh menghentikan response
+                    }
+                });
 
                 break;
             }

@@ -37,7 +37,8 @@ class TahunAkademik extends Model
         $now = now();
 
         return $this->tanggal_buka_krs && $this->tanggal_tutup_krs
-            && $now->gte($this->tanggal_buka_krs) && $now->lte($this->tanggal_tutup_krs);
+            && $now->gte($this->tanggal_buka_krs->copy()->startOfDay())
+            && $now->lte($this->tanggal_tutup_krs->copy()->endOfDay());
     }
 
     public function krs()

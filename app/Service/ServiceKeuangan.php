@@ -164,8 +164,15 @@ class ServiceKeuangan
      */
     private function findPreviousIpk(string $nim, int $semester): ?float
     {
+        $krsBySemester = Krs::where('nim', $nim)
+            ->whereBetween('semester', [1, $semester])
+            ->get()
+            ->keyBy('semester');
+
+        $cutiMap = null;
+
         while ($semester >= 1) {
-            $krs = Krs::where('nim', $nim)->where('semester', $semester)->first();
+            $krs = $krsBySemester->get($semester);
 
             if ($krs) {
                 $ipk = $this->computeIpkFromKrs($krs);
@@ -175,7 +182,11 @@ class ServiceKeuangan
                 return null;
             }
 
-            if (! $this->isCuti($nim, $semester)) {
+            if ($cutiMap === null) {
+                $cutiMap = $this->buildCutiSemesterMap($nim);
+            }
+
+            if (empty($cutiMap[$semester])) {
                 return null;
             }
 
@@ -186,29 +197,34 @@ class ServiceKeuangan
     }
 
     /**
-     * Cek apakah mahasiswa cuti di semester tertentu
+     * Bangun peta semester yang berstatus cuti untuk NIM tertentu dalam sekali query.
+     *
+     * @return array<int, bool>
      */
-    private function isCuti(string $nim, int $targetSemester): bool
+    private function buildCutiSemesterMap(string $nim): array
     {
         $angkatan = (int) substr($nim, 0, 2);
-        $tas = TahunAkademik::all();
+        $cutiPembayaran = Pembayaran::where('nim', $nim)
+            ->where('status_mahasiswa', 'cuti')
+            ->pluck('kode_tahun_akademik')
+            ->flip();
 
-        foreach ($tas as $ta) {
-            $tahunSekarang = (int) explode('/', $ta->tahun_akademik)[0];
-            $semesterTa = (int) $ta->semester;
-
-            $calcSemester = (($tahunSekarang - (2000 + $angkatan)) * 2) + $semesterTa;
-
-            if ($calcSemester === $targetSemester) {
-                $pembayaran = Pembayaran::where('nim', $nim)
-                    ->where('kode_tahun_akademik', $ta->kode_tahun_akademik)
-                    ->first();
-
-                return $pembayaran?->status_mahasiswa === 'cuti';
-            }
+        if ($cutiPembayaran->isEmpty()) {
+            return [];
         }
 
-        return false;
+        $map = [];
+        foreach (TahunAkademik::all(['kode_tahun_akademik', 'tahun_akademik', 'semester']) as $ta) {
+            if (! $cutiPembayaran->has($ta->kode_tahun_akademik)) {
+                continue;
+            }
+            $tahunSekarang = (int) explode('/', $ta->tahun_akademik)[0];
+            $semesterTa = (int) $ta->semester;
+            $calcSemester = (($tahunSekarang - (2000 + $angkatan)) * 2) + $semesterTa;
+            $map[$calcSemester] = true;
+        }
+
+        return $map;
     }
 
     /**

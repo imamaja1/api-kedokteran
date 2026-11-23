@@ -246,6 +246,15 @@
                         <kbd class="absolute right-2 px-1.5 py-0.5 rounded bg-surface-container text-[10px] font-code-sm text-outline border border-[#2d3748]">/</kbd>
                     </div>
 
+                    {{-- Filter Role Chips --}}
+                    <div class="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none" id="role-filter-bar">
+                        <button onclick="setRoleFilter('ALL')" class="role-chip active px-2 py-0.5 rounded font-label-badge text-[10px] bg-secondary/20 text-secondary border border-secondary/40 font-bold" data-role="ALL">Semua Role</button>
+                        <button onclick="setRoleFilter('Mahasiswa')" class="role-chip px-1.5 py-0.5 rounded font-label-badge text-[10px] text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 font-semibold" data-role="Mahasiswa">Mahasiswa</button>
+                        <button onclick="setRoleFilter('Staff')" class="role-chip px-1.5 py-0.5 rounded font-label-badge text-[10px] text-violet-300 bg-violet-500/10 hover:bg-violet-500/20 font-semibold" data-role="Staff">Staff</button>
+                        <button onclick="setRoleFilter('Dosen')" class="role-chip px-1.5 py-0.5 rounded font-label-badge text-[10px] text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 font-semibold" data-role="Dosen">Dosen</button>
+                        <button onclick="setRoleFilter('Kaprodi')" class="role-chip px-1.5 py-0.5 rounded font-label-badge text-[10px] text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 font-semibold" data-role="Kaprodi">Kaprodi</button>
+                    </div>
+
                     {{-- Filter Method Chips --}}
                     <div class="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none" id="method-filter-bar">
                         <button onclick="setMethodFilter('ALL')" class="method-chip active px-2 py-0.5 rounded font-label-badge text-[10px] bg-primary-container text-on-primary-container font-bold" data-method="ALL">ALL</button>
@@ -284,47 +293,102 @@
                     </div>
                     @endif
 
-                    @forelse($sections as $sIdx => $section)
-                    <div class="section-group" data-section-id="{{ $section->id }}" data-section-title="{{ strtolower($section->title) }}">
-                        {{-- Section Accordion Header --}}
-                        <button onclick="toggleSectionAccordion({{ $section->id }})" 
-                            class="w-full flex items-center justify-between px-2 py-1.5 rounded text-on-surface hover:bg-surface-container-high font-title-md text-[12px] text-left transition-colors font-medium group">
-                            <span class="flex items-center gap-1.5 truncate">
-                                <span class="material-symbols-outlined text-[16px] text-secondary group-hover:text-primary transition-colors accordion-icon-{{ $section->id }}">folder_open</span>
-                                <span class="font-body-sm font-semibold truncate">{{ $section->title }}</span>
-                            </span>
-                            <span class="font-code-sm text-[10px] text-outline px-1.5 py-0.5 rounded bg-surface-container shrink-0">
-                                {{ $section->endpoints->count() }}
-                            </span>
-                        </button>
+                    @php
+                        $detectRoleGroup = function ($section) {
+                            $title = strtolower($section->title ?? '');
+                            $firstUrl = strtolower($section->endpoints->first()?->url ?? '');
+                            if (str_contains($title, 'kaprodi') || str_contains($firstUrl, '/kaprodi')) {
+                                return 'Kaprodi';
+                            }
+                            if (str_contains($title, 'mahasiswa') || str_starts_with($firstUrl, '/api/mhs') || str_contains($firstUrl, '/auth/mhs')) {
+                                return 'Mahasiswa';
+                            }
+                            if (str_contains($title, 'dosen') || str_starts_with($firstUrl, '/api/dosen') || str_contains($firstUrl, '/auth/dosen')) {
+                                return 'Dosen';
+                            }
+                            return 'Staff';
+                        };
 
-                        {{-- Endpoints List in Section --}}
-                        <div class="mt-1 space-y-0.5 pl-2.5 border-l border-[#222d45] ml-3.5 accordion-content-{{ $section->id }}">
-                            @foreach($section->endpoints as $ep)
-                            <a href="javascript:void(0)" 
-                                onclick="selectEndpoint({{ $ep->id }})"
-                                id="nav-ep-{{ $ep->id }}"
-                                data-ep-id="{{ $ep->id }}"
-                                data-method="{{ $ep->method }}"
-                                data-path="{{ strtolower($ep->url) }}"
-                                data-title="{{ strtolower($ep->title) }}"
-                                class="ep-nav-item flex items-center justify-between px-2 py-1.5 rounded hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-all font-code-sm text-[11px] group">
-                                <div class="flex items-center gap-1.5 truncate min-w-0">
-                                    <span class="px-1.5 py-0.2 rounded font-label-badge text-[9px] font-bold method-badge-{{ $ep->method }}">
-                                        {{ $ep->method }}
-                                    </span>
-                                    <span class="truncate font-medium group-hover:text-on-surface text-on-surface-variant">{{ $ep->url }}</span>
-                                </div>
-                                <span class="active-indicator w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse shrink-0 hidden"></span>
-                            </a>
-                            @endforeach
+                        $roleConfigs = [
+                            'Mahasiswa' => ['label' => 'Mahasiswa', 'icon' => 'school', 'badgeClass' => 'bg-sky-500/15 text-sky-300 border-sky-500/30', 'textClass' => 'text-sky-300'],
+                            'Staff'     => ['label' => 'Staff & Admin', 'icon' => 'admin_panel_settings', 'badgeClass' => 'bg-violet-500/15 text-violet-300 border-violet-500/30', 'textClass' => 'text-violet-300'],
+                            'Dosen'     => ['label' => 'Dosen Pengampu', 'icon' => 'cast_for_education', 'badgeClass' => 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30', 'textClass' => 'text-emerald-300'],
+                            'Kaprodi'   => ['label' => 'Kaprodi (KHS)', 'icon' => 'verified', 'badgeClass' => 'bg-amber-500/15 text-amber-300 border-amber-500/30', 'textClass' => 'text-amber-300'],
+                        ];
+
+                        $groupedSections = $sections->groupBy($detectRoleGroup);
+                    @endphp
+
+                    @if($sections->isEmpty())
+                        <div class="text-center py-8 text-outline text-body-sm">
+                            Belum ada data dokumentasi.
                         </div>
-                    </div>
-                    @empty
-                    <div class="text-center py-8 text-outline text-body-sm">
-                        Belum ada data dokumentasi.
-                    </div>
-                    @endforelse
+                    @else
+                        @foreach($roleConfigs as $roleKey => $cfg)
+                            @php $roleSecs = $groupedSections->get($roleKey, collect()); @endphp
+                            @if($roleSecs->isNotEmpty())
+                            <div class="role-category-block pt-1.5 pb-1" data-role-group="{{ $roleKey }}">
+                                <div class="px-2 py-1 mb-1 flex items-center justify-between rounded bg-surface-container-low/80 border border-[#222d45]">
+                                    <span class="flex items-center gap-1.5 font-label-badge text-[10px] uppercase tracking-wider font-bold {{ $cfg['textClass'] }}">
+                                        <span class="material-symbols-outlined text-[14px]">{{ $cfg['icon'] }}</span>
+                                        {{ $cfg['label'] }}
+                                    </span>
+                                    <span class="px-1.5 py-0.2 rounded border text-[9px] font-bold {{ $cfg['badgeClass'] }}">
+                                        {{ $roleSecs->sum(fn($s) => $s->endpoints->count()) }}
+                                    </span>
+                                </div>
+
+                                <div class="space-y-1">
+                                    @foreach($roleSecs as $section)
+                                    @php
+                                        $displayTitle = preg_replace('/^(Mahasiswa|Staff|Dosen|Kaprodi)\s*-\s*/i', '', $section->title);
+                                        if (str_starts_with(strtolower($section->title), 'auth -')) {
+                                            $displayTitle = 'Autentikasi (' . trim(substr($section->title, 6)) . ')';
+                                        }
+                                    @endphp
+                                    <div class="section-group" data-role-group="{{ $roleKey }}" data-section-id="{{ $section->id }}" data-section-title="{{ strtolower($section->title) }}">
+                                        {{-- Section Accordion Header --}}
+                                        <button onclick="toggleSectionAccordion({{ $section->id }})" 
+                                            title="{{ $section->title }}"
+                                            class="w-full flex items-center justify-between px-2 py-1.5 rounded text-on-surface hover:bg-surface-container-high font-title-md text-[12px] text-left transition-colors font-medium group">
+                                            <span class="flex items-center gap-1.5 truncate">
+                                                <span class="material-symbols-outlined text-[16px] text-secondary group-hover:text-primary transition-colors accordion-icon-{{ $section->id }}">folder_open</span>
+                                                <span class="font-body-sm font-semibold truncate">{{ $displayTitle }}</span>
+                                            </span>
+                                            <span class="font-code-sm text-[10px] text-outline px-1.5 py-0.5 rounded bg-surface-container shrink-0">
+                                                {{ $section->endpoints->count() }}
+                                            </span>
+                                        </button>
+
+                                        {{-- Endpoints List in Section --}}
+                                        <div class="mt-1 space-y-0.5 pl-2.5 border-l border-[#222d45] ml-3.5 accordion-content-{{ $section->id }}">
+                                            @foreach($section->endpoints as $ep)
+                                            <a href="javascript:void(0)" 
+                                                onclick="selectEndpoint({{ $ep->id }})"
+                                                id="nav-ep-{{ $ep->id }}"
+                                                data-ep-id="{{ $ep->id }}"
+                                                data-role-group="{{ $roleKey }}"
+                                                data-method="{{ $ep->method }}"
+                                                data-path="{{ strtolower($ep->url) }}"
+                                                data-title="{{ strtolower($ep->title) }}"
+                                                class="ep-nav-item flex items-center justify-between px-2 py-1.5 rounded hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-all font-code-sm text-[11px] group">
+                                                <div class="flex items-center gap-1.5 truncate min-w-0">
+                                                    <span class="px-1.5 py-0.2 rounded font-label-badge text-[9px] font-bold method-badge-{{ $ep->method }}">
+                                                        {{ $ep->method }}
+                                                    </span>
+                                                    <span class="truncate font-medium group-hover:text-on-surface text-on-surface-variant">{{ $ep->url }}</span>
+                                                </div>
+                                                <span class="active-indicator w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse shrink-0 hidden"></span>
+                                            </a>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                            @endif
+                        @endforeach
+                    @endif
                 </div>
 
                 {{-- Bottom Gateway Info --}}
@@ -821,6 +885,7 @@
         let ACTIVE_WORKFLOW_ID = null;
         let CURRENT_SNIPPET_LANG = 'curl';
         let CURRENT_METHOD_FILTER = 'ALL';
+        let CURRENT_ROLE_FILTER = 'ALL';
 
         // Initialize Data Mapping
         SECTIONS_DATA.forEach(section => {
@@ -967,18 +1032,25 @@
                 loginEp = ALL_ENDPOINTS_LIST.find(e => e.url === '/api/auth/staff/login');
             }
 
-            // 1. Kumpulkan semua dependensi langsung dari parameter endpoint
+            // 1. Kumpulkan hanya dependensi WAJIB (is_required) dan satu role yang sama (hindari rantai bertele-tele)
             const directMap = new Map();
             if (ep.parameters && ep.parameters.length > 0) {
                 ep.parameters.forEach(p => {
-                    if (p.source_type === 'endpoint' && p.source_endpoint) {
+                    const isRequired = (p.is_required === true || p.is_required === 1 || p.is_required === '1');
+                    if (isRequired && p.source_type === 'endpoint' && p.source_endpoint) {
                         const srcId = p.source_endpoint.id;
+                        const fullSrcEp = ENDPOINTS_MAP[srcId] || p.source_endpoint;
+                        const srcRole = fullSrcEp.auth_role || 'Public / Session';
+
+                        // Lewati dependensi lintas-role atau self-reference
+                        if (srcId === ep.id) return;
+                        if (srcRole !== 'Public / Session' && srcRole !== authRole) return;
+
                         const fieldName = p.source_field || p.name;
                         if (directMap.has(srcId)) {
                             const b = directMap.get(srcId);
                             if (!b.fields.includes(fieldName)) b.fields.push(fieldName);
                         } else {
-                            const fullSrcEp = ENDPOINTS_MAP[srcId] || p.source_endpoint;
                             directMap.set(srcId, {
                                 id: srcId,
                                 endpoint: fullSrcEp,
@@ -1002,90 +1074,24 @@
                 };
             }
 
-            // 2. Helper untuk mendapatkan semua upstream IDs dari sebuah node secara rekursif
-            function getUpstreamIds(nodeId, visited = new Set()) {
-                const node = ENDPOINTS_MAP[nodeId];
-                if (!node || !node.parameters) return visited;
-                node.parameters.forEach(p => {
-                    if (p.source_type === 'endpoint' && p.source_endpoint) {
-                        const upId = p.source_endpoint.id;
-                        if (!visited.has(upId)) {
-                            visited.add(upId);
-                            getUpstreamIds(upId, visited);
-                        }
-                    }
-                });
-                return visited;
-            }
-
-            // 3. Transitive Reduction:
-            // Jika sebuah dependensi A ada di directMap, TETAPI A juga merupakan upstream dari B yang ada di directMap,
-            // maka A BUKAN cabang independen yang setara, melainkan A adalah hulu dari B!
-            const directBranchIds = [];
-            directMap.forEach((dataA, idA) => {
-                let isSubsumed = false;
-                directMap.forEach((dataB, idB) => {
-                    if (idA !== idB) {
-                        const upstreamsB = getUpstreamIds(idB);
-                        if (upstreamsB.has(idA)) {
-                            isSubsumed = true;
-                        }
-                    }
-                });
-                if (!isSubsumed) {
-                    directBranchIds.push(idA);
-                }
-            });
-
-            // 4. Susun cabang dan alirkan upstream secara terurut (tanpa duplikasi node)
+            // 2. Hemat alur menjadi maksimal 1 tahap sumber data langsung (Login -> Sumber Langsung -> Target)
+            // tanpa ekspansi rekursif filter opsional milik endpoint sumber (mencegah rantai 4+ endpoint).
             const branches = [];
-            const visitedGlobal = new Set([ep.id]);
-
-            directBranchIds.forEach(bId => {
-                const branchDirect = directMap.get(bId);
-                const laneNodes = [];
-
-                function collectLane(curId) {
-                    const curNode = ENDPOINTS_MAP[curId];
-                    if (!curNode || !curNode.parameters) return;
-                    curNode.parameters.forEach(p => {
-                        if (p.source_type === 'endpoint' && p.source_endpoint) {
-                            const uId = p.source_endpoint.id;
-                            if (!visitedGlobal.has(uId)) {
-                                visitedGlobal.add(uId);
-                                collectLane(uId);
-                                laneNodes.push({
-                                    id: uId,
-                                    endpoint: ENDPOINTS_MAP[uId] || p.source_endpoint,
-                                    fields: [p.source_field || p.name],
-                                    note: p.source_note
-                                });
-                            }
-                        }
-                    });
-                }
-
-                collectLane(bId);
-                visitedGlobal.add(bId);
-
+            directMap.forEach((branchDirect, bId) => {
                 branches.push({
                     id: bId,
                     endpoint: branchDirect.endpoint,
                     fields: branchDirect.fields,
                     note: branchDirect.note,
-                    upstream: laneNodes
+                    upstream: []
                 });
             });
 
-            // 5. Penomoran Langkah Sekuensial (Step 1 Login, Step 2..N Prereq, Step Target)
+            // 3. Penomoran Langkah Sekuensial (Step 1 Login, Step 2..N Prereq Langsung, Step Target)
             let stepCounter = 2;
             const linearList = [];
 
             branches.forEach(b => {
-                b.upstream.forEach(up => {
-                    up.stepNumber = stepCounter++;
-                    linearList.push(up);
-                });
                 b.stepNumber = stepCounter++;
                 linearList.push(b);
             });
@@ -2013,6 +2019,17 @@
             filterSidebar();
         });
 
+        function setRoleFilter(role) {
+            CURRENT_ROLE_FILTER = role;
+            document.querySelectorAll('.role-chip').forEach(c => {
+                c.classList.remove('active', 'bg-secondary/20', 'text-secondary', 'border', 'border-secondary/40', 'font-bold');
+                if (c.dataset.role === role) {
+                    c.classList.add('active', 'bg-secondary/20', 'text-secondary', 'border', 'border-secondary/40', 'font-bold');
+                }
+            });
+            filterSidebar();
+        }
+
         function setMethodFilter(method) {
             CURRENT_METHOD_FILTER = method;
             document.querySelectorAll('.method-chip').forEach(c => {
@@ -2034,13 +2051,15 @@
 
                 items.forEach(item => {
                     const epMethod = item.dataset.method;
+                    const epRole = item.dataset.roleGroup || secGroup.dataset.roleGroup || '';
                     const epPath = item.dataset.path;
                     const epTitle = item.dataset.title;
 
+                    const matchRole = (CURRENT_ROLE_FILTER === 'ALL' || epRole === CURRENT_ROLE_FILTER);
                     const matchMethod = (CURRENT_METHOD_FILTER === 'ALL' || epMethod === CURRENT_METHOD_FILTER);
-                    const matchQuery = (!query || epPath.includes(query) || epTitle.includes(query));
+                    const matchQuery = (!query || epPath.includes(query) || epTitle.includes(query) || (secGroup.dataset.sectionTitle || '').includes(query));
 
-                    if (matchMethod && matchQuery) {
+                    if (matchRole && matchMethod && matchQuery) {
                         item.classList.remove('hidden');
                         sectionHasMatch = true;
                         visibleCount++;
@@ -2059,6 +2078,12 @@
                 } else {
                     secGroup.classList.add('hidden');
                 }
+            });
+
+            document.querySelectorAll('.role-category-block').forEach(block => {
+                const hasVisibleSection = Array.from(block.querySelectorAll('.section-group'))
+                    .some(sec => !sec.classList.contains('hidden'));
+                block.classList.toggle('hidden', !hasVisibleSection);
             });
 
             const badge = document.getElementById('total-routes-badge');

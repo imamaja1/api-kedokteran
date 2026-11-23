@@ -30,6 +30,7 @@ Route::prefix("api/staff")
     ->middleware([
         "sanctum.spa",
         "auth:staff_web,web",
+        "role:admin,staff",
         "sanctum.cookie",
         "log.activity",
     ])
@@ -196,14 +197,6 @@ Route::prefix("api/staff")
                     Route::get("/trash", [DosenController::class, "trash"]);
                     Route::post("/", [DosenController::class, "store"]);
                     Route::put("/", [DosenController::class, "update"]);
-                    Route::delete("/{code?}", [
-                        DosenController::class,
-                        "destroy",
-                    ]);
-                    Route::patch("/{code}/restore", [
-                        DosenController::class,
-                        "restore",
-                    ]);
                     Route::delete("/force", [
                         DosenController::class,
                         "forceDelete",
@@ -211,6 +204,14 @@ Route::prefix("api/staff")
                     Route::delete("/{code}/force", [
                         DosenController::class,
                         "forceDelete",
+                    ]);
+                    Route::patch("/{code}/restore", [
+                        DosenController::class,
+                        "restore",
+                    ]);
+                    Route::delete("/{code?}", [
+                        DosenController::class,
+                        "destroy",
                     ]);
                 });
 
@@ -275,14 +276,6 @@ Route::prefix("api/staff")
                     Route::get("/trash", [MahasiswaController::class, "trash"]);
                     Route::post("/", [MahasiswaController::class, "store"]);
                     Route::put("/", [MahasiswaController::class, "update"]);
-                    Route::delete("/{code?}", [
-                        MahasiswaController::class,
-                        "destroy",
-                    ]);
-                    Route::patch("/{code}/restore", [
-                        MahasiswaController::class,
-                        "restore",
-                    ]);
                     Route::delete("/force", [
                         MahasiswaController::class,
                         "forceDelete",
@@ -290,6 +283,14 @@ Route::prefix("api/staff")
                     Route::delete("/{code}/force", [
                         MahasiswaController::class,
                         "forceDelete",
+                    ]);
+                    Route::patch("/{code}/restore", [
+                        MahasiswaController::class,
+                        "restore",
+                    ]);
+                    Route::delete("/{code?}", [
+                        MahasiswaController::class,
+                        "destroy",
                     ]);
                 });
             });

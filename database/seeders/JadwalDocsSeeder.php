@@ -431,39 +431,44 @@ class JadwalDocsSeeder extends Seeder
             }
         }
 
-        // 7. Sinkronisasi urutan seluruh seksi agar Staff & Dosen konsisten dan rapi
+        DB::table('api_sections')
+            ->where('title', 'Dosen - Kaprodi')
+            ->update(['title' => 'Kaprodi - Validasi Penilaian & KHS', 'updated_at' => now()]);
+
+        // 7. Sinkronisasi urutan seluruh seksi agar terkelompok rapi: Mahasiswa -> Staff -> Dosen -> Kaprodi
         $sectionOrderMap = [
             'Auth - Mahasiswa' => 1,
-            'Auth - Staff' => 2,
-            'Auth - Dosen' => 3,
-            'Mahasiswa - Akademik' => 4,
-            'Staff - Pencarian' => 5,
-            'Staff - Master Data (Mahasiswa)' => 6,
-            'Staff - Master Data (Dosen)' => 7,
-            'Staff - Master Data (Matakuliah)' => 8,
-            'Staff - Master Data (Prodi)' => 9,
-            'Staff - Master Data (Nama Kurikulum)' => 10,
-            'Staff - Master Data (Tahun Akademik)' => 11,
-            'Staff - Master Data (Kurikulum Angkatan)' => 12,
-            'Staff - Master Ruangan & Hari' => 13,
-            'Staff - Data Default' => 14,
-            'Staff - SKS Rule' => 15,
-            'Staff - Akademik' => 16,
-            'Staff - Perwalian' => 17,
-            'Staff - Konfig Kelas' => 18,
-            'Staff - Penjadwalan Kelas' => 19,
+            'Mahasiswa - Akademik' => 2,
+            'Auth - Staff' => 3,
+            'Staff - Pencarian' => 4,
+            'Staff - Master Data (Mahasiswa)' => 5,
+            'Staff - Master Data (Dosen)' => 6,
+            'Staff - Master Data (Matakuliah)' => 7,
+            'Staff - Master Data (Prodi)' => 8,
+            'Staff - Master Data (Nama Kurikulum)' => 9,
+            'Staff - Master Data (Tahun Akademik)' => 10,
+            'Staff - Master Data (Kurikulum Angkatan)' => 11,
+            'Staff - Master Ruangan & Hari' => 12,
+            'Staff - Data Default' => 13,
+            'Staff - SKS Rule' => 14,
+            'Staff - Akademik' => 15,
+            'Staff - Perwalian' => 16,
+            'Staff - Konfig Kelas' => 17,
+            'Staff - Penjadwalan Kelas' => 18,
+            'Staff - Penjabaran Kelas (Group Asesmen)' => 19,
             'Staff - Pembayaran' => 20,
             'Staff - Assessment (Templates)' => 21,
             'Staff - Assessment (Scores)' => 22,
             'Staff - Assessment (Grade)' => 23,
             'Staff - Assessment Dosen (Setup)' => 24,
             'Staff - Audit Feeder PDDIKTI' => 25,
-            'Dosen - Data Dosen' => 26,
-            'Dosen - Kurikulum' => 27,
-            'Dosen - Perwalian' => 28,
-            'Dosen - Penilaian' => 29,
-            'Dosen - Kaprodi' => 30,
+            'Auth - Dosen' => 26,
+            'Dosen - Data Dosen' => 27,
+            'Dosen - Kurikulum' => 28,
+            'Dosen - Perwalian' => 29,
+            'Dosen - Penilaian' => 30,
             'Dosen - Assessment Dosen (Multi-level)' => 31,
+            'Kaprodi - Validasi Penilaian & KHS' => 32,
         ];
 
         foreach ($sectionOrderMap as $title => $sortOrder) {

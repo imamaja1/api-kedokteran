@@ -20,13 +20,25 @@ class MahasiswaController extends Controller
     {
         $validated = $request->validate([
             'nim' => ['nullable', 'string', 'max:20', 'regex:/^\d+$/'],
-            'code' => ['nullable', 'string', 'max:20', 'alpha_num'],
+            'code' => ['nullable', 'string'],
             'angkatan' => ['nullable', 'digits:4'],
         ]);
 
+        $kodeProdi = null;
+        if (! empty($validated['code'])) {
+            try {
+                $kodeProdi = Crypt::decryptString($validated['code']);
+            } catch (DecryptException) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Format code tidak valid',
+                ], 422);
+            }
+        }
+
         return $this->service->getAllMahasiswa(
             $validated['nim'] ?? null,
-            isset($validated['code']) ? Crypt::decryptString($validated['code']) : null,
+            $kodeProdi,
             isset($validated['angkatan']) ? substr($validated['angkatan'], 2, 2) : null,
         );
     }
@@ -119,7 +131,7 @@ class MahasiswaController extends Controller
 
         // Handle foto upload
         if ($request->hasFile('foto')) {
-            $validasi['foto'] = $request->file('foto')->store('mahasiswa');
+            $validasi['foto'] = $request->file('foto')->store('fotos/mahasiswa', 'public');
         }
 
         return $this->service->storeMahasiswa($validasi);
@@ -178,7 +190,7 @@ class MahasiswaController extends Controller
 
         // Handle foto upload
         if ($request->hasFile('foto')) {
-            $validasi['foto'] = $request->file('foto')->store('mahasiswa');
+            $validasi['foto'] = $request->file('foto')->store('fotos/mahasiswa', 'public');
         }
 
         return $this->service->updateMahasiswa($nim, $validasi);
@@ -210,13 +222,25 @@ class MahasiswaController extends Controller
     {
         $validated = $request->validate([
             'nim' => ['nullable', 'string', 'max:20', 'regex:/^\d+$/'],
-            'code' => ['nullable', 'string', 'max:20', 'alpha_num'],
+            'code' => ['nullable', 'string'],
             'angkatan' => ['nullable', 'digits:4'],
         ]);
 
+        $kodeProdi = null;
+        if (! empty($validated['code'])) {
+            try {
+                $kodeProdi = Crypt::decryptString($validated['code']);
+            } catch (DecryptException) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Format code tidak valid',
+                ], 422);
+            }
+        }
+
         return $this->service->getMahasiswaTrash(
             $validated['nim'] ?? null,
-            isset($validated['code']) ? Crypt::decryptString($validated['code']) : null,
+            $kodeProdi,
             isset($validated['angkatan']) ? substr($validated['angkatan'], 2, 2) : null,
         );
     }

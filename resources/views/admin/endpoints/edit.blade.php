@@ -59,14 +59,80 @@
                                 style="font-family:monospace;font-size:.83rem">{{ old('headers', $endpoint->headers) }}</textarea>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Param / Body Request</label>
-                            <textarea name="body" class="form-control" rows="3"
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label fw-semibold mb-0">Param / Body Request</label>
+                                <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2" style="font-size:.75rem" onclick="formatJsonField('body')">Format JSON</button>
+                            </div>
+                            <textarea id="body" name="body" class="form-control" rows="5"
                                 style="font-family:monospace;font-size:.83rem">{{ old('body', $endpoint->body) }}</textarea>
                         </div>
                         <div class="col-12">
                             <label class="form-label fw-semibold">Contoh Response</label>
                             <textarea name="response_example" class="form-control" rows="4"
                                 style="font-family:monospace;font-size:.83rem">{{ old('response_example', $endpoint->response_example) }}</textarea>
+                        </div>
+                        <div class="col-12 mt-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label fw-semibold mb-0">Parameter &amp; Prerequisite ({{ $endpoint->parameters->count() }})</label>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addParamRow()">
+                                    <i class="bi bi-plus-lg me-1"></i>Tambah Parameter
+                                </button>
+                            </div>
+                            <div class="table-responsive border rounded">
+                                <table class="table table-sm table-bordered mb-0 align-middle" id="paramsTable">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Nama</th>
+                                            <th>Tipe</th>
+                                            <th>Lokasi</th>
+                                            <th class="text-center">Wajib</th>
+                                            <th>Source</th>
+                                            <th>Endpoint Sumber</th>
+                                            <th>Example</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="paramsTbody">
+                                        @foreach($endpoint->parameters as $idx => $param)
+                                        <tr>
+                                            <td><input type="text" name="parameters[{{ $idx }}][name]" value="{{ $param->name }}" class="form-control form-control-sm"></td>
+                                            <td>
+                                                <select name="parameters[{{ $idx }}][type]" class="form-select form-select-sm">
+                                                    @foreach(['string','integer','number','boolean','array'] as $t)
+                                                    <option value="{{ $t }}" @selected($param->type === $t)>{{ $t }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <select name="parameters[{{ $idx }}][location]" class="form-select form-select-sm">
+                                                    @foreach(['body','query','path'] as $loc)
+                                                    <option value="{{ $loc }}" @selected($param->location === $loc)>{{ $loc }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </td>
+                                            <td class="text-center"><input type="checkbox" name="parameters[{{ $idx }}][is_required]" value="1" @checked($param->is_required)></td>
+                                            <td>
+                                                <select name="parameters[{{ $idx }}][source_type]" class="form-select form-select-sm">
+                                                    @foreach(['input','endpoint','session'] as $st)
+                                                    <option value="{{ $st }}" @selected($param->source_type === $st)>{{ $st }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <select name="parameters[{{ $idx }}][source_endpoint_id]" class="form-select form-select-sm" style="max-width:200px">
+                                                    <option value="">-- Tidak ada --</option>
+                                                    @foreach($allEndpoints as $srcEp)
+                                                    <option value="{{ $srcEp->id }}" @selected($param->source_endpoint_id == $srcEp->id)>[{{ $srcEp->method }}] {{ $srcEp->url }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </td>
+                                            <td><input type="text" name="parameters[{{ $idx }}][example]" value="{{ $param->example }}" class="form-control form-control-sm"></td>
+                                            <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('tr').remove()"><i class="bi bi-trash"></i></button></td>
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                     <div class="d-flex gap-2 mt-4">
@@ -78,4 +144,32 @@
         </div>
     </div>
 </div>
+<script>
+let paramRowIdx = {{ $endpoint->parameters->count() }};
+function formatJsonField(id) {
+    const el = document.getElementById(id);
+    try {
+        const parsed = JSON.parse(el.value);
+        el.value = JSON.stringify(parsed, null, 4);
+    } catch (e) {
+        alert('Format JSON tidak valid: ' + e.message);
+    }
+}
+function addParamRow() {
+    const tbody = document.getElementById('paramsTbody');
+    const idx = paramRowIdx++;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td><input type="text" name="parameters[${idx}][name]" class="form-control form-control-sm" placeholder="nama_param"></td>
+        <td><select name="parameters[${idx}][type]" class="form-select form-select-sm"><option value="string">string</option><option value="integer">integer</option><option value="number">number</option><option value="boolean">boolean</option><option value="array">array</option></select></td>
+        <td><select name="parameters[${idx}][location]" class="form-select form-select-sm"><option value="body">body</option><option value="query">query</option><option value="path">path</option></select></td>
+        <td class="text-center"><input type="checkbox" name="parameters[${idx}][is_required]" value="1" checked></td>
+        <td><select name="parameters[${idx}][source_type]" class="form-select form-select-sm"><option value="input">input</option><option value="endpoint">endpoint</option><option value="session">session</option></select></td>
+        <td><select name="parameters[${idx}][source_endpoint_id]" class="form-select form-select-sm" style="max-width:200px"><option value="">-- Tidak ada --</option>@foreach($allEndpoints as $srcEp)<option value="{{ $srcEp->id }}">[{{ $srcEp->method }}] {{ $srcEp->url }}</option>@endforeach</select></td>
+        <td><input type="text" name="parameters[${idx}][example]" class="form-control form-control-sm"></td>
+        <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('tr').remove()"><i class="bi bi-trash"></i></button></td>
+    `;
+    tbody.appendChild(tr);
+}
+</script>
 @endsection

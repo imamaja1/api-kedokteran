@@ -84,10 +84,19 @@
 @section('content')
 <div class="card">
     <div class="card-header-custom d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <span><i class="bi bi-code-slash me-2"></i>Daftar Endpoint</span>
-        <a href="{{ route('admin.endpoints.create') }}" class="btn btn-sm btn-light">
-            <i class="bi bi-plus-lg me-1"></i>Tambah Endpoint
-        </a>
+        <span><i class="bi bi-code-slash me-2"></i>Daftar Endpoint ({{ $endpoints->count() }})</span>
+        <div class="d-flex gap-2">
+            <form action="{{ route('admin.endpoints.sync-docs') }}" method="POST" class="d-inline"
+                onsubmit="return confirm('Bersihkan format body JSON & sinkronkan ulang parameter prerequisite?')">
+                @csrf
+                <button type="submit" class="btn btn-sm btn-warning text-dark fw-semibold">
+                    <i class="bi bi-arrow-repeat me-1"></i>Sinkronkan Docs &amp; Param
+                </button>
+            </form>
+            <a href="{{ route('admin.endpoints.create') }}" class="btn btn-sm btn-light">
+                <i class="bi bi-plus-lg me-1"></i>Tambah Endpoint
+            </a>
+        </div>
     </div>
 
     {{-- Filter bar --}}
@@ -139,6 +148,14 @@
                     <td><span class="method-badge m-{{ $ep->method }}">{{ $ep->method }}</span></td>
                     <td class="d-none d-lg-table-cell text-muted small font-monospace" style="max-width:260px">
                         <span class="d-block text-truncate">{{ $ep->url }}</span>
+                        <span class="badge bg-secondary-subtle text-secondary border mt-1">{{ $ep->parameters_count }} param</span>
+                        @if($ep->body && $ep->body !== '-')
+                            @if(is_array(json_decode($ep->body, true)))
+                                <span class="badge bg-success-subtle text-success border mt-1">JSON Valid</span>
+                            @else
+                                <span class="badge bg-danger-subtle text-danger border mt-1">JSON Invalid</span>
+                            @endif
+                        @endif
                     </td>
                     <td class="d-none d-md-table-cell">{{ $ep->sort_order }}</td>
                     <td>

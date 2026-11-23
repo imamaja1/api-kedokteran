@@ -140,43 +140,66 @@ class KaprodiAssessmentValidationTest extends TestCase
         ]);
     }
 
-    public function test_non_kaprodi_cannot_validate_root_node(): void
+    public function test_kaprodi_assessment_dosen_routes_are_removed(): void
     {
-        // Even if non-kaprodi is assigned to root node
-        AssessmentDosenAssignment::create([
-            'assessment_dosen_id' => $this->assessment->id,
-            'node_key'            => 'root_blok',
-            'kode_dosen'          => $this->dosenBiasa->kode_dosen,
-        ]);
+        $postRoutes = collect(\Illuminate\Support\Facades\Route::getRoutes()->get('POST'))
+            ->map(fn ($route) => $route->uri())
+            ->all();
 
-        $response = $this->actingAs($this->dosenBiasa, 'dosen_web')
+        $this->assertNotContains('api/dosen/kaprodi/assessment-dosen/validasi', $postRoutes);
+        $this->assertNotContains('api/dosen/kaprodi/assessment-dosen/validasi-bulk', $postRoutes);
+        $this->assertNotContains('api/dosen/kaprodi/assessment-dosen/revisi', $postRoutes);
+
+        foreach ([
+            '/api/dosen/kaprodi/assessment-dosen/validasi' => [
+                'assessment_dosen_id' => $this->assessment->id,
+                'node_key'            => 'root_blok',
+                'code_mahasiswa'      => $this->mhs->toCode(),
+            ],
+            '/api/dosen/kaprodi/assessment-dosen/validasi-bulk' => [
+                'assessment_dosen_id' => $this->assessment->id,
+                'node_key'            => 'root_blok',
+            ],
+            '/api/dosen/kaprodi/assessment-dosen/revisi' => [
+                'assessment_dosen_id' => $this->assessment->id,
+                'node_key'            => 'root_blok',
+                'code_mahasiswa'      => $this->mhs->toCode(),
+                'catatan'             => 'Revisi',
+            ],
+        ] as $uri => $payload) {
+            $status = $this->actingAs($this->dosenKaprodi, 'dosen_web')
+                ->postJson($uri, $payload)
+                ->status();
+
+            $this->assertContains($status, [404, 405]);
+        }
+    }
+
+    public function test_unassigned_dosen_cannot_validate_assessment_node(): void
+    {
+        $dosenLain = TestDataHelper::createDosen(['nama_dosen' => 'dr. Dosen Luar Kelas']);
+
+        $this->actingAs($dosenLain, 'dosen_web')
             ->postJson('/api/dosen/assessment-dosen/validasi', [
                 'assessment_dosen_id' => $this->assessment->id,
                 'node_key'            => 'root_blok',
                 'code_mahasiswa'      => $this->mhs->toCode(),
-                'catatan'             => 'Dosen biasa mencoba validasi root',
-            ]);
+                'catatan'             => 'Dosen luar mencoba validasi',
+            ])
+            ->assertStatus(403);
 
-        $response->assertStatus(403);
-        $response->assertJsonPath('message', 'Hanya Ketua Program Studi (Kaprodi) yang berwenang mengesahkan nilai akhir ke KHS.');
-    }
-
-    public function test_non_kaprodi_cannot_bulk_validate_root_node(): void
-    {
-        $response = $this->actingAs($this->dosenBiasa, 'dosen_web')
+        $this->actingAs($dosenLain, 'dosen_web')
             ->postJson('/api/dosen/assessment-dosen/validasi-bulk', [
                 'assessment_dosen_id' => $this->assessment->id,
                 'node_key'            => 'root_blok',
-                'catatan'             => 'Dosen biasa mencoba validasi massal root',
-            ]);
-
-        $response->assertStatus(403);
-        $response->assertJsonPath('message', 'Hanya Ketua Program Studi (Kaprodi) yang berwenang mengesahkan nilai akhir ke KHS.');
+                'catatan'             => 'Dosen luar mencoba validasi massal',
+            ])
+            ->assertStatus(403);
     }
 
-    public function test_kaprodi_can_validate_and_finalize_grade_to_khs(): void
+    public function test_dosen_can_validate_assessment_node_without_finalizing_khs_and_kaprodi_finalizes_to_khs(): void
     {
-        // Input nilai terlebih dahulu oleh dosen
+        // 1. Input nilai oleh dosen pengajar
         $this->actingAs($this->dosenBiasa, 'dosen_web')
             ->postJson('/api/dosen/assessment-dosen/input-score', [
                 'assessment_dosen_id' => $this->assessment->id,
@@ -191,23 +214,89 @@ class KaprodiAssessmentValidationTest extends TestCase
                 ],
             ])->assertStatus(200);
 
-        // Kaprodi memvalidasi via endpoint resmi kaprodi
-        $response = $this->actingAs($this->dosenKaprodi, 'dosen_web')
-            ->postJson('/api/dosen/kaprodi/assessment-dosen/validasi', [
+        // 2. Dosen mengesahkan node assessment mahasiswa di kelas (cukup sampai kelas, belum masuk KHS)
+        $dosenRes = $this->actingAs($this->dosenBiasa, 'dosen_web')
+            ->postJson('/api/dosen/assessment-dosen/validasi', [
                 'assessment_dosen_id' => $this->assessment->id,
                 'node_key'            => 'root_blok',
                 'code_mahasiswa'      => $this->mhs->toCode(),
-                'catatan'             => 'Disetujui Kaprodi',
+                'catatan'             => 'Sudah direview dosen kelas',
             ]);
 
-        $response->assertStatus(200);
-        $response->assertJsonPath('data.status', 'validasi');
+        $dosenRes->assertStatus(200)
+            ->assertJsonPath('data.status', 'validasi');
 
-        // Pastikan nilai masuk ke khs_detail
+        $this->assertDatabaseHas('assessment_node_validations', [
+            'assessment_dosen_id' => $this->assessment->id,
+            'node_key'            => 'root_blok',
+            'nim'                 => $this->mhs->nim,
+            'status'              => 'validasi',
+        ]);
+
+        // Nilai BELUM masuk ke khs_detail sebelum Kaprodi mengesahkan lewat endpoint khusus Kaprodi
+        $this->assertDatabaseMissing('khs_detail', [
+            'kode_krs_detail' => $this->krsDetail->kode_krs_detail,
+            'tidak_berhak'    => 'A',
+        ]);
+
+        // 3. Kaprodi melakukan pengesahan khusus agar nilai masuk ke KHS
+        $kaprodiRes = $this->actingAs($this->dosenKaprodi, 'dosen_web')
+            ->postJson('/api/dosen/kaprodi/penilaian/validasi', [
+                'code_kelas'     => $this->kelas->toCode(),
+                'code_mahasiswa' => $this->mhs->toCode(),
+                'catatan'        => 'Disetujui Kaprodi masuk KHS',
+            ]);
+
+        $kaprodiRes->assertStatus(200)
+            ->assertJsonPath('data.status', 'validasi');
+
         $this->assertDatabaseHas('khs_detail', [
             'kode_krs_detail' => $this->krsDetail->kode_krs_detail,
             'nilai_akhir'     => 84, // (90*0.4) + (80*0.6) = 36 + 48 = 84
             'tidak_berhak'    => 'A',
+        ]);
+    }
+
+    public function test_dosen_can_bulk_validate_and_revisi_assessment_node(): void
+    {
+        $this->actingAs($this->dosenBiasa, 'dosen_web')
+            ->postJson('/api/dosen/assessment-dosen/input-score', [
+                'assessment_dosen_id' => $this->assessment->id,
+                'mahasiswa'           => [
+                    [
+                        'code_mahasiswa' => $this->mhs->toCode(),
+                        'scores'         => [
+                            ['node_key' => 'tugas', 'score' => 85],
+                            ['node_key' => 'uts', 'score' => 75],
+                        ],
+                    ],
+                ],
+            ])->assertStatus(200);
+
+        $this->actingAs($this->dosenBiasa, 'dosen_web')
+            ->postJson('/api/dosen/assessment-dosen/validasi-bulk', [
+                'assessment_dosen_id' => $this->assessment->id,
+                'node_key'            => 'root_blok',
+                'catatan'             => 'Validasi massal kelas',
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('data.berhasil_validasi', 1);
+
+        $this->actingAs($this->dosenBiasa, 'dosen_web')
+            ->postJson('/api/dosen/assessment-dosen/revisi', [
+                'assessment_dosen_id' => $this->assessment->id,
+                'node_key'            => 'root_blok',
+                'code_mahasiswa'      => $this->mhs->toCode(),
+                'catatan'             => 'Cek ulang komponen uts',
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('data.status', 'revisi');
+
+        $this->assertDatabaseHas('assessment_node_validations', [
+            'assessment_dosen_id' => $this->assessment->id,
+            'node_key'            => 'root_blok',
+            'nim'                 => $this->mhs->nim,
+            'status'              => 'revisi',
         ]);
     }
 

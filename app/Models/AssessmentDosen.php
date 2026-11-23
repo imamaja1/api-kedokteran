@@ -71,6 +71,8 @@ class AssessmentDosen extends Model
             return true;
         }
 
-        return $buka && $tutup && $now->gte($buka) && $now->lte($tutup);
+        return $buka && $tutup
+            && $now->gte($buka->copy()->startOfDay())
+            && $now->lte($tutup->copy()->endOfDay());
     }
 }

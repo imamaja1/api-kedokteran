@@ -61,17 +61,9 @@ Route::prefix('api')
                 Route::get('/penilaian/detail', [PenilaianKaprodiController::class, 'getDetailNilaiMahasiswa']);
                 Route::post('/penilaian/validasi', [PenilaianKaprodiController::class, 'validasi']);
                 Route::post('/penilaian/revisi', [PenilaianKaprodiController::class, 'revisi']);
-
-                // Assessment Dosen Validation & Revisi (Resmi Dipindahkan ke Kaprodi)
-                Route::post('/assessment-dosen/validasi', [AssessmentDosenController::class, 'validasi']);
-                Route::post('/assessment-dosen/validasi-bulk', [AssessmentDosenController::class, 'validasiBulk']);
-                Route::post('/assessment-dosen/revisi', [AssessmentDosenController::class, 'revisi']);
-                Route::post('/assessment/dosen/validasi', [AssessmentDosenController::class, 'validasi']);
-                Route::post('/assessment/dosen/validasi-bulk', [AssessmentDosenController::class, 'validasiBulk']);
-                Route::post('/assessment/dosen/revisi', [AssessmentDosenController::class, 'revisi']);
             });
 
-        // ─── AssessmentDosen (multi-level validation) ────────────────────
+        // ─── AssessmentDosen (validasi & revisi komponen oleh dosen kelas) ─
         Route::prefix('/dosen/assessment-dosen')->group(function () {
             Route::get('/my-nodes', [AssessmentDosenController::class, 'myNodes']);
             Route::get('/mahasiswa', [AssessmentDosenController::class, 'mahasiswaByNode']);

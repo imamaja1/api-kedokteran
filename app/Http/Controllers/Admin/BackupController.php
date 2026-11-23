@@ -82,31 +82,46 @@ class BackupController extends Controller
                 }
                 echo $createSql . ";\n\n";
 
-                $rows = DB::table($table)->get();
-                if ($rows->isNotEmpty()) {
-                    echo "-- Dumping data untuk tabel `{$table}` (" . $rows->count() . " records)\n";
-                    $columns = array_keys((array) $rows->first());
-                    $escapedColumns = array_map(fn($col) => "`{$col}`", $columns);
-                    $columnList = implode(', ', $escapedColumns);
+                $totalRows = DB::table($table)->count();
+                if ($totalRows > 0) {
+                    echo "-- Dumping data untuk tabel `{$table}` ({$totalRows} records)\n";
+                    $columns = null;
+                    $columnList = '';
+                    $valuesList = [];
 
-                    foreach ($rows->chunk(100) as $chunk) {
-                        $valuesList = [];
-                        foreach ($chunk as $row) {
-                            $rowValues = [];
-                            foreach ($columns as $col) {
-                                $val = $row->$col;
-                                if ($val === null) {
-                                    $rowValues[] = 'NULL';
-                                } elseif (is_numeric($val) && ! is_string($val)) {
-                                    $rowValues[] = $val;
-                                } else {
-                                    $rowValues[] = $pdo->quote((string) $val);
-                                }
-                            }
-                            $valuesList[] = '(' . implode(', ', $rowValues) . ')';
+                    $flushBatch = function () use (&$valuesList, $table, &$columnList): void {
+                        if ($valuesList !== []) {
+                            echo "INSERT INTO `{$table}` ({$columnList}) VALUES\n" . implode(",\n", $valuesList) . ";\n";
+                            $valuesList = [];
                         }
-                        echo "INSERT INTO `{$table}` ({$columnList}) VALUES\n" . implode(",\n", $valuesList) . ";\n";
+                    };
+
+                    foreach (DB::table($table)->cursor() as $row) {
+                        if ($columns === null) {
+                            $columns = array_keys((array) $row);
+                            $escapedColumns = array_map(fn ($col) => "`{$col}`", $columns);
+                            $columnList = implode(', ', $escapedColumns);
+                        }
+
+                        $rowValues = [];
+                        foreach ($columns as $col) {
+                            $val = $row->$col;
+                            if ($val === null) {
+                                $rowValues[] = 'NULL';
+                            } elseif (is_numeric($val) && ! is_string($val)) {
+                                $rowValues[] = $val;
+                            } else {
+                                $rowValues[] = $pdo->quote((string) $val);
+                            }
+                        }
+                        $valuesList[] = '(' . implode(', ', $rowValues) . ')';
+
+                        if (count($valuesList) >= 100) {
+                            $flushBatch();
+                        }
                     }
+
+                    $flushBatch();
                     echo "\n";
                 }
             }

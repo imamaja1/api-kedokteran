@@ -46,20 +46,29 @@ class ServicePenilaianDosen
         }
 
         $kelasList = $query->orderBy('kelas_id', 'desc')->get();
+        $kelasIds = $kelasList->pluck('kelas_id')->filter()->unique()->values();
 
-        $data = $kelasList->map(function ($item) {
+        $totalMhsMap = KelasMahasiswa::whereIn('kelas_id', $kelasIds)
+            ->selectRaw('kelas_id, COUNT(*) as total')
+            ->groupBy('kelas_id')
+            ->pluck('total', 'kelas_id');
+
+        $statusCounts = PenilaianStatus::whereIn('kelas_id', $kelasIds)
+            ->whereIn('status', ['proses', 'validasi'])
+            ->selectRaw('kelas_id, status, COUNT(*) as total')
+            ->groupBy('kelas_id', 'status')
+            ->get()
+            ->groupBy('kelas_id');
+
+        $data = $kelasList->map(function ($item) use ($totalMhsMap, $statusCounts) {
             $kelas = $item->kelas;
             $mk = $kelas?->matakuliah;
+            $kelasId = $kelas?->kelas_id;
 
-            $totalMhs = KelasMahasiswa::where('kelas_id', $kelas?->kelas_id)->count();
-
-            $sudahInput = PenilaianStatus::where('kelas_id', $kelas?->kelas_id)
-                ->where('status', 'proses')
-                ->count();
-
-            $sudahValidasi = PenilaianStatus::where('kelas_id', $kelas?->kelas_id)
-                ->where('status', 'validasi')
-                ->count();
+            $totalMhs = (int) ($totalMhsMap->get($kelasId, 0));
+            $kelasStatuses = $statusCounts->get($kelasId, collect())->pluck('total', 'status');
+            $sudahInput = (int) ($kelasStatuses->get('proses', 0));
+            $sudahValidasi = (int) ($kelasStatuses->get('validasi', 0));
 
             return [
                 'code_kelas' => $kelas?->toCode(),
@@ -116,32 +125,37 @@ class ServicePenilaianDosen
             ])
             ->get();
 
-        $data = $kelasMahasiswa->map(function ($km) use ($kelas, $template) {
+        $nimList = $kelasMahasiswa
+            ->map(fn ($km) => $km->krsDetail?->krs?->mahasiswa?->nim)
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+
+        $penilaianStatuses = PenilaianStatus::where('kelas_id', $kelas->kelas_id)
+            ->whereIn('nim', $nimList)
+            ->get()
+            ->keyBy('nim');
+
+        $leafNodes = $this->treeService->getLeafNodes($template);
+        $totalNodes = count($leafNodes);
+
+        $scoreCounts = StudentScore::where('template_id', $template->id)
+            ->whereIn('nim', $nimList)
+            ->whereNotNull('score')
+            ->selectRaw('nim, COUNT(*) as count')
+            ->groupBy('nim')
+            ->pluck('count', 'nim');
+
+        $data = $kelasMahasiswa->map(function ($km) use ($penilaianStatuses, $scoreCounts, $totalNodes) {
             $krsDetail = $km->krsDetail;
             $khs = $krsDetail?->khsDetail;
             $krs = $krsDetail?->krs;
             $mahasiswa = $krs?->mahasiswa;
 
-            $penilaian = PenilaianStatus::where('kelas_id', $kelas->kelas_id)
-                ->where('nim', $mahasiswa?->nim)
-                ->first();
-
-            $status = 'belum_input';
-            if ($penilaian) {
-                $status = $penilaian->status;
-            }
-
-            $sudahDiisi = 0;
-            $totalNodes = 0;
-            if ($penilaian && $template) {
-                $leafNodes = $this->treeService->getLeafNodes($template);
-                $totalNodes = count($leafNodes);
-
-                $sudahDiisi = StudentScore::where('template_id', $template->id)
-                    ->where('nim', $mahasiswa?->nim)
-                    ->whereNotNull('score')
-                    ->count();
-            }
+            $penilaian = $mahasiswa ? $penilaianStatuses->get($mahasiswa->nim) : null;
+            $status = $penilaian?->status ?? 'belum_input';
+            $sudahDiisi = ($penilaian && $mahasiswa) ? (int) $scoreCounts->get($mahasiswa->nim, 0) : 0;
 
             return [
                 'code_mahasiswa' => $mahasiswa?->toCode(),
@@ -153,7 +167,7 @@ class ServicePenilaianDosen
                 'catatan_dosen' => $penilaian?->catatan_dosen,
                 'catatan_kaprodi' => $penilaian?->catatan_kaprodi,
                 'sudah_diisi' => $sudahDiisi,
-                'total_nodes' => $totalNodes,
+                'total_nodes' => $penilaian ? $totalNodes : 0,
             ];
         })->filter()->values()->toArray();
 

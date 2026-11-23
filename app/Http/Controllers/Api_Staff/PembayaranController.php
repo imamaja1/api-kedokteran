@@ -81,7 +81,7 @@ class PembayaranController extends Controller
             'sks_override_reason' => ['required', 'string', 'max:255'],
         ]);
 
-        $staffId = Auth::guard('staff_web')->user()->id;
+        $staffId = (Auth::guard('staff_web')->user() ?? $request->user())?->id;
 
         return $this->service->setSksOverride($validasi, $staffId);
     }

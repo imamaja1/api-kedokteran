@@ -577,6 +577,20 @@ class ServicePerwalian
             return ApiResponse::notFound('Validasi KRS tidak ditemukan');
         }
 
+        if (isset($payload['kode_dosen_validator'])) {
+            $kodeDosen = (int) $payload['kode_dosen_validator'];
+            $isPembimbing = Perwalian::where('nim', $validasi->nim)
+                ->where(function ($q) use ($kodeDosen) {
+                    $q->where('kode_dosen', $kodeDosen)
+                        ->orWhere('kode_dosen_perwakilan', $kodeDosen);
+                })
+                ->exists();
+
+            if (! $isPembimbing) {
+                return ApiResponse::error('Anda bukan pembimbing mahasiswa ini.', 403);
+            }
+        }
+
         if ($validasi->status_krs !== 'A') {
             return ApiResponse::error('Validasi KRS bukan status A, tidak bisa direvisi.', 422);
         }

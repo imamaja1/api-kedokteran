@@ -352,9 +352,9 @@ sequenceDiagram
     actor Staff as Staff Akademik
     end
 
-    box rgba(137, 206, 255, 0.15) Role: Dosen (auth:dosen_web)
-    actor Dosen as Dosen Penilai (Node Komponen)
-    actor DosenRoot as Dosen PJ Root (Koordinator)
+    box rgba(137, 206, 255, 0.15) Role: Dosen & Kaprodi (auth:dosen_web)
+    actor Dosen as Dosen Penilai (Kelas)
+    actor Kaprodi as Kaprodi (Pengesahan KHS)
     end
 
     box rgba(74, 225, 118, 0.1) Backend SISKA
@@ -407,19 +407,20 @@ sequenceDiagram
     end
     Sys->>DB: Update assessment_node_validations (status: validasi)
 
-    opt Jika Ada Nilai Perlu Dikoreksi
-        Dosen->>Sys: POST /api/dosen/assessment-dosen/revisi (Catatan Revisi)
-        Sys->>DB: Cascade Reset status ancestor & batalkan draf KHS
+    opt Jika Ada Nilai Perlu Dikoreksi di Kelas
+        Dosen->>Sys: POST /api/dosen/assessment-dosen/revisi (Catatan Revisi Komponen)
+        Sys->>DB: Reset status node terkait & hapus draf KHS bila pernah disahkan
     end
 
-    Note over DosenRoot,DB: FASE 3: FINALISASI ROOT OLEH DOSEN PJ ROOT (KOORDINATOR)
-    DosenRoot->>Sys: POST /api/dosen/assessment-dosen/validasi (Validasi Root Node)
+    Note over Kaprodi,DB: FASE 3: PENGESAHAN KHS KHUSUS OLEH KAPRODI
+    Kaprodi->>Sys: GET /api/dosen/kaprodi/penilaian/mahasiswa (Review Nilai Kelas)
+    Kaprodi->>Sys: POST /api/dosen/kaprodi/penilaian/validasi (Validasi Masuk KHS)
     Sys->>Sys: ScoreCalculationService kalkulasi agregasi rekursif nilai akhir
     Sys->>Sys: ServiceGrade konversi skor ke Huruf Mutu (A, B+, C, dll.)
-    Sys->>DB: Tulis ke khs_detail & update status assessment_dosen = 'selesai'
+    Sys->>DB: Tulis ke khs_detail & update status validasi KHS
 
     Note over Mhs,Sys: FASE 4: MAHASISWA MENERIMA HASIL KHS
-    Mhs->>Sys: GET /api/mahasiswa/khs (Akses KHS Semester)
+    Mhs->>Sys: GET /api/mhs/khs (Akses KHS Semester)
     Sys-->>Mhs: Menampilkan Nilai Akhir & Grade Resmi di KHS
                     </div>
                 </div>
@@ -658,21 +659,21 @@ flowchart TD
                         <div class="flex items-center gap-3">
                             <span class="w-8 h-8 rounded-full bg-secondary-container text-white font-mono font-bold flex items-center justify-center shrink-0">5</span>
                             <div>
-                                <h4 class="text-base font-bold text-white">Validasi Berjenjang: Per Mahasiswa atau Massal Sekelas (Bulk)</h4>
-                                <span class="text-xs text-secondary font-mono font-semibold">POST /validasi &amp; POST /validasi-bulk • Role: Dosen Pemegang Node</span>
+                                <h4 class="text-base font-bold text-white">Validasi &amp; Revisi Nilai di Kelas: Per Mahasiswa atau Massal (Bulk)</h4>
+                                <span class="text-xs text-secondary font-mono font-semibold">POST /api/dosen/assessment-dosen/{validasi, validasi-bulk, revisi} • Role: Dosen Kelas</span>
                             </div>
                         </div>
                         <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-surface-container-high text-outline border border-[#222d45]">Verification</span>
                     </div>
                     <div class="mt-4 text-xs text-on-surface-variant space-y-2 leading-relaxed">
-                        <p>Dosen yang ditugaskan memvalidasi node kategorinya. Validasi menerapkan aturan ketat <strong class="text-white">Bottom-Up</strong>: Kategori induk tidak dapat divalidasi sebelum seluruh anak nodenya sudah valid. Tersedia dua mode validasi:</p>
+                        <p>Dosen pengampu yang ditugaskan memvalidasi node kategorinya di kelas (tanpa langsung menulis ke KHS). Tersedia tiga aksi di tingkat kelas:</p>
                         <ul class="list-disc list-inside space-y-1 text-outline pl-2">
-                            <li><code class="text-white font-mono">POST /validasi</code> $\rightarrow$ Validasi individu per satu mahasiswa.</li>
-                            <li><code class="text-white font-mono">POST /validasi-bulk</code> $\rightarrow$ <strong>Validasi Massal Sekaligus</strong> (memvalidasi seluruh mahasiswa sekelas yang nilainya sudah lengkap hanya dengan 1 request).</li>
-                            <li><code class="text-red-300 font-mono">POST /revisi</code> $\rightarrow$ Jika ada nilai salah, otomatis memicu <strong>cascade reset</strong>: leluhur (*ancestor*) sampai ke root kembali di-reset dan draf nilai KHS dibatalkan.</li>
+                            <li><code class="text-white font-mono">POST /api/dosen/assessment-dosen/validasi</code> &rarr; Validasi node individu per satu mahasiswa.</li>
+                            <li><code class="text-white font-mono">POST /api/dosen/assessment-dosen/validasi-bulk</code> &rarr; <strong>Validasi Massal Sekaligus</strong> untuk seluruh mahasiswa sekelas/group yang nilainya sudah lengkap.</li>
+                            <li><code class="text-red-300 font-mono">POST /api/dosen/assessment-dosen/revisi</code> &rarr; Mengembalikan status node ke revisi dan membatalkan draf nilai KHS bila sebelumnya sempat disahkan.</li>
                         </ul>
                         <div class="p-3 rounded-lg bg-surface-container-lowest font-mono text-[11px] text-outline border border-[#222d45]">
-                            <strong>Tabel Terlibat:</strong> <code class="text-primary">assessment_node_validations</code> (status: validasi / revisi, validated_by, validated_at, catatan).
+                            <strong>Tabel Terlibat:</strong> <code class="text-primary">assessment_node_validations</code> (status: validasi / revisi, validated_by, validated_at, catatan), <code class="text-secondary">validation_student_scores</code> &amp; <code class="text-tertiary">penilaian_status</code> (status: proses).
                         </div>
                     </div>
                 </div>
@@ -683,19 +684,19 @@ flowchart TD
                         <div class="flex items-center gap-3">
                             <span class="w-8 h-8 rounded-full bg-tertiary-container text-white font-mono font-bold flex items-center justify-center shrink-0">6</span>
                             <div>
-                                <h4 class="text-base font-bold text-white">Finalisasi Root Node & Penerbitan Nilai KHS Mahasiswa</h4>
-                                <span class="text-xs text-tertiary font-mono font-semibold">Pemicu Otomatis saat Root Node Divalidasi • Role: Koordinator Blok</span>
+                                <h4 class="text-base font-bold text-white">Pengesahan Akhir &amp; Penerbitan Nilai ke KHS Mahasiswa</h4>
+                                <span class="text-xs text-tertiary font-mono font-semibold">POST /api/dosen/kaprodi/penilaian/validasi • Role: Kaprodi</span>
                             </div>
                         </div>
                         <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-surface-container-high text-outline border border-[#222d45]">Final KHS</span>
                     </div>
                     <div class="mt-4 text-xs text-on-surface-variant space-y-2 leading-relaxed">
-                        <p>Saat Koordinator Blok memvalidasi <strong>Root Node</strong> (puncak pohon), sistem secara otomatis menjalankan <code class="text-white font-mono">finalizeGrade()</code>:</p>
+                        <p>Setelah nilai mahasiswa di kelas berstatus <code class="text-white font-mono">proses</code>, Ketua Program Studi (Kaprodi) meninjau dan melakukan pengesahan khusus melalui endpoint Kaprodi:</p>
                         <ol class="list-decimal list-inside space-y-1 pl-2 text-outline">
                             <li><code class="text-white font-mono">ScoreCalculationService</code> menghitung nilai akhir secara rekursif berdasarkan bobot persentase tiap cabang.</li>
                             <li><code class="text-white font-mono">ServiceGrade::konversi</code> mengubah skor angka menjadi huruf mutu (A, B+, C, dll.) dan bobot IP.</li>
                             <li>Sistem mengisi <code class="text-white font-mono">KhsDetail</code>: <code class="text-tertiary font-mono">nilai_akhir</code>, <code class="text-tertiary font-mono">grade</code>, <code class="text-tertiary font-mono">score</code>, dan mengubah <code class="text-tertiary font-mono">tidak_berhak = 'A'</code> (Aktif/Berhak).</li>
-                            <li>Jika seluruh mahasiswa kelas tsb selesai divalidasi, status <code class="text-white font-mono">assessment_dosen</code> ditutup menjadi <code class="text-tertiary font-mono">'selesai'</code>. Mahasiswa langsung dapat melihat nilai resminya di KHS!</li>
+                            <li>Mahasiswa langsung dapat melihat nilai resminya melalui <code class="text-white font-mono">GET /api/mhs/khs</code>.</li>
                         </ol>
                         <div class="p-3 rounded-lg bg-surface-container-lowest font-mono text-[11px] text-outline border border-[#222d45]">
                             <strong>Tabel Terlibat:</strong> <code class="text-primary">khs_detail</code>, <code class="text-secondary">validation_student_scores</code>, <code class="text-tertiary">penilaian_status</code>.

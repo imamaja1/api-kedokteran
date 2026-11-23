@@ -38,10 +38,9 @@ class ApiWorkflowSeeder extends Seeder
         // Pastikan workflow penilaian-bertingkat selalu sinkron dengan endpoint terbaru
         $wfPenilaian = ApiWorkflow::find('penilaian-bertingkat');
         if ($wfPenilaian) {
-            $phases = $wfPenilaian->phases;
-            // Update Phase 2
-            foreach ($phases as &$phase) {
-                if (str_contains($phase['phase'], 'Fase 2')) {
+            $phases = [];
+            foreach ($wfPenilaian->phases as $phase) {
+                if (str_contains($phase['phase'] ?? '', 'Fase 2')) {
                     $phase['endpoints'] = [
                         [
                             'method' => 'GET',
@@ -66,7 +65,65 @@ class ApiWorkflowSeeder extends Seeder
                     ];
                     $phase['description'] = 'Melakukan pre-check kesiapan kelas (anti-404), membuka kelas kuliah, mengaitkan Template aktif ke kelas (auto-create jika template ada), dan memetakan Dosen Pengajar ke node kategori/root.';
                 }
+
+                if (str_contains($phase['phase'] ?? '', 'Fase 4') || str_contains($phase['phase'] ?? '', 'Fase 5')) {
+                    continue;
+                }
+
+                $phases[] = $phase;
             }
+
+            $phases[] = [
+                'actor'       => 'Dosen Pengampu & Koordinator Kelas',
+                'phase'       => 'Fase 4: Validasi & Revisi Komponen Nilai di Kelas (Dosen)',
+                'endpoints'   => [
+                    [
+                        'method' => 'POST',
+                        'url'    => '/api/dosen/assessment-dosen/validasi',
+                        'desc'   => 'Validasi komponen nilai per mahasiswa di kelas',
+                    ],
+                    [
+                        'method' => 'POST',
+                        'url'    => '/api/dosen/assessment-dosen/validasi-bulk',
+                        'desc'   => 'Validasi massal komponen nilai sekelas / per group',
+                    ],
+                    [
+                        'method' => 'POST',
+                        'url'    => '/api/dosen/assessment-dosen/revisi',
+                        'desc'   => 'Kembalikan nilai komponen mahasiswa untuk revisi',
+                    ],
+                ],
+                'description' => 'Dosen pengampu memvalidasi atau merevisi nilai komponen per mahasiswa di kelasnya tanpa langsung menerbitkan nilai ke KHS.',
+            ];
+
+            $phases[] = [
+                'actor'       => 'Ketua Program Studi (Kaprodi) & Mahasiswa',
+                'phase'       => 'Fase 5: Pengesahan Akhir ke KHS oleh Kaprodi',
+                'endpoints'   => [
+                    [
+                        'method' => 'GET',
+                        'url'    => '/api/dosen/kaprodi/penilaian/mahasiswa',
+                        'desc'   => 'Review daftar nilai akhir mahasiswa sekelas',
+                    ],
+                    [
+                        'method' => 'POST',
+                        'url'    => '/api/dosen/kaprodi/penilaian/validasi',
+                        'desc'   => 'Validasi final Kaprodi untuk menerbitkan nilai ke KHS',
+                    ],
+                    [
+                        'method' => 'POST',
+                        'url'    => '/api/dosen/kaprodi/penilaian/revisi',
+                        'desc'   => 'Batalkan/revisi pengesahan KHS jika ada koreksi',
+                    ],
+                    [
+                        'method' => 'GET',
+                        'url'    => '/api/mhs/khs',
+                        'desc'   => 'Mahasiswa melihat nilai akhir & huruf mutu resmi',
+                    ],
+                ],
+                'description' => 'Kaprodi memeriksa rekap nilai kelas dan melakukan pengesahan khusus agar nilai akhir serta grade resmi diterbitkan ke KHS mahasiswa.',
+            ];
+
             $wfPenilaian->phases = $phases;
             $wfPenilaian->save();
         }

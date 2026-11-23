@@ -17,7 +17,7 @@ class ServiceDosen
         $query = Dosen::query()
             ->with("programStudi")
             ->when($kode_program_studi, function ($query, $kode) {
-                return $query->where("kode_program_studi", $kode);
+                return $query->where("homebase", $kode);
             })
             ->when($nama_dosen, function ($query, $nama) {
                 return $query->where("nama_dosen", "like", "%{$nama}%");
@@ -196,7 +196,7 @@ class ServiceDosen
         $query = Dosen::onlyTrashed()
             ->with("programStudi")
             ->when($kode_program_studi, function ($query, $kode) {
-                return $query->where("kode_program_studi", $kode);
+                return $query->where("homebase", $kode);
             })
             ->when($nama_dosen, function ($query, $nama) {
                 return $query->where("nama_dosen", "like", "%{$nama}%");

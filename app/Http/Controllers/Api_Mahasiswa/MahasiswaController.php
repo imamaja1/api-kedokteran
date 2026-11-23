@@ -105,7 +105,7 @@ class MahasiswaController extends Controller
             'kota_orangtua' => 'sometimes|nullable|string|max:50',
             'propinsi_orangtua' => 'sometimes|nullable|string|in:'.$provinces,
             'telepon_orangtua' => 'sometimes|nullable|string|max:20',
-            'sandi' => 'sometimes|nullable|string',
+            'sandi' => 'sometimes|nullable|string|min:6',
         ]);
 
         if (isset($validated['sandi'])) {
