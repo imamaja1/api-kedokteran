@@ -52,6 +52,11 @@ class Kelas extends Model
         return $this->hasMany(JadwalKelas::class, 'kelas_id', 'kelas_id');
     }
 
+    public function groups()
+    {
+        return $this->hasMany(KelasGroup::class, 'kelas_id', 'kelas_id');
+    }
+
     public function assessmentDosen()
     {
         return $this->hasOne(AssessmentDosen::class, 'kelas_id', 'kelas_id')->latestOfMany();

@@ -11,6 +11,7 @@ use App\Http\Controllers\Api_Staff\DefaultController;
 use App\Http\Controllers\Api_Staff\DosenController;
 use App\Http\Controllers\Api_Staff\KurikulumAngkatanController;
 use App\Http\Controllers\Api_Staff\KelasController;
+use App\Http\Controllers\Api_Staff\KelasGroupController;
 use App\Http\Controllers\Api_Staff\MahasiswaController;
 use App\Http\Controllers\Api_Staff\MatakuliahController;
 use App\Http\Controllers\Api_Staff\NamaKurikulumController;
@@ -75,6 +76,16 @@ Route::prefix("api/staff")
             Route::post("dosen", [KelasController::class, "storeDosen"]);
             Route::delete("dosen", [KelasController::class, "destroyDosen"]);
             Route::delete("/", [KelasController::class, "destroy"]);
+        });
+
+        // Kelas Group (Penjabaran Kelas per Node Aktif Asesmen)
+        Route::prefix("kelas-group")->middleware(["throttle:60,1"])->group(function () {
+            Route::get("active-nodes", [KelasGroupController::class, "activeNodes"]);
+            Route::get("/", [KelasGroupController::class, "index"]);
+            Route::post("/", [KelasGroupController::class, "store"]);
+            Route::put("/", [KelasGroupController::class, "update"]);
+            Route::delete("/", [KelasGroupController::class, "destroy"]);
+            Route::post("copy", [KelasGroupController::class, "copy"]);
         });
 
         // Akademik

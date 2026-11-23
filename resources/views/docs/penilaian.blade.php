@@ -475,6 +475,65 @@ graph TD
                     </div>
                 </div>
             </div>
+
+            {{-- DIAGRAM 4: PENJABARAN KELAS & GROUPING PER NODE AKTIF --}}
+            <div class="bg-surface-container rounded-2xl border border-[#222d45] p-5 md:p-6 space-y-3">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-tertiary"></span>
+                        4. Penjabaran Kelas: Gerbang Status Asesmen & Penugasan Group per Node Aktif (ON / OFF)
+                    </h4>
+                    <span class="text-xs font-mono text-tertiary">Sistem Small Group PBL / Lab</span>
+                </div>
+                <p class="text-xs text-on-surface-variant leading-relaxed">
+                    Setiap node asesmen dapat berstatus <strong>ON</strong> (aktif) atau <strong>OFF</strong> (non-aktif). Node yang <strong>ON</strong> (mau itu Level 1, Level 2, atau Level 3) akan menjadi unit penjabaran di kelas. Di bawah node yang ON tersebut, dibentuk <strong>Group (Group A, Group B, dst.)</strong> yang masing-masing mengikat <strong>Dosen Pengampu</strong> dan <strong>Daftar Mahasiswa</strong>. Susunan mahasiswa diatur manual dan fleksibel per node (contoh: 13 & 12 mhs di tutorial, 10 & 15 mhs di praktikum).
+                </p>
+                <div class="p-4 rounded-xl bg-surface-container-lowest/80 border border-[#222d45] overflow-x-auto custom-scroll">
+                    <div class="mermaid text-center">
+flowchart TD
+    classDef kelasClass fill:#1e293b,stroke:#89ceff,stroke-width:2px,color:#fff;
+    classDef gateClass fill:#312e81,stroke:#6366f1,stroke-width:2px,color:#c3c0ff;
+    classDef nonAktifClass fill:#7f1d1d,stroke:#ef4444,stroke-width:1.5px,color:#fca5a5;
+    classDef aktifClass fill:#064e3b,stroke:#10b981,stroke-width:1.5px,color:#6ee7b7;
+    classDef nodeOffClass fill:#334155,stroke:#64748b,stroke-width:1px,color:#94a3b8;
+    classDef nodeOnClass fill:#065f46,stroke:#34d399,stroke-width:1.5px,color:#fff;
+    classDef groupClass fill:#1e3a8a,stroke:#3b82f6,stroke-width:1.5px,color:#bfdbfe;
+    classDef detailClass fill:#111827,stroke:#374151,stroke-width:1px,color:#e5e7eb;
+
+    Kelas["Kelas: Biomedik Dasar (Koordinator: Dosen A)<br/>Pool: 25 Mahasiswa"]:::kelasClass
+    Gate{"Status Gerbang Asesmen?"}:::gateClass
+    Kelas --> Gate
+
+    Gate -->|status: non_aktif| NonAktif["🔴 NON-AKTIF<br/>Kunci Sistem: Penugasan Dosen Ditolak (422)"]:::nonAktifClass
+    Gate -->|status: aktif| Aktif["🟢 AKTIF<br/>Akses Terbuka: Dosen Wajib Dimasukkan via Group"]:::aktifClass
+
+    NK["kurikulum (OFF 🔴 - Container Level 1)"]:::nodeOffClass
+    NKA["kurikulum A (ON 🟢 - Level 2)"]:::nodeOnClass
+    NKB["kurikulum B (ON 🟢 - Level 2)"]:::nodeOnClass
+    NP["Praktikum (ON 🟢 - Level 1)"]:::nodeOnClass
+
+    Aktif --> NK
+    Aktif --> NP
+    NK --> NKA
+    NK --> NKB
+
+    GA1["Group A (13 Mhs)"]:::groupClass
+    GB1["Group B (12 Mhs)"]:::groupClass
+    GA1 --- D1["👨‍🏫 dr. Budi<br/>🎓 NIM 001 - 013"]:::detailClass
+    GB1 --- D2["👨‍🏫 dr. Siti<br/>🎓 NIM 014 - 025"]:::detailClass
+
+    GA2["Group A (10 Mhs)"]:::groupClass
+    GB2["Group B (15 Mhs)"]:::groupClass
+    GA2 --- D3["👨‍🏫 dr. Andi<br/>🎓 NIM 001 - 010"]:::detailClass
+    GB2 --- D4["👨‍🏫 dr. Maya<br/>🎓 NIM 011 - 025"]:::detailClass
+
+    NKA --> GA1
+    NKA --> GB1
+    NP --> GA2
+    NP --> GB2
+                    </div>
+                </div>
+            </div>
         </section>
 
         {{-- SECTION 3: 6 TAHAP EKSEKUSI DETAIL --}}
@@ -525,6 +584,29 @@ graph TD
                         <p><strong class="text-white">2. Buka Kelas &amp; Binding:</strong> Staff membuka kelas perkuliahan di semester berjalan. Kemudian Staff memanggil <code class="text-white font-mono">POST /api/staff/assessment/dosen</code> dengan payload <code class="text-white font-mono">{"code_kelas": "..."}</code> (atau cukup buka langsung <code class="text-secondary font-mono">GET /assignments</code> yang secara otomatis menginisialisasi assessment jika template aktif tersedia).</p>
                         <div class="p-3 rounded-lg bg-surface-container-lowest font-mono text-[11px] text-outline border border-[#222d45]">
                             <strong>Tabel Terlibat:</strong> <code class="text-primary">kelas</code>, <code class="text-secondary">kelas_mahasiswa</code>, <code class="text-tertiary">assessment_dosen</code> (template_id, kelas_id, status='aktif').
+                        </div>
+                    </div>
+                </div>
+
+                {{-- STEP 2.5 --}}
+                <div class="bg-surface-container rounded-xl border border-[#222d45] p-5 hover:border-tertiary/40 transition-all">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <span class="w-8 h-8 rounded-full bg-tertiary-container text-white font-mono font-bold flex items-center justify-center shrink-0">2.5</span>
+                            <div>
+                                <h4 class="text-base font-bold text-white">Penjabaran Kelas: Pembagian Group &amp; Plotting Dosen + Mahasiswa per Node Aktif</h4>
+                                <span class="text-xs text-tertiary font-mono font-semibold">GET &amp; POST /api/staff/kelas-group • Role: Staff Akademik</span>
+                            </div>
+                        </div>
+                        <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-surface-container-high text-tertiary border border-tertiary/30">PBL Grouping &amp; Node ON</span>
+                    </div>
+                    <div class="mt-4 text-xs text-on-surface-variant space-y-2 leading-relaxed">
+                        <p><strong class="text-white">1. Gerbang Status Asesmen:</strong> Penugasan dosen dan group <strong>hanya diizinkan jika status asesmen kelas adalah AKTIF</strong>. Jika berstatus non-aktif, sistem menolak input penugasan (HTTP 422).</p>
+                        <p><strong class="text-white">2. Node Aktif (ON) Multi-Level:</strong> Staff memanggil <code class="text-primary font-mono">GET /api/staff/kelas-group/active-nodes?code_kelas=...</code>. Sistem menampilkan semua node yang berstatus <strong>ON</strong> (bisa berada di Level 1, Level 2, atau Level 3). Node yang berstatus <strong>OFF</strong> hanya berfungsi sebagai wadah/container.</p>
+                        <p><strong class="text-white">3. Grouping Fleksibel per Materi:</strong> Di bawah setiap node yang ON, Staff membuat <strong>Group A, Group B, dst.</strong> (<code class="text-secondary font-mono">POST /api/staff/kelas-group</code>) dengan menunjuk Dosen pengampu dan memasukkan daftar NIM mahasiswa. Jumlah dan susunan mahasiswa diatur manual serta bebas berbeda antar-materi (contoh: 13 &amp; 12 mhs di tutorial, 10 &amp; 15 mhs di praktikum).</p>
+                        <p><strong class="text-white">4. Fitur Salin Group:</strong> Disediakan endpoint <code class="text-tertiary font-mono">POST /api/staff/kelas-group/copy</code> untuk menyalin susunan group dan mahasiswa dari satu node ke node lain pada kelas yang sama secara instan.</p>
+                        <div class="p-3 rounded-lg bg-surface-container-lowest font-mono text-[11px] text-outline border border-[#222d45]">
+                            <strong>Tabel Terlibat:</strong> <code class="text-primary">kelas_groups</code> (kelas_id, node_key, nama_group, kode_dosen), <code class="text-secondary">kelas_group_mahasiswas</code> (kelas_group_id, nim).
                         </div>
                     </div>
                 </div>

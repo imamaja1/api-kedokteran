@@ -82,6 +82,10 @@ class ServiceAssessmentDosen
             return ApiResponse::notFound('AssessmentDosen tidak ditemukan.');
         }
 
+        if ($assessment->status !== 'aktif') {
+            return ApiResponse::error('Asesmen sedang non-aktif. Tidak dapat menugaskan dosen.', 422);
+        }
+
         $template = $assessment->template;
 
         $assigned = [];
@@ -331,11 +335,20 @@ class ServiceAssessmentDosen
             ->whereHas('assessmentDosen', fn ($q) => $q->where('status', 'aktif'))
             ->get();
 
-        if ($assignments->isEmpty()) {
+        $groupAssignments = \App\Models\KelasGroup::with([
+            'kelas.namaKelas',
+            'kelas.matakuliah',
+            'kelas.assessmentDosen.template',
+        ])
+            ->where('kode_dosen', $kodeDosen)
+            ->whereHas('kelas.assessmentDosen', fn ($q) => $q->where('status', 'aktif'))
+            ->get();
+
+        if ($assignments->isEmpty() && $groupAssignments->isEmpty()) {
             return ApiResponse::success([], 'Anda tidak memiliki tugas validasi.');
         }
 
-        $data = $assignments->map(function ($a) {
+        $data1 = $assignments->map(function ($a) {
             $kelas = $a->assessmentDosen->kelas;
             $assessment = $a->assessmentDosen;
             $template = $assessment->template;
@@ -359,6 +372,7 @@ class ServiceAssessmentDosen
                 'node_key'            => $a->node_key,
                 'node_name'           => $node['name'] ?? null,
                 'node_type'           => $node['type'] ?? 'category',
+                'group_name'          => null,
                 'status_kelas'        => $assessment->status,
                 'is_open'             => $isOpen,
                 'tanggal_buka'        => $buka ? \Carbon\Carbon::parse($buka)->toDateString() : null,
@@ -367,24 +381,66 @@ class ServiceAssessmentDosen
             ];
         });
 
+        $data2 = $groupAssignments->map(function ($g) {
+            $kelas = $g->kelas;
+            $assessment = $kelas->assessmentDosen;
+            $template = $assessment?->template;
+            $node = $template ? $this->treeService->findNode($template, $g->node_key) : null;
+
+            $buka = $assessment?->tanggal_buka ?? $kelas->tahunAkademik?->tanggal_buka_penilaian;
+            $tutup = $assessment?->tanggal_tutup ?? $kelas->tahunAkademik?->tanggal_tutup_penilaian;
+            $isOpen = $assessment?->isOpen() ?? false;
+            $sisaHari = null;
+            if ($tutup) {
+                $now = now()->startOfDay();
+                $end = \Carbon\Carbon::parse($tutup)->startOfDay();
+                $sisaHari = (int) $now->diffInDays($end, false);
+            }
+
+            return [
+                'assessment_dosen_id' => $assessment?->id,
+                'code_kelas'          => $kelas->toCode(),
+                'nama_kelas'          => $kelas->namaKelas?->nama_kelas,
+                'matakuliah'          => $kelas->matakuliah?->nama_matakuliah,
+                'node_key'            => $g->node_key,
+                'node_name'           => $node['name'] ?? null,
+                'node_type'           => $node['type'] ?? 'category',
+                'group_name'          => $g->nama_group,
+                'status_kelas'        => $assessment?->status,
+                'is_open'             => $isOpen,
+                'tanggal_buka'        => $buka ? \Carbon\Carbon::parse($buka)->toDateString() : null,
+                'tanggal_tutup'       => $tutup ? \Carbon\Carbon::parse($tutup)->toDateString() : null,
+                'sisa_hari'           => $sisaHari,
+            ];
+        });
+
+        $data = $data1->concat($data2)->values()->toArray();
+
         return ApiResponse::success($data, 'Daftar node validasi berhasil diambil.');
     }
 
     public function getMahasiswaByNode(int $assessmentId, string $nodeKey, int $kodeDosen): JsonResponse
     {
+        $assessment = AssessmentDosen::with(['kelas.tahunAkademik'])->find($assessmentId);
+        if (! $assessment) {
+            return ApiResponse::notFound('AssessmentDosen tidak ditemukan.');
+        }
+
         $assignment = AssessmentDosenAssignment::where('assessment_dosen_id', $assessmentId)
             ->where('node_key', $nodeKey)
             ->where('kode_dosen', $kodeDosen)
             ->first();
 
-        if (! $assignment) {
+        $kelasGroup = \App\Models\KelasGroup::with('groupMahasiswa')
+            ->where('kelas_id', $assessment->kelas_id)
+            ->where('node_key', $nodeKey)
+            ->where('kode_dosen', $kodeDosen)
+            ->first();
+
+        if (! $assignment && ! $kelasGroup) {
             return ApiResponse::error('Anda tidak ditugaskan di node ini.', 403);
         }
 
-        $assessment = AssessmentDosen::with(['kelas.tahunAkademik'])->find($assessmentId);
-        if (! $assessment) {
-            return ApiResponse::notFound('AssessmentDosen tidak ditemukan.');
-        }
         if (! $assessment->isOpen()) {
             return ApiResponse::error('Periode penilaian sudah ditutup.', 422);
         }
@@ -395,6 +451,12 @@ class ServiceAssessmentDosen
         $kelasMahasiswa = KelasMahasiswa::with([
             'krsDetail.krs.mahasiswa'
         ])->where('kelas_id', $assessment->kelas_id)->get();
+
+        // Jika dosen mengampu lewat group spesifik, batasi hanya mahasiswa di group tersebut
+        if ($kelasGroup) {
+            $groupNims = $kelasGroup->groupMahasiswa->pluck('nim')->filter()->toArray();
+            $kelasMahasiswa = $kelasMahasiswa->filter(fn ($km) => in_array($km->krsDetail?->krs?->nim, $groupNims));
+        }
 
         $validations = AssessmentNodeValidation::where('assessment_dosen_id', $assessmentId)
             ->where('node_key', $nodeKey)
