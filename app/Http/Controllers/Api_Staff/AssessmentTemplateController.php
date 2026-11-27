@@ -32,20 +32,31 @@ class AssessmentTemplateController extends Controller
             $validated = $request->validate([
                 'angkatan' => 'nullable|integer',
                 'versi' => 'nullable|integer|min:1',
+                'is_active' => 'nullable|boolean',
                 'per_page' => 'nullable|integer|min:1|max:100',
             ]);
 
             $query = AssessmentTemplate::select(
                 'id',
                 'versi',
+                'is_active',
                 'id_matakuliah',
                 'kode_kurikulum_angkatan',
                 'created_at',
                 'updated_at',
             )
                 ->with('matakuliah:id_matakuliah,nama_matakuliah')
-                ->with('kurikulumAngkatan')
-                ->where('is_active', true);
+                ->with('kurikulumAngkatan');
+
+            if (array_key_exists('is_active', $validated) && $validated['is_active'] !== null) {
+                $query->where('is_active', filter_var($validated['is_active'], FILTER_VALIDATE_BOOLEAN));
+            } else {
+                $query->where('is_active', true);
+            }
+
+            if ($validated['versi'] ?? null) {
+                $query->where('versi', $validated['versi']);
+            }
 
             if ($validated['angkatan'] ?? null) {
                 $query->whereHas('kurikulumAngkatan', function ($q) use ($validated) {
@@ -61,6 +72,7 @@ class AssessmentTemplateController extends Controller
                     'id' => $index + 1,
                     'code' => Crypt::encryptString($template->id),
                     'versi' => $template->versi,
+                    'is_active' => $template->is_active,
                     'matakuliah' => $template->matakuliah?->nama_matakuliah,
                     'kurikulum_angkatan' => $template->kurikulumAngkatan?->angkatan,
                     'created_at' => $template->created_at,
